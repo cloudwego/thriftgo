@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,43 @@ func indent(lines, pad string) string {
 	return strings.Join(ss, "\n")
 }
 
+// Append append key value pair to Annotation slice
+func (a *Annotations) Append(key string, value string) {
+	old := *a
+	for _, anno := range old {
+		if anno.Key == key {
+			anno.Values = append(anno.Values, value)
+			return
+		}
+	}
+	*a = append(old, &Annotation{Key: key, Values: []string{value}})
+}
+
+// Get return annotations values
+func (a *Annotations) Get(key string) []string {
+	for _, anno := range *a {
+		if anno.Key == key {
+			return anno.Values
+		}
+	}
+	return nil
+}
+
+// IsDefault tells whether a field type is default.
+func (r FieldType) IsDefault() bool {
+	return r == FieldType_Default
+}
+
+// IsRequired tells whether a field type is required.
+func (r FieldType) IsRequired() bool {
+	return r == FieldType_Required
+}
+
+// IsOptional tells whether a field type is optional.
+func (r FieldType) IsOptional() bool {
+	return r == FieldType_Optional
+}
+
 func (t *ConstValue) String() string {
 	if t == nil {
 		return "<nil>"
@@ -41,7 +78,7 @@ func (t *ConstValue) String() string {
 	case ConstType_ConstLiteral:
 		val = fmt.Sprintf("\"%s\"", *t.TypedValue.Literal)
 	case ConstType_ConstIdentifier:
-		val = fmt.Sprintf("%s", *t.TypedValue.Identifier)
+		val = *t.TypedValue.Identifier
 	case ConstType_ConstList:
 		if len(t.TypedValue.List) == 0 {
 			return "{}"
@@ -86,8 +123,8 @@ func (t *Type) String() string {
 }
 
 // GetField returns a field of the struct-like that matches the name.
-func (st *StructLike) GetField(name string) (*Field, bool) {
-	for _, fi := range st.Fields {
+func (s *StructLike) GetField(name string) (*Field, bool) {
+	for _, fi := range s.Fields {
 		if fi.Name == name {
 			return fi, true
 		}
@@ -130,13 +167,13 @@ func (t *Thrift) GetReference(refname string) (*Thrift, bool) {
 }
 
 // GetNamespace returns a namespace for the language.
-// When both "*" and the language have a namespace defined, the latter is prefered.
+// When both "*" and the language have a namespace defined, the latter is preferred.
 func (t *Thrift) GetNamespace(lang string) (ns string, found bool) {
 	for _, n := range t.Namespaces {
-		if lang == n.Language {
+		if n.Language == lang {
 			return n.Name, true
 		}
-		if "*" == n.Language {
+		if n.Language == "*" {
 			ns, found = n.Name, true
 		}
 	}

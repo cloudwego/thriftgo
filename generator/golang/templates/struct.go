@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ var StructLike = `
 {{InsertionPoint .Category .Name}}
 type {{$TypeName}} struct {
 {{- range .Fields}}
-	{{InsertionPoint $.Category $.Name .Name}}
-	{{ResolveFieldName .}} {{ResolveFieldTypeName .}} {{GenTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
+	{{- InsertionPoint $.Category $.Name .Name}}
+	{{ResolveFieldName $ .}} {{ResolveFieldTypeName .}} {{GenTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
 	{{if Features.KeepUnknownFields}}_unknownFields unknown.Fields{{end}}
 }
@@ -40,7 +40,8 @@ func (p *{{$TypeName}}) CountSetFields{{$TypeName}}() int {
 	count := 0
 	{{- range .Fields}}
 	{{- if SupportIsSet .}}
-	if p.IsSet{{ResolveFieldName .}}() {
+	{{- $IsSetName := GetFieldIsSetName $ .}}
+	if p.{{$IsSetName}}() {
 		count++
 	}
 	{{- end}}
@@ -85,10 +86,9 @@ func (p *{{$TypeName}}) Error() string {
 {{- end}}
 
 {{- if Features.GenDeepEqual}}
-{{- $st := ToStructLike .}}
-{{template "StructLikeDeepEqual" $st}}
+{{template "StructLikeDeepEqual" .}}
 
-{{template "StructLikeDeepEqualField" $st}}
+{{template "StructLikeDeepEqualField" .}}
 {{- end}}
 
 {{- end}}{{/* define "StructLike" */}}
@@ -98,8 +98,8 @@ func (p *{{$TypeName}}) Error() string {
 var StructLikeDefault = `
 {{- define "StructLikeDefault"}}
 {{- range .Fields}}
-	{{- if HasDefaultValue .}}
-		{{ResolveFieldName .}}: {{GetFieldInit .}},
+	{{- if .IsSetDefault}}
+		{{ResolveFieldName $ .}}: {{GetFieldInit .}},
 	{{- end}}
 {{- end}}
 {{- end -}}`
@@ -107,14 +107,14 @@ var StructLikeDefault = `
 // StructLikeRead .
 var StructLikeRead = `
 {{define "StructLikeRead"}}
-{{- $TypeName := .Name | Identify -}}
+{{- $TypeName := .Name | Identify}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{if Features.KeepUnknownFields}}var name string{{end}}
 	var fieldTypeId thrift.TType
 	var fieldId int16
 	{{- range .Fields}}
-	{{- if IsRequired .}}
-	var isset{{ResolveFieldName .}} bool = false
+	{{- if .Requiredness.IsRequired}}
+	var isset{{ResolveFieldName $ .}} bool = false
 	{{- end}}
 	{{- end}}
 
@@ -138,8 +138,8 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 				if err = p.ReadField{{ID .}}(iprot); err != nil {
 					goto ReadFieldError
 				}
-				{{- if IsRequired .}}
-				isset{{ResolveFieldName .}} = true
+				{{- if .Requiredness.IsRequired}}
+				isset{{ResolveFieldName $ .}} = true
 				{{- end}}
 			} else {
 				if err = iprot.Skip(fieldTypeId); err != nil {
@@ -173,9 +173,9 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	}
 	{{ $RequiredFieldNotSetError := false }}
 	{{- range .Fields}}
-	{{- if IsRequired .}}
+	{{- if .Requiredness.IsRequired}}
 	{{ $RequiredFieldNotSetError = true }}
-	if !isset{{ResolveFieldName .}} {
+	if !isset{{ResolveFieldName $ .}} {
 		fieldId = {{.ID}}
 		goto RequiredFieldNotSetError
 	}
@@ -219,12 +219,11 @@ RequiredFieldNotSetError:
 // StructLikeReadField .
 var StructLikeReadField = `
 {{define "StructLikeReadField"}}
-{{- $TypeName := .Name | Identify -}}
+{{- $TypeName := .Name | Identify}}
 {{- range .Fields}}
-{{$FieldName := ResolveFieldName .}}
+{{$FieldName := ResolveFieldName $ .}}
 func (p *{{$TypeName}}) ReadField{{ID .}}(iprot thrift.TProtocol) error {
-	{{- ResetIDGenerator}}
-	{{- $ctx := MkRWCtx . "" false false}}
+	{{- $ctx := MkRWCtx $ .}}
 	{{- template "FieldRead" $ctx}}
 	return nil
 }
@@ -235,7 +234,7 @@ func (p *{{$TypeName}}) ReadField{{ID .}}(iprot thrift.TProtocol) error {
 // StructLikeWrite .
 var StructLikeWrite = `
 {{define "StructLikeWrite"}}
-{{- $TypeName := .Name | Identify -}}
+{{- $TypeName := .Name | Identify}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	{{- if gt (len .Fields) 0 }}
 	var fieldId int16
@@ -246,13 +245,13 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 		goto CountSetFieldsError
 	}
 	{{- end}}
-	if err = oprot.WriteStructBegin("{{GetStructName .}}"); err != nil {
+	if err = oprot.WriteStructBegin("{{.Name}}"); err != nil {
 		goto WriteStructBeginError
 	}
 	if p != nil {
 		{{- range .Fields}}
 		if err = p.writeField{{ID .}}(oprot); err != nil {
-			fieldId = {{ID .}}
+			fieldId = {{.ID}}
 			goto WriteFieldError
 		}
 		{{- end}}
@@ -294,24 +293,24 @@ UnknownFieldsWriteError:
 // StructLikeWriteField .
 var StructLikeWriteField = `
 {{define "StructLikeWriteField"}}
-{{- $TypeName := .Name | Identify -}}
+{{- $TypeName := .Name | Identify}}
 {{- range .Fields}}
-{{- $FieldName := ResolveFieldName .}}
+{{- $FieldName := ResolveFieldName $ .}}
+{{- $IsSetName := GetFieldIsSetName $ .}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
 func (p *{{$TypeName}}) writeField{{ID .}}(oprot thrift.TProtocol) (err error) {
-	{{- ResetIDGenerator}}
-	{{- if IsOptional .}}
-	if p.IsSet{{$FieldName}}() {
+	{{- if .Requiredness.IsOptional}}
+	if p.{{$IsSetName}}() {
 	{{- end}}
 	if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 		goto WriteFieldBeginError
 	}
-	{{- $ctx := MkRWCtx . "" false false}}
+	{{- $ctx := MkRWCtx $ .}}
 	{{- template "FieldWrite" $ctx}}
 	if err = oprot.WriteFieldEnd(); err != nil {
 		goto WriteFieldEndError
 	}
-	{{- if IsOptional .}}
+	{{- if .Requiredness.IsOptional}}
 	}
 	{{- end}}
 	return nil
@@ -327,19 +326,22 @@ WriteFieldEndError:
 // FieldGetOrSet .
 var FieldGetOrSet = `
 {{define "FieldGetOrSet"}}
-{{- $TypeName := .Name | Identify -}}
+{{- $TypeName := .Name | Identify}}
 {{- range .Fields}}
-{{$FieldName := ResolveFieldName .}}
-{{$FieldTypeName := . | ResolveFieldTypeName}}
-{{$DefaultVarTypeName := GetDefaultValueTypeName .}}
+{{- $FieldName := ResolveFieldName $ .}}
+{{- $FieldTypeName := . | ResolveFieldTypeName}}
+{{- $DefaultVarTypeName := GetDefaultValueTypeName .}}
+{{- $GetterName := GetFieldGetterName $ .}}
+{{- $SetterName := GetFieldSetterName $ .}}
+{{- $IsSetName := GetFieldIsSetName $ .}}
 
 {{if SupportIsSet .}}
 {{$DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
 var {{$DefaultVarName}} {{$DefaultVarTypeName}}
 {{- if .Default}} = {{GetFieldInit .}}{{- end}}
 
-func (p *{{$TypeName}}) Get{{$FieldName}}() {{$DefaultVarTypeName}} {
-	if !p.IsSet{{$FieldName}}() {
+func (p *{{$TypeName}}) {{$GetterName}}() {{$DefaultVarTypeName}} {
+	if !p.{{$IsSetName}}() {
 		return {{$DefaultVarName}}
 	}
 	{{- if and (NeedRedirect .) (IsBaseType .Type)}}
@@ -351,7 +353,7 @@ func (p *{{$TypeName}}) Get{{$FieldName}}() {{$DefaultVarTypeName}} {
 
 {{- else}}{{/*if SupportIsSet . */}}
 
-func (p *{{$TypeName}}) Get{{$FieldName}}() {{$FieldTypeName}} {
+func (p *{{$TypeName}}) {{$GetterName}}() {{$FieldTypeName}} {
 	return p.{{$FieldName}}
 }
 
@@ -359,15 +361,15 @@ func (p *{{$TypeName}}) Get{{$FieldName}}() {{$FieldTypeName}} {
 {{- end}}{{/* range .Fields */}}
 
 {{- if Features.GenerateSetter}}
-{{range .Fields}}
-{{$FieldName := ResolveFieldName .}}
-{{$FieldTypeName := . | ResolveFieldTypeName}}
-{{$SetterName := GetFieldSetterName .}}
-{{- if IsSetterOfResponseType $TypeName $FieldName -}}
+{{- range .Fields}}
+{{- $FieldName := ResolveFieldName $ .}}
+{{- $FieldTypeName := . | ResolveFieldTypeName}}
+{{- $SetterName := GetFieldSetterName $ .}}
+{{- if IsSetterOfResponseType $TypeName $FieldName}}
 func (p *{{$TypeName}}) {{$SetterName}}(x interface{}) {
     p.{{$FieldName}} = x.({{$FieldTypeName}})
 }
-{{- else -}}
+{{- else}}
 func (p *{{$TypeName}}) {{$SetterName}}(val {{$FieldTypeName}}) {
 	p.{{$FieldName}} = val
 }
@@ -383,14 +385,15 @@ var FieldIsSet = `
 {{define "FieldIsSet"}}
 {{- $TypeName := .Name | Identify}}
 {{- range .Fields}}
-{{- $FieldName := ResolveFieldName .}}
+{{- $FieldName := ResolveFieldName $ .}}
+{{- $IsSetName := GetFieldIsSetName $ .}}
 {{- $FieldTypeName := . | ResolveFieldTypeName}}
 {{- $DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
 {{- if SupportIsSet .}}
-func (p *{{$TypeName}}) IsSet{{$FieldName}}() bool {
-	{{- if HasDefaultValue .}}
+func (p *{{$TypeName}}) {{$IsSetName}}() bool {
+	{{- if .IsSetDefault}}
 		{{- if IsBaseType .Type}}
-			{{- if IsBinaryType .Type}}
+			{{- if .Type.Category.IsBinary}}
 				return string(p.{{$FieldName}}) != string({{$DefaultVarName}})
 			{{- else}}
 				return p.{{$FieldName}} != {{$DefaultVarName}}
@@ -410,12 +413,12 @@ func (p *{{$TypeName}}) IsSet{{$FieldName}}() bool {
 // FieldRead .
 var FieldRead = `
 {{define "FieldRead"}}
-	{{- if IsStructLike .Type}}
+	{{- if .Type.Category.IsStructLike}}
 		{{- template "FieldReadStructLike" .}}
-	{{- else if IsBaseType .Type }}
-		{{- template "FieldReadBaseType" .}}
-	{{- else}}{{/* IsContainerType */}}
+	{{- else if .Type.Category.IsContainerType}}
 		{{- template "FieldReadContainer" .}}
+	{{- else}}{{/* IsBaseType */}}
+		{{- template "FieldReadBaseType" .}}
 	{{- end}}
 {{- end}}{{/* define "FieldRead" */}}
 `
@@ -433,7 +436,7 @@ var FieldReadStructLike = `
 // FieldReadBaseType .
 var FieldReadBaseType = `
 {{define "FieldReadBaseType"}}
-	{{- $DiffType := or (IsEnumType .Type) (IsBinaryType .Type)}}
+	{{- $DiffType := or .Type.Category.IsEnum (.Type.Category.IsBinary)}}
 	{{- if .NeedDecl}}
 	var {{.Target}} {{.TypeName}}
 	{{- end}}
@@ -480,15 +483,15 @@ var FieldReadMap = `
 	}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, size)
 	for i := 0; i < size; i++ {
-		{{- $key := GenID "_key"}}
-		{{- $ctx := MkRWCtx (.Type | GetKeyType) $key true true}}
+		{{- $key := .GenID "_key"}}
+		{{- $ctx := .KeyCtx.WithDecl.WithTarget $key}}
 		{{- template "FieldRead" $ctx}}
 		{{/* line break */}}
-		{{- $val := GenID "_val"}}
-		{{- $ctx = MkRWCtx (.Type | GetValType) $val true false}}
+		{{- $val := .GenID "_val"}}
+		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
 		{{- template "FieldRead" $ctx}}
 
-		{{if and (IsStructLike (.Type | GetValType)) Features.ValueTypeForSIC}}
+		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
 		{{end}}
 
@@ -509,11 +512,11 @@ var FieldReadSet = `
 	}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
 	for i := 0; i < size; i++ {
-		{{- $val := GenID "_elem"}}
-		{{- $ctx := MkRWCtx (.Type | GetValType) $val true false}}
+		{{- $val := .GenID "_elem"}}
+		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
 		{{- template "FieldRead" $ctx}}
 
-		{{if and (IsStructLike (.Type | GetValType)) Features.ValueTypeForSIC}}
+		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
 		{{end}}
 
@@ -534,11 +537,11 @@ var FieldReadList = `
 	}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
 	for i := 0; i < size; i++ {
-		{{- $val := GenID "_elem"}}
-		{{- $ctx := MkRWCtx (.Type | GetValType) $val true false}}
+		{{- $val := .GenID "_elem"}}
+		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
 		{{- template "FieldRead" $ctx}}
 
-		{{if and (IsStructLike (.Type | GetValType)) Features.ValueTypeForSIC}}
+		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
 		{{end}}
 
@@ -553,12 +556,12 @@ var FieldReadList = `
 // FieldWrite .
 var FieldWrite = `
 {{define "FieldWrite"}}
-	{{- if IsStructLike .Type}}
+	{{- if .Type.Category.IsStructLike}}
 		{{- template "FieldWriteStructLike" . -}}
-	{{- else if IsBaseType .Type }}
-		{{- template "FieldWriteBaseType" . -}}
-	{{- else}}{{/* IsContainerType */}}
+	{{- else if .Type.Category.IsContainerType}}
 		{{- template "FieldWriteContainer" . -}}
+	{{- else}}{{/* IsBaseType */}}
+		{{- template "FieldWriteBaseType" . -}}
 	{{- end}}
 {{- end}}{{/* define "FieldWrite" */}}
 `
@@ -577,8 +580,8 @@ var FieldWriteBaseType = `
 {{define "FieldWriteBaseType"}}
 {{- $Value := .Target}}
 {{- if .IsPointer}}{{$Value = printf "*%s" $Value}}{{end}}
-{{- if IsEnumType .Type}}{{$Value = printf "int32(%s)" $Value}}{{end}}
-{{- if IsBinaryType .Type}}{{$Value = printf "[]byte(%s)" $Value}}{{end}}
+{{- if .Type.Category.IsEnum}}{{$Value = printf "int32(%s)" $Value}}{{end}}
+{{- if .Type.Category.IsBinary}}{{$Value = printf "[]byte(%s)" $Value}}{{end}}
 	if err := oprot.Write{{.TypeID}}({{$Value}}); err != nil {
 		return err
 	}
@@ -602,15 +605,15 @@ var FieldWriteContainer = `
 var FieldWriteMap = `
 {{define "FieldWriteMap"}}
 	if err := oprot.WriteMapBegin(thrift.
-		{{- .Type| GetKeyType | GetTypeIDConstant -}}
-		, thrift.{{- .Type | GetValType | GetTypeIDConstant -}}
+		{{- .KeyCtx.Type | GetTypeIDConstant -}}
+		, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 		return err
 	}
 	for k, v := range {{.Target}}{
-		{{$ctx := MkRWCtx (.Type | GetKeyType) "k" false true}}
+		{{$ctx := .KeyCtx.WithTarget "k"}}
 		{{- template "FieldWrite" $ctx}}
-		{{$ctx := MkRWCtx (.Type | GetValType) "v" false false}}
+		{{$ctx := .ValCtx.WithTarget "v"}}
 		{{- template "FieldWrite" $ctx}}
 	}
 	if err := oprot.WriteMapEnd(); err != nil {
@@ -623,12 +626,12 @@ var FieldWriteMap = `
 var FieldWriteSet = `
 {{define "FieldWriteSet"}}
 		if err := oprot.WriteSetBegin(thrift.
-		{{- .Type | GetValType | GetTypeIDConstant -}}
+		{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 			return err
 		}
 		{{- if Features.ValidateSet}}
-		{{- $ctx := MkRWCtx2 (.Type | GetValType) "tgt" "src" false false}}
+		{{- $ctx := (.ValCtx.WithTarget "tgt").WithSource "src"}}
 		for i := 0; i < len({{.Target}}); i++ {
 			for j := i + 1; j < len({{.Target}}); j++ {
 		{{- if Features.GenDeepEqual}}
@@ -637,6 +640,7 @@ var FieldWriteSet = `
 					return true
 				}({{.Target}}[i], {{.Target}}[j]) {
 		{{- else}}
+				{{- UseStdLibrary "reflect"}}
 				if reflect.DeepEqual({{.Target}}[i], {{.Target}}[j]) {
 		{{- end}}
 					return thrift.PrependError("", fmt.Errorf("%T error writing set field: slice is not unique", {{.Target}}[i]))
@@ -645,7 +649,7 @@ var FieldWriteSet = `
 		}
 		{{- end}}
 		for _, v := range {{.Target}} {
-			{{- $ctx := MkRWCtx (.Type | GetValType) "v" false false}}
+			{{- $ctx := .ValCtx.WithTarget "v"}}
 			{{- template "FieldWrite" $ctx}}
 		}
 		if err := oprot.WriteSetEnd(); err != nil {
@@ -658,166 +662,16 @@ var FieldWriteSet = `
 var FieldWriteList = `
 {{define "FieldWriteList"}}
 		if err := oprot.WriteListBegin(thrift.
-		{{- .Type | GetValType | GetTypeIDConstant -}}
+		{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 			return err
 		}
 		for _, v := range {{.Target}} {
-			{{- $ctx := MkRWCtx (.Type | GetValType) "v" false false}}
+			{{- $ctx := .ValCtx.WithTarget "v"}}
 			{{- template "FieldWrite" $ctx}}
 		}
 		if err := oprot.WriteListEnd(); err != nil {
 			return err
 		}
 {{- end}}{{/* define "FieldWriteList" */}}
-`
-
-// StructLikeDeepEqual .
-var StructLikeDeepEqual = `
-{{define "StructLikeDeepEqual"}}
-{{- $TypeName := .Name | Identify}}
-func (p *{{$TypeName}}) DeepEqual(ano *{{$TypeName}}) bool {
-	if p == ano {
-		return true
-	} else if p == nil || ano == nil {
-		return false
-	}
-	{{- range .Fields}}
-	if !p.Field{{ID .}}DeepEqual(ano.{{. | ResolveFieldName}}) {
-		return false
-	}
-	{{- end}}
-	return true
-}
-{{- end}}{{/* "StructLikeDeepEqual" */}}
-`
-
-// StructLikeDeepEqualField .
-var StructLikeDeepEqualField = `
-{{define "StructLikeDeepEqualField"}}
-{{- $TypeName := .Name | Identify}}
-{{- range .Fields}}
-{{- $field := MkRWCtx . "" false false}}
-func (p *{{$TypeName}}) Field{{ID .}}DeepEqual({{$field.Source}} {{$field.TypeName}}) bool {
-	{{template "FieldDeepEqual" $field}}
-	return true
-}
-{{- end}}{{/* range .Fields */}}
-{{- end}}{{/* "StructLikeDeepEqualField" */}}
-`
-
-// FieldDeepEqual .
-var FieldDeepEqual = `
-{{define "FieldDeepEqual"}}
-{{- if IsStructLike .Type}}
-	{{- template "FieldDeepEqualStructLike" . -}}
-{{- else if IsBaseType .Type}}
-	{{- template "FieldDeepEqualBase" . -}}
-{{- else}}{{/* IsContainerType */}}
-	{{- template "FieldDeepEqualContainer" . -}}
-{{- end}}
-{{- end}}{{/* "FieldDeepEqual" */}}
-`
-
-// FieldDeepEqualStructLike .
-var FieldDeepEqualStructLike = `
-{{define "FieldDeepEqualStructLike"}}
-	if !{{.Target}}.DeepEqual({{.Source}}) {
-		return false
-	}
-{{- end}}{{/* "FieldDeepEqualStructLike" */}}
-`
-
-// FieldDeepEqualBase .
-var FieldDeepEqualBase = `
-{{define "FieldDeepEqualBase"}}
-	{{- if .IsPointer}}
-	if {{.Target}} == {{.Source}} {
-		return true
-	} else if {{.Target}} == nil || {{.Source}} == nil {
-		return false
-	}
-	{{- end}}
-	{{- $tgt := .Target}}
-	{{- $src := .Source}}
-	{{- if .IsPointer}}{{$tgt = printf "*%s" $tgt}}{{$src = printf "*%s" $src}}{{end}}
-	{{- if IsStringType .Type}}
-		if strings.Compare({{$tgt}}, {{$src}}) != 0 {
-			return false
-		}
-	{{- else if IsBinaryType .Type}}
-		if bytes.Compare({{$tgt}}, {{$src}}) != 0 {
-			return false
-		}
-	{{- else}}{{/* IsFixedLengthType */}}
-		if {{$tgt}} != {{$src}} {
-			return false
-		}
-	{{- end}}
-{{- end}}{{/* "FieldDeepEqualBase" */}}
-`
-
-// FieldDeepEqualContainer .
-var FieldDeepEqualContainer = `
-{{define "FieldDeepEqualContainer"}}
-	{{- if .IsPointer}}
-	if {{.Target}} == {{.Source}} {
-		return true
-	} else if {{.Target}} == nil || {{.Source}} == nil {
-		return false
-	}
-	{{- end}}
-	{{- if eq "Map" .TypeID}}
-		{{- template "FieldDeepEqualMap" .}}
-	{{- else if eq "List" .TypeID}}
-		{{- template "FieldDeepEqualList" .}}
-	{{- else}}{{/* "Set" */}}
-		{{- template "FieldDeepEqualSet" .}}
-	{{- end}}
-{{- end}}{{/* "FieldDeepEqualContainer" */}}
-`
-
-// FieldDeepEqualList .
-var FieldDeepEqualList = `
-{{define "FieldDeepEqualList"}}
-	if len({{.Target}}) != len({{.Source}}) {
-		return false
-	}
-	{{- $src := GenID "_src"}}
-	for i, v := range {{.Target}} {
-		{{$src}} := {{.Source}}[i]
-		{{- $ctx := MkRWCtx2 (.Type | GetValType) "v" $src false false}}
-		{{- template "FieldDeepEqual" $ctx}}
-	}
-{{- end}}{{/* "FieldDeepEqualList" */}}
-`
-
-// FieldDeepEqualSet .
-var FieldDeepEqualSet = `
-{{define "FieldDeepEqualSet"}}
-	if len({{.Target}}) != len({{.Source}}) {
-		return false
-	}
-	{{- $src := GenID "_src"}}
-	for i, v := range {{.Target}} {
-		{{$src}} := {{.Source}}[i]
-		{{- $ctx := MkRWCtx2 (.Type | GetValType) "v" $src false false}}
-		{{- template "FieldDeepEqual" $ctx}}
-	}
-{{- end}}{{/* "FieldDeepEqualSet" */}}
-`
-
-// FieldDeepEqualMap .
-var FieldDeepEqualMap = `
-{{define "FieldDeepEqualMap"}}
-	if len({{.Target}}) != len({{.Source}}) {
-		return false
-	}
-	{{- $src := GenID "_src"}}
-	for k, v := range {{.Target}}{
-		{{$src}} := {{.Source}}[k]
-		{{$ctx := MkRWCtx2 (.Type | GetValType) "v" $src false false}}
-		{{- template "FieldDeepEqual" $ctx}}
-	}
-{{- end}}{{/* "FieldDeepEqualMap" */}}
 `

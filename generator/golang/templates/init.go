@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package templates
 // Templates returns all templates defined in this package.
 func Templates() []string {
 	return []string{
-		File, Enum, Typedef, Constant,
+		File, Imports, Enum, Typedef, Constant,
 		StructLike,
 		StructLikeDefault,
 		StructLikeRead,
@@ -46,9 +46,6 @@ func Templates() []string {
 		FieldDeepEqual,
 		FieldDeepEqualBase,
 		FieldDeepEqualContainer,
-		FieldDeepEqualList,
-		FieldDeepEqualSet,
-		FieldDeepEqualMap,
 		FieldDeepEqualStructLike,
 	}
 }

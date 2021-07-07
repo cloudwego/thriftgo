@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,9 +40,8 @@ func forceSingleDefinition(text string, funcMap template.FuncMap) string {
 	} else {
 		if tpls[0].Name() == name {
 			return tpls[1].Name()
-		} else {
-			return tpls[0].Name()
 		}
+		return tpls[0].Name()
 	}
 }
 

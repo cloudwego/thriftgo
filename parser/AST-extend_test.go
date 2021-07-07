@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package styles
+package parser
 
 import (
 	"testing"
@@ -20,9 +20,26 @@ import (
 	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
-func TestApache(t *testing.T) {
-	g := new(Apache)
-
-	test.Assert(t, g.publicize("a_b", "", false) == "AB")
-	test.Assert(t, g.publicize("a_", "", false) == "A_")
+func TestAnnotationsAppend(t *testing.T) {
+	var as Annotations
+	pairs := []struct {
+		key   string
+		value string
+	}{
+		{
+			key:   "0",
+			value: "zero",
+		},
+		{
+			key:   "1",
+			value: "one",
+		},
+	}
+	for _, pair := range pairs {
+		as.Append(pair.key, pair.value)
+	}
+	for i, anno := range as {
+		test.Assert(t, pairs[i].key == anno.Key)
+		test.Assert(t, pairs[i].value == anno.Values[0])
+	}
 }

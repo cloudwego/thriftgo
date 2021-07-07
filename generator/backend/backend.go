@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,20 @@ package backend
 
 import "github.com/cloudwego/thriftgo/plugin"
 
-// LogFunc .
+// LogFunc defines a set of log functions.
 type LogFunc struct {
 	Info      func(v ...interface{})
 	Warn      func(v ...interface{})
 	MultiWarn func(warns []string)
+}
+
+// DummyLogFunc returns a set of log functions that does nothing.
+func DummyLogFunc() LogFunc {
+	return LogFunc{
+		Info:      func(v ...interface{}) {},
+		Warn:      func(v ...interface{}) {},
+		MultiWarn: func(warns []string) {},
+	}
 }
 
 // Backend handles the code generation for a language.
@@ -28,7 +37,7 @@ type Backend interface {
 	// The name of this backend.
 	Name() string
 
-	// Lang returns the target langauge that this backend supports.
+	// Lang returns the target language that this backend supports.
 	Lang() string
 
 	// Generate generates codes.
@@ -42,4 +51,11 @@ type Backend interface {
 
 	// GetPlugin returns a plugin that match the description or nil.
 	GetPlugin(desc *plugin.Desc) plugin.Plugin
+}
+
+// PostProcessor is an optional extension for the Backend interface
+// if it requires a process phase after codes generation and before
+// code persistence.
+type PostProcessor interface {
+	PostProcess(path string, content []byte) ([]byte, error)
 }

@@ -14,29 +14,11 @@
 
 package templates
 
-// Constant .
-var Constant = `
-{{define "Constant"}}
-{{- $Consts := GetConstGlobals .}}
-{{- if $Consts}}
-const (
-	{{- range $Consts}}
-	{{InsertionPoint "constant" .Name}}
-	{{.Name | Identify}} = {{GetConstInit .Name .Type .Value}}
-	{{- end}}{{/* range $Consts */}}
-	{{InsertionPoint "constants"}}
-)
-{{- end}}{{/* fi $Consts */}}
-
-{{- $NonConsts := GetNonConstGlobals .}}
-{{- if $NonConsts}}
-var (
-	{{- range $NonConsts }}
-	{{InsertionPoint "constant" .Name }}
-	{{.Name | Identify}} = {{GetConstInit .Name .Type .Value}}
+// Imports .
+var Imports = `
+{{define "Imports"}}
+	{{- range $path, $alias := .Imports}}
+	{{$alias }}"{{$path}}"
 	{{- end}}
-	{{InsertionPoint "variables"}}
-)
-{{- end}}
-{{end}}{{- /* define "Constant" */ -}}
+{{end}}
 `

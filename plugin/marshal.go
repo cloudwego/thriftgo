@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/apache/thrift/lib/go/thrift"
 )
@@ -39,7 +40,7 @@ func Marshal(data Writer) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = proto.Flush(nil) // NOTE: important
+	err = proto.Flush(context.TODO()) // NOTE: important
 	if err != nil {
 		return nil, err
 	}
@@ -53,12 +54,12 @@ func Unmarshal(data Reader, bs []byte) error {
 	return data.Read(proto)
 }
 
-// MarshalRequest .
+// MarshalRequest encodes a request with binary protocol.
 func MarshalRequest(data *Request) ([]byte, error) {
 	return Marshal(data)
 }
 
-// UnmarshalRequest .
+// UnmarshalRequest decodes a request with binary protocol.
 func UnmarshalRequest(bs []byte) (*Request, error) {
 	req := NewRequest()
 	if err := Unmarshal(req, bs); err != nil {
@@ -67,12 +68,12 @@ func UnmarshalRequest(bs []byte) (*Request, error) {
 	return req, nil
 }
 
-// MarshalResponse .
+// MarshalResponse encodes a response with binary protocol.
 func MarshalResponse(data *Response) ([]byte, error) {
 	return Marshal(data)
 }
 
-// UnmarshalResponse .
+// UnmarshalResponse decodes a response with binary protocol.
 func UnmarshalResponse(bs []byte) (*Response, error) {
 	res := NewResponse()
 	if err := Unmarshal(res, bs); err != nil {

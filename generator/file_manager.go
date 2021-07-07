@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,49 +47,64 @@ func NewFileManager(log backend.LogFunc) *FileManager {
 func (fm *FileManager) Feed(src string, files []*plugin.Generated) error {
 	var last string
 
-	for _, f := range files {
-		if f.IsSetName() {
-			name := f.GetName()
-			if idx, ok := fm.index[name]; ok {
-				if f.GetInsertionPoint() != "" {
-					fm.patch[name] = append(fm.patch[name], f)
-				} else {
-					a, b := len(fm.files[idx].Content), len(f.Content)
-					if a == b {
-						fm.log.Warn(fmt.Sprintf("[%s] replaces generated file '%s': %d -> %d", src, name, a, b))
-						fm.files[idx] = f
-					} else {
-						fm.log.Warn(fmt.Sprintf("[%s] file names conflict: '%s' (%d <> %d)", src, name, a, b))
-						fm.count[name]++
-
-						ext := filepath.Ext(name)
-						pth := strings.TrimSuffix(name, ext)
-						name2 := fmt.Sprintf("%s_%d%s", pth, fm.count[name], ext)
-						f.Name = &name2
-
-						fm.index[name2] = len(fm.files)
-						fm.files = append(fm.files, f)
-					}
-				}
-			} else {
-				fm.index[name] = len(fm.files)
-				fm.files = append(fm.files, f)
-			}
-
-			last = name
-		} else {
+FileLoop:
+	for i := 0; i < len(files); i++ {
+		f := files[i]
+		if !f.IsSetName() {
 			if last == "" {
 				return fmt.Errorf("[%s] attended to append but no target file found", src)
 			}
 			fm.patch[last] = append(fm.patch[last], f)
 			continue
 		}
+		name := f.GetName()
+		if idx, ok := fm.index[name]; !ok {
+			fm.index[name] = len(fm.files)
+			fm.files = append(fm.files, f)
+		} else {
+			if f.GetInsertionPoint() != "" {
+				// FIXME: when the target file is renamed due to name collision, the patch may be invalid.
+				fm.patch[name] = append(fm.patch[name], f)
+			} else {
+				fst := idx
+				ext := filepath.Ext(name)
+				pth := strings.TrimSuffix(name, ext)
+				cnt := 1
+
+				var renamed string
+				for {
+					if fm.files[idx].Content == f.Content { // duplicate content
+						fm.log.Info(fmt.Sprintf("[%s] discard generated file '%s': size %d", src, name, len(f.Content)))
+						for j := i + 1; j < len(files) && !files[j].IsSetName(); j++ {
+							fm.log.Info("discard patch @", files[j].GetInsertionPoint())
+							i++
+						}
+						continue FileLoop
+					}
+					renamed = fmt.Sprintf("%s_%d%s", pth, cnt, ext)
+					if cnt > fm.count[name] {
+						break
+					} else {
+						idx = fm.index[renamed]
+						cnt++
+					}
+				}
+
+				fm.log.Warn(fmt.Sprintf("[%s] file names conflict: '%s' (%d <> %d)", src, name, len(fm.files[fst].Content), len(f.Content)))
+				fm.index[renamed] = len(fm.files)
+				fm.files = append(fm.files, f)
+				fm.count[name]++
+				f.Name = &renamed
+				name = renamed // propagate the new name to last
+			}
+		}
+		last = name
 	}
 	return nil
 }
 
 var (
-	ptn = fmt.Sprintf(plugin.InsertionPointFormat, `\([.0-9a-zA-Z_]*\)`)
+	ptn = fmt.Sprintf(plugin.InsertionPointFormat, `\([$.0-9a-zA-Z_]*\)`)
 	reg = regexp.MustCompile(ptn)
 )
 
@@ -105,9 +120,10 @@ func (fm *FileManager) BuildResponse() *plugin.Response {
 	for _, f := range fm.files {
 		content := f.Content
 		for _, p := range fm.patch[f.GetName()] {
-			pos := fmt.Sprintf(plugin.InsertionPointFormat, p.GetInsertionPoint())
+			pos := plugin.InsertionPoint(p.GetInsertionPoint())
 			txt := p.Content + pos
 			content = strings.Replace(content, pos, txt, -1)
+			fm.log.Info(fmt.Sprintf("patch %q at %q with size %d", f.GetName(), p.GetInsertionPoint(), len(p.Content)))
 		}
 
 		g := &plugin.Generated{

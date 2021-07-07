@@ -12,17 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package styles
-
-import (
-	"testing"
-
-	"github.com/cloudwego/thriftgo/pkg/test"
-)
-
-func TestApache(t *testing.T) {
-	g := new(Apache)
-
-	test.Assert(t, g.publicize("a_b", "", false) == "AB")
-	test.Assert(t, g.publicize("a_", "", false) == "A_")
-}
+// Package templates defines templates for generating golang codes.
+// Each global variable in this package defines a template.
+package templates

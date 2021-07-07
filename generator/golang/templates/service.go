@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,14 +17,18 @@ package templates
 // FunctionSignature .
 var FunctionSignature = `
 {{define "FunctionSignature"}}
-{{- $.Name | Identify}}(ctx context.Context
+{{- $Service := .First}}
+{{- $Function := .Second}}
+{{- with .Second}}
+{{- Identify .Name $Service}}(ctx context.Context
 	{{- range .Arguments -}}
-		, {{.Name | ParamName}} {{.Type | ResolveTypeName}}
+		, {{GetParamName $Function .Name}} {{.Type | ResolveTypeName}}
 	{{- end -}}
 		) (
 	{{- if not .Void}}r {{.FunctionType | ResolveTypeName}}, {{- end -}}
 		err error)
-{{- end}}
+{{- end}}{{/* with .Second */}}
+{{- end}}{{/* define "FunctionSignature" */}}
 `
 
 // Service .
@@ -41,7 +45,7 @@ type {{$ServiceName}} interface {
 	{{- end}}
 	{{- range .Functions}}
 	{{InsertionPoint "service" $.Name .Name}}
-	{{template "FunctionSignature" .}}
+	{{template "FunctionSignature" (Pair $ .)}}
 	{{- end}}
 }
 
@@ -90,10 +94,13 @@ func (p *{{$ClientName}}) Client_() thrift.TClient {
 {{end}}
 
 {{- range .Functions}}
-func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
-	var _args {{GetArgTypeName $.Name . | Identify}}
+{{- $Function := .}} 
+{{- $ArgType := GetArgType $ .}} 
+{{- $ResType := GetResType $ .}} 
+func (p *{{$ClientName}}) {{- template "FunctionSignature" (Pair $ .) -}} {
+	var _args {{$ArgType.Name | Identify}}
 	{{- range .Arguments}}
-	_args.{{.Name | Identify}} = {{.Name | ParamName}}
+	_args.{{Identify .Name $ArgType}} = {{GetParamName $Function .Name}}
 	{{- end}}
 
 	{{- if .Void}}
@@ -102,22 +109,22 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 		return
 	}
 	{{- else}}
-	var _result {{GetResTypeName $.Name . | Identify}}
+	var _result {{$ResType.Name | Identify}}
 	if err = p.Client_().Call(ctx, "{{.Name}}", &_args, &_result); err != nil {
 		return
 	}
 	{{- end}}
 	return nil
 	{{- else}}{{/* If .Void */}}
-	var _result {{GetResTypeName $.Name . | Identify}}
+	var _result {{$ResType.Name | Identify}}
 	if err = p.Client_().Call(ctx, "{{.Name}}", &_args, &_result); err != nil {
 		return
 	}
 	{{- if .Throws}}
 	switch {
 	{{- range .Throws}}
-	case _result.{{.Name | Identify}} != nil:
-		return r, _result.{{.Name | Identify}}
+	case _result.{{Identify .Name $ResType}} != nil:
+		return r, _result.{{Identify .Name $ResType}}
 	{{- end}}
 	}
 	{{- end}}

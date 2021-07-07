@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package golang
 
 import (
 	"fmt"
+	"go/format"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -25,14 +26,6 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 )
-
-// Data contains information for code generation for a single thrift AST.
-type Data struct {
-	Version string            // The version of code generator
-	PkgName string            // The package name for the target code
-	Imports map[string]string // import path => alias (alias maybe empty)
-	AST     *parser.Thrift
-}
 
 // GoBackend generates go codes.
 // The zero value of GoBackend is ready for use.
@@ -103,6 +96,7 @@ func (g *GoBackend) prepareUtilities() {
 	}
 
 	g.funcs = g.utils.BuildFuncMap()
+	g.funcs["Version"] = func() string { return g.req.Version }
 }
 
 func (g *GoBackend) prepareTemplates() {
@@ -131,10 +125,7 @@ func (g *GoBackend) executeTemplates() {
 		return
 	}
 
-	var buf strings.Builder
-	var data Data
-	var scope *Scope
-	var processed = make(map[*parser.Thrift]bool)
+	processed := make(map[*parser.Thrift]bool)
 
 	var trees chan *parser.Thrift
 	if g.req.Recursive {
@@ -145,7 +136,6 @@ func (g *GoBackend) executeTemplates() {
 		close(trees)
 	}
 
-	data.Version = g.req.Version
 	for ast := range trees {
 		if processed[ast] {
 			continue
@@ -153,37 +143,47 @@ func (g *GoBackend) executeTemplates() {
 		processed[ast] = true
 		g.log.Info("Processing", ast.Filename)
 
-		data.AST = ast
-
-		namespace := ast.GetNamespaceOrReferenceName("go")
-		data.PkgName = g.utils.NamespaceToPackage(namespace)
-
-		if scope, g.err = g.utils.BuildScope(ast); g.err != nil {
+		if g.err = g.renderOneFile(ast); g.err != nil {
 			break
 		}
-		g.utils.SetRootScope(scope)
-
-		if data.Imports, g.err = g.utils.ResolveImports(); g.err != nil {
-			break
-		}
-
-		buf.Reset()
-		if err := g.tpl.ExecuteTemplate(&buf, g.tpl.Name(), &data); err != nil {
-			g.err = fmt.Errorf("%s: %w", ast.Filename, err)
-			break
-		}
-
-		var path string
-		if path, g.err = g.utils.GetFilePath(ast); g.err != nil {
-			break
-		}
-
-		full := filepath.Join(g.req.OutputPath, path)
-		g.res.Contents = append(g.res.Contents, &plugin.Generated{
-			Content: buf.String(),
-			Name:    &full,
-		})
 	}
+}
+
+func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
+	var buf strings.Builder
+	data, err := g.utils.MakeTemplateData(ast)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(g.req.OutputPath, g.utils.GetFilePath(ast))
+	err = g.tpl.ExecuteTemplate(&buf, g.tpl.Name(), data)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ast.Filename, err)
+	}
+
+	g.res.Contents = append(g.res.Contents, &plugin.Generated{
+		Content: buf.String(),
+		Name:    &path,
+	})
+
+	buf.Reset()
+	imports, err := g.utils.ResolveImports()
+	if err != nil {
+		return err
+	}
+	data = &struct{ Imports map[string]string }{Imports: imports}
+	err = g.tpl.ExecuteTemplate(&buf, "Imports", data)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ast.Filename, err)
+	}
+
+	point := "imports"
+	g.res.Contents = append(g.res.Contents, &plugin.Generated{
+		Content:        buf.String(),
+		InsertionPoint: &point,
+	})
+	return nil
 }
 
 func (g *GoBackend) buildResponse() *plugin.Response {
@@ -192,4 +192,15 @@ func (g *GoBackend) buildResponse() *plugin.Response {
 	}
 
 	return g.res
+}
+
+// PostProcess implements the backend.PostProcessor interface to do
+// source formatting before writing files out.
+func (g *GoBackend) PostProcess(path string, content []byte) ([]byte, error) {
+	if formated, err := format.Source(content); err != nil {
+		g.log.Warn(fmt.Sprintf("Failed to format %s: %s", path, err.Error()))
+	} else {
+		content = formated
+	}
+	return content, nil
 }

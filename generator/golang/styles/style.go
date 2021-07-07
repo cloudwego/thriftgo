@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,29 +16,32 @@ package styles
 
 // Naming determine naming style of the identifier converted from IDL.
 type Naming interface {
+	Name() string
+
 	Identify(name string) (string, error)
 
 	UseInitialisms(enable bool)
 }
 
+var all = []Naming{
+	new(GoLint), new(Apache), new(ThriftGo),
+}
+
 // NamingStyles returns all supported naming styles.
-func NamingStyles() []string {
-	return []string{
-		"golint", "apache", "thriftgo",
+func NamingStyles() (ns []string) {
+	for _, n := range all {
+		ns = append(ns, n.Name())
 	}
+	return
 }
 
 // NewNamingStyle creates a Naming with the given name.
 // If the given name is supported, this function returns nil.
 func NewNamingStyle(name string) Naming {
-	switch name {
-	case "golint":
-		return new(GoLint)
-	case "apache":
-		return new(Apache)
-	case "thriftgo":
-		return new(ThriftGo)
-	default:
-		return nil
+	for _, n := range all {
+		if n.Name() == name {
+			return n
+		}
 	}
+	return nil
 }

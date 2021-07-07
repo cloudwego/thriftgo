@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,39 @@ import (
 
 	"github.com/cloudwego/thriftgo/generator/golang/styles"
 )
+
+// Features controls the behavior of CodeUtils.
+type Features struct {
+	MarshalEnumToText  bool `json_enum_as_text:"Generate MarshalText for enum values"`
+	GenerateSetter     bool `gen_setter:"Generate Set* methods for fields"`
+	GenDatabaseTag     bool `gen_db_tag:"Generate 'db:$field' tag"`
+	GenOmitEmptyTag    bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields. Enabled by default."`
+	TypedefAsTypeAlias bool `use_type_alias:"Generate type alias for typedef instead of type define. Enabled by default."`
+	ValidateSet        bool `validate_set:"Generate codes to validate the uniqueness of set elements. Enabled by default."`
+	ValueTypeForSIC    bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
+	ScanValueForEnum   bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
+	ReorderFields      bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
+	TypedEnumString    bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
+	KeepUnknownFields  bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
+	GenDeepEqual       bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
+	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
+}
+
+var defaultFeatures = Features{
+	MarshalEnumToText:  false,
+	GenerateSetter:     false,
+	GenDatabaseTag:     false,
+	GenOmitEmptyTag:    true,
+	TypedefAsTypeAlias: true,
+	ValidateSet:        true,
+	ValueTypeForSIC:    false,
+	ScanValueForEnum:   true,
+	ReorderFields:      false,
+	TypedEnumString:    false,
+	KeepUnknownFields:  false,
+	GenDeepEqual:       false,
+	CompatibleNames:    false,
+}
 
 type param struct {
 	name   string
@@ -132,7 +165,7 @@ func checkBool(name, value string) (bool, error) {
 }
 
 // HandleOptions updates the CodeUtils with options.
-func (utils *CodeUtils) HandleOptions(args []string) error {
+func (cu *CodeUtils) HandleOptions(args []string) error {
 	var name, value string
 next:
 	for _, a := range args {
@@ -148,15 +181,15 @@ next:
 
 		for _, p := range allParams {
 			if p.match(name) {
-				err := p.action(value, utils)
+				err := p.action(value, cu)
 				if err != nil {
 					return err
 				}
-				utils.Info("option:", a)
+				cu.Info("option:", a)
 				continue next
 			}
 		}
-		utils.Info("unsupported option:", a)
+		cu.Info("unsupported option:", a)
 	}
 	return nil
 }

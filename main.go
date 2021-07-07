@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ var (
 )
 
 func init() {
-	g.RegisterBackend(new(golang.GoBackend))
+	_ = g.RegisterBackend(new(golang.GoBackend))
 }
 
 func check(err error) {
@@ -45,7 +45,11 @@ func check(err error) {
 }
 
 func main() {
-	a.Parse(os.Args)
+	check(a.Parse(os.Args))
+	if a.AskVersion {
+		println("thriftgo", Version)
+		os.Exit(0)
+	}
 
 	log := a.MakeLogFunc()
 
@@ -60,6 +64,8 @@ func main() {
 	warns, err := checker.CheckAll(ast)
 	log.MultiWarn(warns)
 	check(err)
+
+	check(semantic.ResolveSymbols(ast))
 
 	req := &plugin.Request{
 		Version:    Version,

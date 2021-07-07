@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,9 @@ package plugin
 import (
 	"fmt"
 
-	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/parser"
+
+	"github.com/apache/thrift/lib/go/thrift"
 )
 
 // Attributes:

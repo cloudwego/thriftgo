@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,18 +92,16 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 
 // MakeLogFunc creates logging functions according to command line flags.
 func (a *Arguments) MakeLogFunc() backend.LogFunc {
-	var logs = backend.LogFunc{}
-
-	if a.Verbose && !a.Quiet {
-		logger := log.New(os.Stderr, "[INFO] ", 0)
-		logs.Info = func(v ...interface{}) {
-			logger.Println(v...)
-		}
-	} else {
-		logs.Info = func(v ...interface{}) {}
-	}
+	logs := backend.DummyLogFunc()
 
 	if !a.Quiet {
+		if a.Verbose {
+			logger := log.New(os.Stderr, "[INFO] ", 0)
+			logs.Info = func(v ...interface{}) {
+				logger.Println(v...)
+			}
+		}
+
 		logger := log.New(os.Stderr, "[WARN] ", 0)
 		logs.Warn = func(v ...interface{}) {
 			logger.Println(v...)
@@ -113,9 +111,6 @@ func (a *Arguments) MakeLogFunc() backend.LogFunc {
 				logger.Println(w)
 			}
 		}
-	} else {
-		logs.Warn = func(v ...interface{}) {}
-		logs.MultiWarn = func(ws []string) {}
 	}
 
 	return logs
@@ -153,24 +148,23 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 }
 
 // Parse parse command line arguments.
-func (a *Arguments) Parse(argv []string) {
+func (a *Arguments) Parse(argv []string) error {
 	f := a.BuildFlags()
 	if err := f.Parse(argv[1:]); err != nil {
-		println(err)
-		os.Exit(2)
+		return err
 	}
 
 	if a.AskVersion {
-		println("thriftgo", Version)
-		os.Exit(0)
+		return nil
 	}
 
 	rest := f.Args()
 	if len(rest) != 1 {
-		println("require exactly 1 argument for the IDL parameter, got:", len(rest))
-		os.Exit(2)
+		return fmt.Errorf("require exactly 1 argument for the IDL parameter, got: %d", len(rest))
 	}
+
 	a.IDL = rest[0]
+	return nil
 }
 
 func help() {
@@ -180,15 +174,15 @@ Options:
   --version           Print the compiler version and exit.
   -h, --help          Print help message and exit.
   -i, --include dir   Add a search path for includes.
-  -o, --out dir	      Set the ouput location for generated files. (default: ./gen-*)
+  -o, --out dir	      Set the output location for generated files. (default: ./gen-*)
   -r, --recurse       Generate codes for includes recursively.
   -v, --verbose       Output detail logs.
   -q, --quiet         Suppress all warnings and informatic logs.
-  -g, --gen STR       Specify the target langauge.
+  -g, --gen STR       Specify the target language.
                       STR has the form language[:key1=val1[,key2[,key3=val3]]].
                       Keys and values are options passed to the backend.
                       Many options will not require values. Boolean options accept
-                      "false", "true" and "" (emtpy is treated as "true").
+                      "false", "true" and "" (empty is treated as "true").
   -p, --plugin STR    Specify an external plugin to invoke.
                       STR has the form plugin[=path][:key1=val1[,key2[,key3=val3]]].
 
@@ -207,7 +201,7 @@ Available generators (and options):
 // align the help strings for plugin options.
 func align(opts []plugin.Option) string {
 	var names, descs, ss []string
-	var max = 0
+	max := 0
 	for _, opt := range opts {
 		names = append(names, opt.Name)
 		descs = append(descs, opt.Desc)

@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,19 +23,15 @@ type {{$EnumType}} int64
 
 const (
 	{{- range .Values}}
-	{{MakeEnumValueName $EnumType .Name}} {{$EnumType}} = {{.Value}}
+	{{MakeEnumValueName $ .}} {{$EnumType}} = {{.Value}}
 	{{- end}}
 )
 
 func (p {{$EnumType}}) String() string {
 	switch p {
 	{{- range .Values}}
-	case {{MakeEnumValueName $EnumType .Name}}:
-		{{- if Features.TypedEnumString}}
-		return "{{MakeEnumValueName $EnumType .Name}}"
-		{{- else}}
-		return "{{.Name}}"
-		{{- end}}{{/* if Features.TypedEnumString */}}
+	case {{MakeEnumValueName $ .}}:
+		return "{{GetEnumValueLiteral $ .}}"
 	{{- end}}
 	}
 	return "<UNSET>"
@@ -44,12 +40,8 @@ func (p {{$EnumType}}) String() string {
 func {{$EnumType}}FromString(s string) ({{$EnumType}}, error) {
 	switch s {
 	{{- range .Values}}
-	{{- if Features.TypedEnumString}}
-	case "{{MakeEnumValueName $EnumType .Name}}":
-	{{- else}}
-	case "{{.Name}}":
-	{{- end}}{{/* if Features.TypedEnumString */}}
-		return {{MakeEnumValueName $EnumType .Name}}, nil
+	case "{{GetEnumValueLiteral $ .}}":
+		return {{MakeEnumValueName $ .}}, nil
 	{{- end}}
 	}
 	return {{$EnumType}}(0), fmt.Errorf("not a valid {{$EnumType}} string")

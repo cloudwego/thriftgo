@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,14 @@ import (
 	"github.com/cloudwego/thriftgo/generator/golang/common"
 )
 
-// ThriftGo is the default naming style of thrifgo
+// ThriftGo is the default naming style of thrifgo.
 type ThriftGo struct {
 	noInitialisms bool
+}
+
+// Name implements NamingStyle.
+func (tg *ThriftGo) Name() string {
+	return "thriftgo"
 }
 
 // Identify implements NamingStyle.

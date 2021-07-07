@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ func BuildErrorResponse(errMsg string, warnings ...string) *Response {
 	}
 }
 
-// Plugin .
+// Plugin takes a request and builds a response to generate codes.
 type Plugin interface {
 	// Name returns the name of the plugin.
 	Name() string
@@ -165,6 +165,9 @@ func (e *external) Execute(req *Request) (res *Response) {
 			"failed to unmarshal plugin response: %w\nstdout:\n%s\nstderr:\n%s",
 			err, stdout.String(), stderr.String())
 		return BuildErrorResponse(err.Error())
+	}
+	if warn := stderr.String(); len(warn) > 0 {
+		res.Warnings = append(res.Warnings, e.Name()+" stderr:\n"+warn)
 	}
 	return res
 }

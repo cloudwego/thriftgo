@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,10 +25,10 @@ type {{$NewTypeName}} = {{$OldTypeName}}
 type {{$NewTypeName}} {{$OldTypeName}}
 {{- end}}
 
-{{if IsStructLike .Type}} 
+{{if .Type.Category.IsStructLike}} 
 func New{{$NewTypeName}}() *{{$NewTypeName}} {
 	return {{GetNewFunc $OldTypeName}}()
 }
-{{- end}}{{/* if IsStructLike .Type */}} 
+{{- end}}{{/* if .Type.Category.IsStructLike */}} 
 {{- end}}{{/* define "Typedef" */}}
 `

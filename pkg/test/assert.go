@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@ type testingTB interface {
 	Helper()
 }
 
-// Assert .
+// Assert asserts that the given boolean value is true.  If cond is false,
+// the optional values will be passed to the testing.TB.Fatal function.
 func Assert(t testingTB, cond bool, val ...interface{}) {
 	t.Helper()
 	if !cond {
@@ -36,7 +37,8 @@ func Assert(t testingTB, cond bool, val ...interface{}) {
 	}
 }
 
-// Assertf .
+// Assertf asserts that the given boolean value is true.  If cond is false,
+// the format and the optional values will be passed to the testing.TB.Fatal function.
 func Assertf(t testingTB, cond bool, format string, val ...interface{}) {
 	t.Helper()
 	if !cond {
@@ -44,7 +46,7 @@ func Assertf(t testingTB, cond bool, format string, val ...interface{}) {
 	}
 }
 
-// DeepEqual .
+// DeepEqual asserts that `reflect.DeepEqual(a, b)` will return true.
 func DeepEqual(t testingTB, a, b interface{}) {
 	t.Helper()
 	if !reflect.DeepEqual(a, b) {
@@ -52,7 +54,7 @@ func DeepEqual(t testingTB, a, b interface{}) {
 	}
 }
 
-// Panic .
+// Panic asserts that the given function will raise a recoverable panic.
 func Panic(t testingTB, fn func()) {
 	t.Helper()
 	defer func() {

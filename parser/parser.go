@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ type parser struct {
 	ThriftIDL
 	Thrift
 	IncludeDirs []string
-	Annotations *map[string]string
+	Annotations *Annotations
 }
 
 func exists(path string) bool {
@@ -384,7 +384,6 @@ func (p *parser) parseContainerType(node *node32) (typ *Type, err error) {
 		var cppType string
 		if node != nil && node.pegRule == ruleCppType {
 			cppType = p.pegText(node.up.next) // ignore CPPTYPE
-			node = node.next
 		}
 		return &Type{Name: "list", ValueType: vt, CppType: cppType}, nil
 	default:
@@ -416,7 +415,7 @@ func (p *parser) parseConstValue(node *node32) (cv *ConstValue, err error) {
 		return &ConstValue{Type: ConstType_ConstIdentifier, TypedValue: &ConstTypedValue{Identifier: &identifier}}, nil
 	case ruleConstList:
 		// LBRK (ConstValue ListSeparator?)* RBRK
-		var ret = []*ConstValue{} // important: can't not be nil
+		ret := []*ConstValue{} // important: can't not be nil
 		for n := node.up; n != nil; n = n.next {
 			if n.pegRule == ruleConstValue {
 				val, err := p.parseConstValue(n)
@@ -430,7 +429,7 @@ func (p *parser) parseConstValue(node *node32) (cv *ConstValue, err error) {
 	case ruleConstMap:
 		node = node.up
 		// LWING (ConstValue COLON ConstValue ListSeparator?)* RWING
-		var ret = []*MapConstValue{} // important: can't not be nil
+		ret := []*MapConstValue{} // important: can't not be nil
 		for n := node.next; n != nil; n = n.next {
 			if n.pegRule != ruleConstValue {
 				continue
@@ -457,20 +456,14 @@ func (p *parser) parseTypedef(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// TYPEDEF (BaseType / ContainerType / Identifier) Identifier
+	// TYPEDEF FieldType Identifier
 	node = node.next // ignore TYPEDEF
-	var typd Typedef
-	switch node.pegRule {
-	case ruleContainerType:
-		typd.Type, err = p.parseContainerType(node)
-		if err != nil {
-			return err
-		}
-	case ruleBaseType, ruleIdentifier:
-		typd.Type = &Type{Name: p.pegText(node)}
-	default:
-		return fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
+	ft, err := p.parseFieldType(node)
+	if err != nil {
+		return err
 	}
+	var typd Typedef
+	typd.Type = ft
 	node = node.next
 	typd.Alias = p.pegText(node)
 	p.Typedefs = append(p.Typedefs, &typd)
@@ -659,24 +652,37 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 	return &f, nil
 }
 
-func (p *parser) parseAnnotations(node *node32) (map[string]string, error) {
-	// LPAR (Identifier EQUAL Literal ListSeparator?)+  RPAR
+func (p *parser) parseAnnotations(node *node32) ([]*Annotation, error) {
+	// LPAR Annotation+ RPAR
 	var err error
-	ret := make(map[string]string)
+	var ret Annotations
 	node, err = checkrule(node, ruleAnnotations)
 	if err != nil {
 		return nil, err
 	}
-	for ; node != nil; node = node.next {
-		if node.pegRule != ruleIdentifier {
-			continue
+	for node = node.next; node != nil; node = node.next {
+		if node.pegRule == ruleAnnotation {
+			k, v, err := p.parseAnnotation(node)
+			if err != nil {
+				return nil, err
+			}
+			ret.Append(k, v)
 		}
-		k := p.pegText(node) // Identifier
-		node = node.next.next
-		v := p.unescapedText(node) // Literal
-		ret[k] = v
 	}
 	return ret, nil
+}
+
+func (p *parser) parseAnnotation(node *node32) (k, v string, err error) {
+	// Identifier EQUAL Literal ListSeparator?
+	node, err = checkrule(node, ruleAnnotation)
+	if err != nil {
+		return "", "", err
+	}
+
+	k = p.pegText(node) // Identifier
+	node = node.next.next
+	v = p.unescapedText(node) // Literal
+	return k, v, nil
 }
 
 func (p *parser) parseService(node *node32) (err error) {
@@ -709,6 +715,10 @@ func (p *parser) parseService(node *node32) (err error) {
 
 func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
 	node, err = checkrule(node, ruleFunction)
+	if err != nil {
+		return nil, err
+	}
+
 	// ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? ListSeparator?
 	var f Function
 	for ; node != nil; node = node.next {

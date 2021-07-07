@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,43 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package golang
+package semantic_test
 
 import (
 	"testing"
 
-	"github.com/cloudwego/thriftgo/util/test"
+	"github.com/cloudwego/thriftgo/pkg/test"
+	"github.com/cloudwego/thriftgo/semantic"
 )
 
 func TestSplitType(t *testing.T) {
-	ss := splitType("")
+	ss := semantic.SplitType("")
 	test.Assert(t, len(ss) == 0)
 
-	ss = splitType("a")
+	ss = semantic.SplitType("a")
 	test.Assert(t, len(ss) == 1 && ss[0] == "a")
 
-	ss = splitType("a.b")
+	ss = semantic.SplitType("a.b")
 	test.Assert(t, len(ss) == 2 && ss[0] == "a" && ss[1] == "b", ss)
 
-	ss = splitType("a.b.c")
+	ss = semantic.SplitType("a.b.c")
 	test.Assert(t, len(ss) == 2 && ss[0] == "a.b" && ss[1] == "c")
 
-	ss = splitType("a.b.c.d")
+	ss = semantic.SplitType("a.b.c.d")
 	test.Assert(t, len(ss) == 2 && ss[0] == "a.b.c" && ss[1] == "d")
 }
 
 func TestSplitValue(t *testing.T) {
-	sss := splitValue("")
+	sss := semantic.SplitValue("")
 	test.Assert(t, len(sss) == 0)
 
-	sss = splitValue("a")
+	sss = semantic.SplitValue("a")
 	test.Assert(t, len(sss) == 1 && len(sss[0]) == 1 && sss[0][0] == "a")
 
-	sss = splitValue("a.b")
+	sss = semantic.SplitValue("a.b")
 	test.Assert(t, len(sss) == 1 && len(sss[0]) == 2 && sss[0][0] == "a" && sss[0][1] == "b")
 
-	sss = splitValue("a.b.c")
-	test.Assert(t, len(sss) == 2 && len(sss[0]) == 2 && len(sss[1]) == 2)
+	sss = semantic.SplitValue("a.b.c") // IDL<a.b>.const<c> or IDL<a>.enum<b>.value<c>
+	test.Assert(t, len(sss) == 2 && len(sss[0]) == 2 && len(sss[1]) == 3)
 	test.Assert(t, sss[0][0] == "a.b" && sss[0][1] == "c")
-	test.Assert(t, sss[1][0] == "a" && sss[1][1] == "b.c")
+	test.Assert(t, sss[1][0] == "a" && sss[1][1] == "b" && sss[1][2] == "c")
 }

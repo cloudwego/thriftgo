@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,14 @@ import (
 	"github.com/cloudwego/thriftgo/generator/golang/common"
 )
 
-// GoLint .
+// GoLint implements a naming conversion algorithm that similar to https://github.com/golang/lint.
 type GoLint struct {
 	nolint bool
+}
+
+// Name implements NamingStyle.
+func (g *GoLint) Name() string {
+	return "golint"
 }
 
 // Identify implements NamingStyle.
@@ -36,7 +41,7 @@ func (g *GoLint) UseInitialisms(enable bool) {
 	g.nolint = !enable
 }
 
-// convertName convert name to thrift name, but will not add underline
+// convertName convert name to thrift name, but will not add underline.
 func (g *GoLint) convertName(name string) string {
 	if name == "" {
 		return ""
@@ -44,13 +49,14 @@ func (g *GoLint) convertName(name string) string {
 	var result string
 	words := strings.Split(name, "_")
 	for i, str := range words {
-		if str == "" {
+		switch {
+		case str == "":
 			words[i] = "_"
-		} else if str[0] >= 'A' && str[0] <= 'Z' && i != 0 {
+		case str[0] >= 'A' && str[0] <= 'Z' && i != 0:
 			words[i] = "_" + str
-		} else if str[0] >= '0' && str[0] <= '9' && i != 0 {
+		case str[0] >= '0' && str[0] <= '9' && i != 0:
 			words[i] = "_" + str
-		} else {
+		default:
 			words[i] = common.UpperFirstRune(str)
 		}
 	}
@@ -58,75 +64,83 @@ func (g *GoLint) convertName(name string) string {
 	return g.lintName(result)
 }
 
-// lintName returns a different name if it should be different.
-// Adapted from https://github.com/golang/lint/blob/master/lint.go#L700.
 func (g *GoLint) lintName(name string) string {
-	if g.nolint {
+	if g.nolint || name == "_" {
 		return name
 	}
 
-	// Fast path for simple cases: "_" and all lowercase.
-	if name == "_" {
-		return name
+	type Kind int
+	const (
+		undefined Kind = iota
+		underscore
+		lower
+		other
+	)
+
+	kindOf := func(r rune) Kind {
+		if r == '_' {
+			return underscore
+		}
+		if unicode.IsLower(r) {
+			return lower
+		}
+		return other
 	}
-	allLower := true
+
+	var prev, next Kind
+	var runes []rune
+	var words []string
+
+	testInitialisms := func(rs []rune) string {
+		w := string(rs)
+		if u := strings.ToUpper(w); common.IsCommonInitialisms[u] {
+			// If the identifier starts with a lower case rune, we should keep consistent case.
+			if len(words) == 0 && unicode.IsLower(rs[0]) {
+				return strings.ToLower(w)
+			}
+			return u
+		}
+		if len(words) > 0 && strings.ToLower(w) == w {
+			rs[0] = unicode.ToUpper(rs[0])
+			w = string(rs)
+		}
+		return w
+	}
+
+	newWord := func() {
+		words = append(words, testInitialisms(runes))
+		runes = runes[:0]
+	}
+
 	for _, r := range name {
-		if !unicode.IsLower(r) {
-			allLower = false
-			break
-		}
-	}
-	if allLower {
-		return name
-	}
-
-	// Split camelCase at any lower->upper transition, and split on underscores.
-	// Check each word for common initialisms.
-	runes := []rune(name)
-	w, i := 0, 0 // index of start of word, scan
-	for i+1 <= len(runes) {
-		eow := false // whether we hit the end of a word
-		if i+1 == len(runes) {
-			eow = true
-		} else if runes[i+1] == '_' {
-			// underscore; shift the remainder forward over any run of underscores
-			eow = true
-			n := 1
-			for i+n+1 < len(runes) && runes[i+n+1] == '_' {
-				n++
+		next = kindOf(r)
+		switch prev {
+		case underscore:
+			if next == underscore {
+				// Any run of underscores turn into only one
+				continue
 			}
-
-			// Leave at most one underscore if the underscore is between two digits
-			if i+n+1 < len(runes) && unicode.IsDigit(runes[i]) && unicode.IsDigit(runes[i+n+1]) {
-				n--
+			if len(words) == 0 || unicode.IsDigit(r) {
+				// Only leading underscores or underscores before digitals will be kept
+				newWord()
+			} else {
+				runes = runes[:0]
 			}
-
-			copy(runes[i+1:], runes[i+n+1:])
-			runes = runes[:len(runes)-n]
-		} else if unicode.IsLower(runes[i]) && !unicode.IsLower(runes[i+1]) {
-			// lower->non-lower
-			eow = true
-		}
-		i++
-		if !eow {
-			continue
-		}
-
-		// [w,i) is a word.
-		word := string(runes[w:i])
-		if u := strings.ToUpper(word); common.IsCommonInitialisms[u] {
-			// Keep consistent case, which is lowercase only at the start.
-			if w == 0 && unicode.IsLower(runes[w]) {
-				u = strings.ToLower(u)
+		case lower:
+			if next == underscore || next == other {
+				newWord()
 			}
-			// All the common initialisms are ASCII,
-			// so we can replace the bytes exactly.
-			copy(runes[w:], []rune(u))
-		} else if w > 0 && strings.ToLower(word) == word {
-			// already all lowercase, and not the first word, so uppercase the first character.
-			runes[w] = unicode.ToUpper(runes[w])
+		case other:
+			if next == underscore {
+				newWord()
+			}
 		}
-		w = i
+		runes = append(runes, r)
+		prev = next
 	}
-	return string(runes)
+	if w := testInitialisms(runes); w != "_" && w != "" {
+		words = append(words, w)
+	}
+
+	return strings.Join(words, "")
 }

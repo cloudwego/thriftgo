@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 package parser
 
-// TType constants in the Thrift protocol
+// TType constants in the Thrift protocol.
 const (
 	STOP   = 0
 	VOID   = 1
@@ -51,26 +51,6 @@ var typename2TypeID = map[string]uint8{
 	"map":    MAP,
 	"set":    SET,
 	"list":   LIST,
-}
-
-var namespaceMap = map[string]bool{
-	"*":          true,
-	"c_glib":     true,
-	"cpp":        true,
-	"csharp":     true,
-	"delphi":     true,
-	"go":         true,
-	"java":       true,
-	"js":         true,
-	"lua":        true,
-	"netcore":    true,
-	"perl":       true,
-	"php":        true,
-	"py":         true,
-	"py.twisted": true,
-	"rb":         true,
-	"st":         true,
-	"xsd":        true,
 }
 
 // Typename2TypeID converts a TypeID name to its value.

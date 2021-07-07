@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,12 @@ import (
 // Apache ports functions adapted from the apache thrift go generator.
 // See https://git-wip-us.apache.org/repos/asf?p=thrift.git;a=blob;f=compiler/cpp/src/thrift/generate/t_go_generator.cc
 type Apache struct {
-	ignore_initialisms bool
+	ignoreInitialisms bool
+}
+
+// Name implements NamingStyle.
+func (a *Apache) Name() string {
+	return "apache"
 }
 
 // Identify implements NamingStyle.
@@ -34,11 +39,11 @@ func (a *Apache) Identify(name string) (string, error) {
 
 // UseInitialisms implements NamingStyle.
 func (a *Apache) UseInitialisms(enable bool) {
-	a.ignore_initialisms = !enable
+	a.ignoreInitialisms = !enable
 }
 
 // publicize implements the publicize function of the apache thrift go generator.
-func (a *Apache) publicize(name, service string, is_args_or_result bool) string {
+func (a *Apache) publicize(name, service string, isArgsOrResult bool) string { // nolint
 	prefix, value := "", name
 	if idx := strings.LastIndexByte(name, '.'); idx != -1 {
 		prefix, value = name[:idx], name[idx+1:]
@@ -46,11 +51,11 @@ func (a *Apache) publicize(name, service string, is_args_or_result bool) string 
 	value = common.UpperFirstRune(value)
 	value = a.camelcase(value)
 
-	//if strings.HasPrefix(value, "New") {
-	//	value = value + "_"
-	//}
+	// if strings.HasPrefix(value, "New") {
+	//     value = value + "_"
+	// }
 
-	if is_args_or_result {
+	if isArgsOrResult {
 		prefix += a.publicize(service, "", false)
 	} else {
 		// IDL identifiers may end with "Args"/"Result" which interferes with the
@@ -58,7 +63,7 @@ func (a *Apache) publicize(name, service string, is_args_or_result bool) string 
 		// Adding another extra underscore to all those identifiers solves this.
 		// Suppress this check for the actual helper struct names.
 		if strings.HasSuffix(value, "Args") || strings.HasSuffix(value, "Result") {
-			value = value + "_"
+			value += "_"
 		}
 	}
 
@@ -76,13 +81,13 @@ func (a *Apache) camelcase(name string) string {
 			continue
 		}
 		if i == 0 {
-			w = a.fix_common_initialism(w)
+			w = a.fixCommonInitialism(w)
 			ws = append(ws, w)
 			continue
 		}
 		if unicode.IsLower([]rune(w)[0]) {
 			w = common.UpperFirstRune(w)
-			w = a.fix_common_initialism(w)
+			w = a.fixCommonInitialism(w)
 			ws = append(ws, w)
 		} else {
 			ws = append(ws, "_", w)
@@ -92,8 +97,8 @@ func (a *Apache) camelcase(name string) string {
 	return strings.Join(ws, "")
 }
 
-func (a *Apache) fix_common_initialism(s string) string {
-	if !a.ignore_initialisms {
+func (a *Apache) fixCommonInitialism(s string) string {
+	if !a.ignoreInitialisms {
 		u := strings.ToUpper(s)
 		if common.IsCommonInitialisms[u] {
 			return u

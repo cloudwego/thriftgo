@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package generator
 import (
 	"errors"
 	"fmt"
-	"go/format"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,7 +25,7 @@ import (
 	"github.com/cloudwego/thriftgo/plugin"
 )
 
-// LangSpec is the parameter to specify which langauge to generate codes for and
+// LangSpec is the parameter to specify which language to generate codes for and
 // what plugins should be used.
 type LangSpec struct {
 	Language    string
@@ -48,6 +47,7 @@ type Generator struct {
 	plugins  []plugin.Plugin
 	files    *FileManager
 	log      backend.LogFunc
+	pp       backend.PostProcessor
 }
 
 // Name returns "thriftgo".
@@ -119,6 +119,9 @@ func (g *Generator) Generate(args *Arguments) (res *plugin.Response) {
 		err := fmt.Sprintf("No generator for language '%s'.", out.Language)
 		return plugin.BuildErrorResponse(err)
 	}
+	if pp, ok := be.(backend.PostProcessor); ok {
+		g.pp = pp
+	}
 
 	if err := g.preparePlugins(be, out.UsedPlugins); err != nil {
 		return plugin.BuildErrorResponse(err.Error())
@@ -168,12 +171,12 @@ func (g *Generator) Persist(res *plugin.Response) error {
 		}
 
 		content := []byte(c.Content)
-		if filepath.Ext(full) == ".go" {
-			if formated, err := format.Source([]byte(c.Content)); err != nil {
-				g.log.Warn(fmt.Sprintf("Failed to format %s: %s", full, err.Error()))
-			} else {
-				content = formated
+		if g.pp != nil {
+			processed, err := g.pp.PostProcess(full, content)
+			if err != nil {
+				return err
 			}
+			content = processed
 		}
 
 		g.log.Info("Write", full)

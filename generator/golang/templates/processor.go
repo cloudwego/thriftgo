@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo
+// Copyright 2021 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ func New{{$ProcessorName}}(handler {{$ServiceName}}) *{{$ProcessorName}} {
 	self := &{{$ProcessorName}}{handler: handler, processorMap: make(map[string]thrift.TProcessorFunction)}
 	{{- end}}
 	{{- range .Functions}}
-	self.AddToProcessorMap("{{.Name}}", &{{$ProcessorName | Unexport}}{{.Name | Identify}}{handler: handler})
+	self.AddToProcessorMap("{{.Name}}", &{{$ProcessorName | Unexport}}{{Identify .Name $}}{handler: handler})
 	{{- end}}
 	return self
 }
@@ -78,13 +78,15 @@ func (p *{{$ProcessorName}}) Process(ctx context.Context, iprot, oprot thrift.TP
 {{- end}}
 
 {{- range .Functions}}
-{{$FuncName := .Name | Identify}}
+{{$FuncName := Identify .Name $}}
+{{$ArgType := GetArgType $ .}}
+{{$ResType := GetResType $ .}}
 type {{$ProcessorName | Unexport}}{{$FuncName}} struct {
 	handler {{$ServiceName}}
 }
 
 func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := {{GetArgTypeName $.Name . | Identify}}{}
+	args := {{$ArgType.Name | Identify}}{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
 		{{- if not .Oneway}}
@@ -100,24 +102,24 @@ func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context
 	iprot.ReadMessageEnd()
 	var err2 error
 	{{- if .Oneway}}
-	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{.Name | Identify}}{{- end}}); err2 != nil {
+	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{Identify .Name $ArgType}}{{- end}}); err2 != nil {
 		return true, err2
 	}
 	return true, nil
 	{{- else}}
-	result := {{GetResTypeName $.Name . | Identify}}{}
+	result := {{$ResType.Name | Identify}}{}
 		{{- if .Void}}
-	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{.Name | Identify}}{{- end}}); err2 != nil {
+	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{Identify .Name $ArgType}}{{- end}}); err2 != nil {
 		{{- else}}
 	var retval {{.FunctionType | ResolveTypeName}}
-	if retval, err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{.Name | Identify}}{{- end}}); err2 != nil {
+	if retval, err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{Identify .Name $ArgType}}{{- end}}); err2 != nil {
 		{{- end}}{{/* if .Void */}}
 
 		{{- if .Throws}}
 		switch v := err2.(type) {
 		{{- range .Throws}}
 		case {{.Type | ResolveTypeName}}:
-			result.{{.Name | Identify}} = v
+			result.{{Identify .Name $ResType}} = v
 		{{- end}}
 		default:
 			x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing {{.Name}}: "+err2.Error())
@@ -137,7 +139,9 @@ func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context
 		{{- end}}{{/* if .Throws */}}
 	{{- if not .Void}}
 	} else {
-		result.Success = {{- if .FunctionType | IsBaseType}}&{{- end}}retval
+		{{- with $rt := (index $ResType.Fields 0)}}
+		result.Success = {{if and (NeedRedirect $rt) (IsBaseType $rt.Type)}}&{{end}}retval
+		{{- end}}
 	{{- end}}
 	}
 	if err2 = oprot.WriteMessageBegin("{{.Name}}", thrift.REPLY, seqId); err2 != nil {
@@ -161,10 +165,10 @@ func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context
 {{- end}}{{/* range .Functions */}}
 
 {{- range .Functions}}
-{{$ArgsType := BuildArgsType $.Name .}}
+{{$ArgsType := GetArgType $ .}}
 {{template "StructLike" $ArgsType}}
 {{- if not .Oneway}}
-	{{$ResType := BuildResType $.Name .}}
+	{{$ResType := GetResType $ .}}
 	{{template "StructLike" $ResType}}
 {{- end}}
 
