@@ -7,4 +7,9 @@ header:
     - '**/*.go'
     - '**/*.s'
 
+  paths-ignore:
+    - 'parser/AST.go'
+    - 'parser/thrift.peg.go'
+    - 'plugin/protocol.go'
+
   comment: on-failure
