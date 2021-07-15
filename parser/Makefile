@@ -1,4 +1,4 @@
-all: thrift.peg.go AST.go
+all: thrift.peg.go AST.go ../plugin/protocol.go
 
 thrift.peg.go: thrift.peg
 	which peg >/dev/null || go get -u github.com/pointlander/peg
@@ -9,3 +9,6 @@ AST.go: AST.thrift
 	thriftgo --gen go:use_type_alias=false AST.thrift && mv gen-go/parser/AST.go AST.go && rm -r gen-go
 	#sed -i '/func (p \*\(Type\|ConstValue\)) String() string/,+6d' AST.go # GNU sed
 	sed -i'.backup' -E '/func \(p \*(Type|ConstValue)\) String\(\) string/{N;N;N;N;N;N;d;}' AST.go && rm AST.go.backup
+
+../plugin/protocol.go: ../plugin/protocol.thrift
+	thriftgo --gen go:package_prefix=github.com/cloudwego/thriftgo/ ../plugin/protocol.thrift && mv gen-go/plugin/protocol.go ../plugin/ && rm -r gen-go
