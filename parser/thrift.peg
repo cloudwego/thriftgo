@@ -23,7 +23,7 @@ Definition <-  (Const / Typedef / Enum / Struct / Union / Service / Exception) A
 
 Const <- CONST FieldType Identifier EQUAL ConstValue ListSeparator?
 
-Typedef <- TYPEDEF (BaseType / ContainerType / Identifier) Identifier
+Typedef <- TYPEDEF FieldType Identifier
 
 Enum  <- ENUM Identifier LWING (Identifier (EQUAL IntConstant)? Annotations? ListSeparator?)* RWING
 
@@ -72,7 +72,9 @@ DoubleConstant  <- <[+\-]? (
 
 Exponent <- ('e' / 'E') IntConstant
 
-Annotations <- LPAR (Identifier EQUAL Literal ListSeparator?)+  RPAR
+Annotations <- LPAR Annotation+ RPAR
+
+Annotation <- Identifier EQUAL Literal ListSeparator?
 
 ConstList  <- LBRK (ConstValue ListSeparator?)* RBRK
 
