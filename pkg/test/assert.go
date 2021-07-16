@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package test provides some simple assertion functions to simplify unit tests.
 package test
 
 import "reflect"

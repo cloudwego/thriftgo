@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package backend defines the Backend interface for generators.
 package backend
 
 import "github.com/cloudwego/thriftgo/plugin"

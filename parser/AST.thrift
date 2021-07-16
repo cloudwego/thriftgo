@@ -40,7 +40,7 @@ struct Type {
     4: string CppType                  // map, set, list
     5: Annotations Annotations
     6: Category Category               // the final category resolved
-    7: optional Reference Reference    // when Name is an identifier refering to an external type
+    7: optional Reference Reference    // when Name is an identifier referring to an external type
     8: optional bool IsTypedef         // whether this type is a typedef
 }
 

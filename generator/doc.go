@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package generator defines the backend interface for generators.
+// Package generator contains the generator implementation that manages backends.
 // New backend must implement the backend.Backend interface and be registered into the Generator instance before using.
 package generator
