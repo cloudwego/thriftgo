@@ -127,7 +127,7 @@ func (cu *CodeUtils) SetRootScope(s *Scope) {
 	}
 
 	if cu.Features().ReorderFields {
-		for _, x := range s.ast.GetStructLike() {
+		for _, x := range s.ast.GetStructLikes() {
 			diff := reorderFields(cu, x)
 			if diff != nil && diff.original != diff.arranged {
 				cu.Info(fmt.Sprintf("<reorder>(%s) %s: %d -> %d: %.2f%%",
@@ -447,7 +447,7 @@ func (cu *CodeUtils) addImports(ns namespace.Namespace, ast *parser.Thrift) {
 		}
 	}
 
-	if len(ast.GetStructLike()) > 0 {
+	if len(ast.GetStructLikes()) > 0 {
 		ns.Add("fmt", "fmt")
 		ns.Add("thrift", DefaultThriftLib)
 	}
@@ -464,7 +464,7 @@ func (cu *CodeUtils) addImports(ns namespace.Namespace, ast *parser.Thrift) {
 		}
 	}
 
-	structCount := len(ast.GetStructLike())
+	structCount := len(ast.GetStructLikes())
 	ast.ForEachService(func(svc *parser.Service) bool {
 		structCount += len(svc.Functions)
 		return true

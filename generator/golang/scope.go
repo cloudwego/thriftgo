@@ -119,7 +119,7 @@ func (s *Scope) installNames(cu *CodeUtils) {
 	for _, v := range s.ast.Services {
 		s.installNamesForService(cu, v)
 	}
-	for _, v := range s.ast.GetStructLike() {
+	for _, v := range s.ast.GetStructLikes() {
 		s.installNamesForStructLike(cu, v)
 	}
 	for _, v := range s.ast.Typedefs {

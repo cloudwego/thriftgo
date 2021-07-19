@@ -61,7 +61,7 @@ func (t *Thrift) ForEachEnum(f func(v *Enum) bool) {
 
 // ForEachStructLike calls f on each struct-like in the current AST.
 func (t *Thrift) ForEachStructLike(f func(v *StructLike) bool) {
-	for _, v := range t.GetStructLike() {
+	for _, v := range t.GetStructLikes() {
 		if !f(v) {
 			break
 		}

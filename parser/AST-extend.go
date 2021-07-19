@@ -200,8 +200,8 @@ func (t *Thrift) GetService(name string) (*Service, bool) {
 	return nil, false
 }
 
-// GetStructLike returns all struct-like definitions in the AST.
-func (t *Thrift) GetStructLike() (ss []*StructLike) {
+// GetStructLikes returns all struct-like definitions in the AST.
+func (t *Thrift) GetStructLikes() (ss []*StructLike) {
 	ss = append(ss, t.Structs...)
 	ss = append(ss, t.Unions...)
 	ss = append(ss, t.Exceptions...)

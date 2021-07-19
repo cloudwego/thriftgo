@@ -364,7 +364,7 @@ func (r *resolver) getStructLike(g *Scope, t *parser.Type) (f *Scope, s *parser.
 	if f = r.util.scopeCache[ast]; f == nil {
 		panic(fmt.Errorf("%q not build", ast.Filename))
 	}
-	for _, y := range ast.GetStructLike() {
+	for _, y := range ast.GetStructLikes() {
 		if x.Name == y.Name {
 			s = y
 		}

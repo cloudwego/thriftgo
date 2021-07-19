@@ -50,7 +50,7 @@ func (c *checker) CheckAll(t *parser.Thrift) (warns []string, err error) {
 	checks := []func(t *parser.Thrift) ([]string, error){
 		c.CheckGlobals,
 		c.CheckEnums,
-		c.CheckStructLike,
+		c.CheckStructLikes,
 		c.CheckUnions,
 		c.CheckFunctions,
 	}
@@ -83,7 +83,7 @@ func (c *checker) CheckGlobals(t *parser.Thrift) (warns []string, err error) {
 	for _, v := range t.Constants {
 		check(v.Name)
 	}
-	for _, v := range t.GetStructLike() {
+	for _, v := range t.GetStructLikes() {
 		check(v.Name)
 	}
 	for _, v := range t.Services {
@@ -116,8 +116,8 @@ func (c *checker) CheckEnums(t *parser.Thrift) (warns []string, err error) {
 	return
 }
 
-func (c *checker) CheckStructLike(t *parser.Thrift) (warns []string, err error) {
-	for _, s := range t.GetStructLike() {
+func (c *checker) CheckStructLikes(t *parser.Thrift) (warns []string, err error) {
+	for _, s := range t.GetStructLikes() {
 		fieldIDs := make(map[int32]bool)
 		names := make(map[string]bool)
 		for _, f := range s.Fields {
