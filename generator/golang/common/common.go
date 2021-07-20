@@ -14,7 +14,22 @@
 
 package common
 
-import "unicode"
+import (
+	"unicode"
+)
+
+// IsExported determines whether a name is exported.
+func IsExported(name string) bool {
+	for _, r := range name {
+		return unicode.IsUpper(r)
+	}
+	return false
+}
+
+// Unexport returns an unexported form of the given identifier.
+func Unexport(name string) (string, error) {
+	return LowerFirstRune(name), nil
+}
 
 // LowerFirstRune converts the first letter to upper case for the given string.
 func LowerFirstRune(s string) string {

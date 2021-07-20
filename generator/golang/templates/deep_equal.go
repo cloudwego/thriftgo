@@ -17,7 +17,7 @@ package templates
 // StructLikeDeepEqual .
 var StructLikeDeepEqual = `
 {{define "StructLikeDeepEqual"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) DeepEqual(ano *{{$TypeName}}) bool {
 	if p == ano {
 		return true
@@ -25,7 +25,7 @@ func (p *{{$TypeName}}) DeepEqual(ano *{{$TypeName}}) bool {
 		return false
 	}
 	{{- range .Fields}}
-	if !p.Field{{ID .}}DeepEqual(ano.{{ResolveFieldName $ .}}) {
+	if !p.{{.DeepEqual}}(ano.{{.GoName}}) {
 		return false
 	}
 	{{- end}}
@@ -37,10 +37,10 @@ func (p *{{$TypeName}}) DeepEqual(ano *{{$TypeName}}) bool {
 // StructLikeDeepEqualField .
 var StructLikeDeepEqualField = `
 {{define "StructLikeDeepEqualField"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 {{- range .Fields}}
-{{- $ctx := MkRWCtx $ .}}
-func (p *{{$TypeName}}) Field{{ID .}}DeepEqual({{$ctx.Source}} {{$ctx.TypeName}}) bool {
+{{- $ctx := MkRWCtx .}}
+func (p *{{$TypeName}}) {{.DeepEqual}}({{$ctx.Source}} {{$ctx.TypeName}}) bool {
 	{{template "FieldDeepEqual" $ctx}}
 	return true
 }
@@ -52,11 +52,11 @@ func (p *{{$TypeName}}) Field{{ID .}}DeepEqual({{$ctx.Source}} {{$ctx.TypeName}}
 var FieldDeepEqual = `
 {{define "FieldDeepEqual"}}
 {{- if .Type.Category.IsStructLike}}
-	{{- template "FieldDeepEqualStructLike" . -}}
-{{- else if IsBaseType .Type}}
-	{{- template "FieldDeepEqualBase" . -}}
-{{- else}}{{/* IsContainerType */}}
-	{{- template "FieldDeepEqualContainer" . -}}
+	{{- template "FieldDeepEqualStructLike" .}}
+{{- else if .Type.Category.IsContainerType}}
+	{{- template "FieldDeepEqualContainer" .}}
+{{- else}}{{/* IsBaseType */}}
+	{{- template "FieldDeepEqualBase" .}}
 {{- end}}
 {{- end}}{{/* "FieldDeepEqual" */}}
 `
@@ -79,7 +79,7 @@ var FieldDeepEqualBase = `
 	} else if {{.Target}} == nil || {{.Source}} == nil {
 		return false
 	}
-	{{- end}}
+	{{- end}}{{/* if .IsPointer */}}
 	{{- $tgt := .Target}}
 	{{- $src := .Source}}
 	{{- if .IsPointer}}{{$tgt = printf "*%s" $tgt}}{{$src = printf "*%s" $src}}{{end}}
@@ -97,7 +97,7 @@ var FieldDeepEqualBase = `
 		if {{$tgt}} != {{$src}} {
 			return false
 		}
-	{{- end}}
+	{{- end}}{{/* if .Type.Category.IsString */}}
 {{- end}}{{/* "FieldDeepEqualBase" */}}
 `
 

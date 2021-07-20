@@ -15,17 +15,15 @@
 package golang
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"text/template"
 
 	"github.com/cloudwego/thriftgo/generator/backend"
+	"github.com/cloudwego/thriftgo/generator/golang/common"
 	"github.com/cloudwego/thriftgo/generator/golang/styles"
 	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/pkg/namespace"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
 )
@@ -36,12 +34,7 @@ const (
 	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 )
 
-// Errors.
-var (
-	ErrRootScopeNotSet = errors.New("root scope is not set")
-)
-
-// CodeUtils contains a set of functions used in the template execution.
+// CodeUtils contains a set of utility functions.
 type CodeUtils struct {
 	backend.LogFunc
 	packagePrefix string            // Package prefix for all generated codes.
@@ -49,11 +42,8 @@ type CodeUtils struct {
 	features      Features          // Available features.
 	namingStyle   styles.Naming     // Naming style.
 	doInitialisms bool              // Make initialisms setting kept event naming style changes.
-	libNotUsed    map[string]bool
 
-	resolver  *resolver
-	rootScope *Scope
-
+	rootScope  *Scope
 	scopeCache map[*parser.Thrift]*Scope
 }
 
@@ -67,6 +57,16 @@ func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 		scopeCache:  make(map[*parser.Thrift]*Scope),
 	}
 	return cu
+}
+
+// SetFeatures sets the feature set.
+func (cu *CodeUtils) SetFeatures(fs Features) {
+	cu.features = fs
+}
+
+// Features returns the current settings of generator features.
+func (cu *CodeUtils) Features() Features {
+	return cu.features
 }
 
 // GetPackagePrefix sets the package prefix in generated codes.
@@ -101,67 +101,14 @@ func (cu *CodeUtils) UseInitialisms(enable bool) {
 	cu.namingStyle.UseInitialisms(cu.doInitialisms)
 }
 
-// SetFeatures sets the feature set.
-func (cu *CodeUtils) SetFeatures(fs Features) {
-	cu.features = fs
-}
-
-// Features returns the current settings of generator features.
-func (cu *CodeUtils) Features() Features {
-	return cu.features
-}
-
-// SetRootScope sets the root scope.
-func (cu *CodeUtils) SetRootScope(s *Scope) {
-	cu.rootScope = s
-	cu.resolver = &resolver{util: cu, root: s}
-
-	// The usage of these three libraries depends on specific code generation
-	// and feature settings which requires tedisous type cheking before rendering.
-	// So we register them into the namespace by addImports and mark them not-used,
-	// use the UseStdLibrary to confirm if they are actually used.
-	cu.libNotUsed = map[string]bool{
-		"strings": true,
-		"bytes":   true,
-		"reflect": true,
+// Identify converts an raw name from IDL into an exported identifier in go.
+func (cu *CodeUtils) Identify(name string) (s string, err error) {
+	s = strings.TrimPrefix(name, prefix)
+	s, err = cu.namingStyle.Identify(s)
+	if err != nil {
+		return "", err
 	}
-
-	if cu.Features().ReorderFields {
-		for _, x := range s.ast.GetStructLikes() {
-			diff := reorderFields(cu, x)
-			if diff != nil && diff.original != diff.arranged {
-				cu.Info(fmt.Sprintf("<reorder>(%s) %s: %d -> %d: %.2f%%",
-					s.ast.Filename, x.Name, diff.original, diff.arranged, diff.percent()))
-			}
-		}
-	}
-}
-
-// BuildFuncMap builds a function map for templates.
-func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
-	m := map[string]interface{}{
-		"ToUpper":        strings.ToUpper,
-		"ToLower":        strings.ToLower,
-		"InsertionPoint": plugin.InsertionPoint,
-		"Pair": func(a, b interface{}) *pair {
-			return &pair{First: a, Second: b}
-		},
-	}
-	v := reflect.ValueOf(cu)
-	t := v.Type()
-	for i := 0; i < v.NumMethod(); i++ {
-		f := t.Method(i)
-		g := v.Method(i)
-		if f.Type.NumOut() != 1 && f.Type.NumOut() != 2 || !cu.IsExported(f.Name) {
-			continue
-		}
-		m[f.Name] = g.Interface()
-	}
-	delete(m, "HandleOptions")
-	delete(m, "ResolveImports")
-	delete(m, "BuildFuncMap")
-	delete(m, "SetRootScope")
-	return m
+	return s, nil
 }
 
 // Debug prints the given values with println.
@@ -185,217 +132,78 @@ func (cu *CodeUtils) ParseNamespace(ast *parser.Thrift) (ref, pkg, pth string) {
 	return
 }
 
-// BuildScope creates a scope of the AST with its includes processed recursively.
-func (cu *CodeUtils) BuildScope(ast *parser.Thrift) (*Scope, error) {
-	if scope, ok := cu.scopeCache[ast]; ok {
-		return scope, nil
+// GetFilePath returns a path to the generated file for the given IDL.
+// Note that the result is a path relative to the root output path.
+func (cu *CodeUtils) GetFilePath(t *parser.Thrift) string {
+	ref, _, pth := cu.ParseNamespace(t)
+	full := filepath.Join(pth, ref+".go")
+	if strings.HasSuffix(full, "_test.go") {
+		full = strings.ReplaceAll(full, "_test.go", "_test_.go")
 	}
-	scope := newScope(ast)
-	err := scope.init(cu)
-	if err != nil {
-		return nil, fmt.Errorf("process '%s' failed: %w", ast.Filename, err)
-	}
-	cu.scopeCache[ast] = scope
-	return scope, nil
+	return full
 }
 
-// ResolveImports returns a map of import path to alias built from the include list
-// of the IDL. An alias may be an empty string to indicate no alias is need for the
-// import path.
-func (cu *CodeUtils) ResolveImports() (map[string]string, error) {
-	if cu.rootScope == nil {
-		return nil, ErrRootScopeNotSet
+// GetPackageName returns a go package name for the given thrift AST.
+func (cu *CodeUtils) GetPackageName(ast *parser.Thrift) string {
+	namespace := ast.GetNamespaceOrReferenceName("go")
+	return cu.NamespaceToPackage(namespace)
+}
+
+// NamespaceToPackage converts a namespace to a package.
+func (cu *CodeUtils) NamespaceToPackage(ns string) string {
+	parts := strings.Split(ns, ".")
+	return strings.ToLower(parts[len(parts)-1])
+}
+
+// NamespaceToImportPath returns an import path for the given namespace.
+// Note that the result will not have the package prefix set with SetPackagePrefix.
+func (cu *CodeUtils) NamespaceToImportPath(ns string) string {
+	pkg := strings.ReplaceAll(ns, ".", "/")
+	return pkg
+}
+
+// NamespaceToFullImportPath returns an import path for the given namespace.
+// The result path will contain the package prefix if it is set.
+func (cu *CodeUtils) NamespaceToFullImportPath(ns string) string {
+	pth := cu.NamespaceToImportPath(ns)
+	if cu.packagePrefix != "" {
+		pth = filepath.Join(cu.packagePrefix, pth)
+	}
+	return pth
+}
+
+// Import returns the package name and the full import path for the given AST.
+func (cu *CodeUtils) Import(t *parser.Thrift) (pkg, pth string) {
+	ns := t.GetNamespaceOrReferenceName("go")
+	pkg = cu.NamespaceToPackage(ns)
+	pth = cu.NamespaceToFullImportPath(ns)
+	return
+}
+
+// GenTags generates go tags for the given parser.Field.
+func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error) {
+	var tags []string
+	if f.Requiredness == parser.FieldType_Required {
+		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,required"`, f.Name, f.ID))
+	} else {
+		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d"`, f.Name, f.ID))
 	}
 
-	imports := make(map[string]string)
-	cu.rootScope.imports.Iterate(func(alias, path string) bool {
-		if cu.libNotUsed[alias] {
-			return true // skip
+	if gotags := f.Annotations.Get("go.tag"); len(gotags) > 0 {
+		tags = append(tags, gotags[0])
+	} else {
+		if cu.Features().GenDatabaseTag {
+			tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))
 		}
-		if alias == path || strings.HasSuffix(path, "/"+alias) {
-			imports[path] = ""
+
+		if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
+			tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, f.Name))
 		} else {
-			imports[path] = alias
-		}
-		return true
-	})
-	return imports, nil
-}
-
-// GetDefaultValueTypeName returns a type name suitable for the default value of the given field.
-func (cu *CodeUtils) GetDefaultValueTypeName(f *parser.Field) (string, error) {
-	t, err := cu.ResolveFieldTypeName(f)
-	if err != nil {
-		return "", err
-	}
-	if cu.IsBaseType(f.Type) {
-		t = cu.Deref(t)
-	}
-	return t, nil
-}
-
-// GetFieldInit returns the initialization code for a field.
-// The given field must have a default value.
-func (cu *CodeUtils) GetFieldInit(f *parser.Field) (string, error) {
-	return cu.GetConstInit(f.Name, f.Type, f.Default)
-}
-
-// GetConstInit returns the initialization code for a constant.
-func (cu *CodeUtils) GetConstInit(name string, t *parser.Type, v *parser.ConstValue) (string, error) {
-	return cu.resolver.resolveConst(cu.rootScope, name, t, v)
-}
-
-// Identify converts an raw name from IDL into an exported identifier in go.
-// This function accept an optional scope argument to specify a sub-namespace
-// instead of using the global namespace.
-func (cu *CodeUtils) Identify(raw string, scope ...interface{}) (string, error) {
-	switch len(scope) {
-	case 0:
-		return cu.rootScope.globals.Get(raw), nil
-	case 1:
-		ns := cu.rootScope.namespaces[scope[0]]
-		if ns == nil {
-			return "", fmt.Errorf("%+v is not defined in %q", scope[0], cu.rootScope.ast.Filename)
-		}
-		return ns.Get(raw), nil
-	default:
-		return "", fmt.Errorf("invalid scope count: %d", len(scope))
-	}
-}
-
-// identify0 converts an raw name from IDL into an exported identifier in go.
-func (cu *CodeUtils) identify0(name string) (s string, err error) {
-	s = strings.TrimPrefix(name, prefix)
-	s, err = cu.namingStyle.Identify(s)
-	if err != nil {
-		return "", err
-	}
-	return s, nil
-}
-
-// GetParamName returns a valid name for a parameter.
-func (cu *CodeUtils) GetParamName(f *parser.Function, p string) (string, error) {
-	ns := cu.rootScope.namespaces[f]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", f, cu.rootScope.ast.Filename)
-	}
-	return ns.Get(p), nil
-}
-
-// ResolveFieldName returns the resolved name of the given field.
-func (cu *CodeUtils) ResolveFieldName(s *parser.StructLike, f *parser.Field) (string, error) {
-	ns := cu.rootScope.namespaces[s]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", s, cu.rootScope.ast.Filename)
-	}
-	return ns.Get(f.Name), nil
-}
-
-// GetFieldGetterName returns a name of the getter function for the given field.
-func (cu *CodeUtils) GetFieldGetterName(s *parser.StructLike, f *parser.Field) (string, error) {
-	ns := cu.rootScope.namespaces[s]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", s, cu.rootScope.ast.Filename)
-	}
-	return ns.Get(_p("get:" + f.Name)), nil
-}
-
-// GetFieldSetterName returns a name of the setter function for the given field.
-func (cu *CodeUtils) GetFieldSetterName(s *parser.StructLike, f *parser.Field) (string, error) {
-	ns := cu.rootScope.namespaces[s]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", s, cu.rootScope.ast.Filename)
-	}
-	return ns.Get(_p("set:" + f.Name)), nil
-}
-
-// GetFieldIsSetName returns a name of the isset function for the given field.
-func (cu *CodeUtils) GetFieldIsSetName(s *parser.StructLike, f *parser.Field) (string, error) {
-	ns := cu.rootScope.namespaces[s]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", s, cu.rootScope.ast.Filename)
-	}
-	return ns.Get(_p("isset:" + f.Name)), nil
-}
-
-// MakeEnumValueName returns a legal identifier for a enum value.
-func (cu *CodeUtils) MakeEnumValueName(e *parser.Enum, v *parser.EnumValue) (string, error) {
-	ns := cu.rootScope.namespaces[e]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", e, cu.rootScope.ast.Filename)
-	}
-	return ns.Get(v.Name), nil
-}
-
-// GetEnumValueLiteral returns the literal representation of the given enum value.
-func (cu *CodeUtils) GetEnumValueLiteral(e *parser.Enum, v *parser.EnumValue) (string, error) {
-	ns := cu.rootScope.namespaces[e]
-	if ns == nil {
-		return "", fmt.Errorf("%+v not defined in %q", e, cu.rootScope.ast.Filename)
-	}
-	if cu.Features().TypedEnumString {
-		return ns.Get(v.Name), nil
-	}
-	return v.Name, nil
-}
-
-// ResolveFieldTypeName returns a legal type name in go for the given field.
-func (cu *CodeUtils) ResolveFieldTypeName(f *parser.Field) (string, error) {
-	tn, err := cu.resolver.getTypeName(cu.rootScope, f.Type)
-	if err != nil {
-		return "", err
-	}
-
-	if cu.NeedRedirect(f) {
-		return "*" + cu.Deref(tn), nil
-	}
-	return tn, nil
-}
-
-// ResolveTypeName returns a legal type name in go for the given AST type.
-func (cu *CodeUtils) ResolveTypeName(t *parser.Type) (string, error) {
-	tn, err := cu.resolver.getTypeName(cu.rootScope, t)
-	if err != nil {
-		return "", err
-	}
-	if t.Category.IsStructLike() {
-		return "*" + tn, nil
-	}
-	return tn, nil
-}
-
-// BaseServicePrefix returns the package prefix of the base of the given service.
-// If the given service has no base service or the base service is in current IDL,
-// then the package prefix will be "".
-func (cu *CodeUtils) BaseServicePrefix(t *parser.Service) (string, error) {
-	if t.Extends != "" {
-		if cu.rootScope == nil {
-			return "", ErrRootScopeNotSet
-		}
-
-		if ref := t.GetReference(); ref != nil {
-			return cu.rootScope.packages[ref.GetIndex()] + ".", nil
+			tags = append(tags, fmt.Sprintf(`json:"%s"`, f.Name))
 		}
 	}
-	return "", nil
-}
-
-// GetArgType returns a parser.StructLike for a given function's parameters.
-func (cu *CodeUtils) GetArgType(svc *parser.Service, f *parser.Function) (*parser.StructLike, error) {
-	syn := cu.rootScope.synthesized[svc][f]
-	if syn == nil {
-		return nil, fmt.Errorf("no arg type for %q.%q", svc.Name, f.Name)
-	}
-	return syn.ArgType, nil
-}
-
-// GetResType returns a parser.StructLike for a given function's result type.
-func (cu *CodeUtils) GetResType(svc *parser.Service, f *parser.Function) (*parser.StructLike, error) {
-	syn := cu.rootScope.synthesized[svc][f]
-	if syn == nil {
-		return nil, fmt.Errorf("no res type for %q.%q", svc.Name, f.Name)
-	}
-	return syn.ResType, nil
+	str := fmt.Sprintf("`%s%s`", strings.Join(tags, " "), insertPoint)
+	return str, nil
 }
 
 // GetKeyType returns the key type of the given type. T must be a map type.
@@ -422,69 +230,75 @@ func (cu *CodeUtils) GetValType(s *Scope, t *parser.Type) (*Scope, *parser.Type,
 	return cu.scopeCache[g], x.ValueType, nil
 }
 
-// MakeTemplateData returns an object that contains essential information
-// for rendering the templates.
-func (cu *CodeUtils) MakeTemplateData(ast *parser.Thrift) (interface{}, error) {
-	scope, err := cu.BuildScope(ast)
+// MkRWCtx = MakeReadWriteContext.
+// Check the documents of ReadWriteContext for more informations.
+func (cu *CodeUtils) MkRWCtx(root *Scope, f *Field) (*ReadWriteContext, error) {
+	r := NewResolver(root, cu)
+	ctx, err := mkRWCtx(r, root, f.Type, nil)
 	if err != nil {
 		return nil, err
 	}
-	cu.SetRootScope(scope)
 
-	return ast, nil
+	// adjust for fields
+	ctx.Target = "p." + f.GoName().String()
+	ctx.Source = "src"
+	ctx.TypeName = f.GoTypeName()
+	ctx.IsPointer = f.GoTypeName().IsPointer()
+	return ctx, nil
 }
 
-func (cu *CodeUtils) addImports(ns namespace.Namespace, ast *parser.Thrift) {
-	for pkg, path := range cu.customized {
-		ns.Add(pkg, path)
-	}
-
-	if len(ast.Enums) > 0 {
-		ns.Add("fmt", "fmt")
-		if cu.Features().ScanValueForEnum {
-			ns.Add("driver", "database/sql/driver")
-			ns.Add("sql", "database/sql")
-		}
-	}
-
-	if len(ast.GetStructLikes()) > 0 {
-		ns.Add("fmt", "fmt")
-		ns.Add("thrift", DefaultThriftLib)
-	}
-
-	if len(ast.Services) > 0 {
-		ns.Add("thrift", DefaultThriftLib)
-		for _, svc := range ast.Services {
-			if svc.Extends == "" || len(svc.Functions) > 0 {
-				ns.Add("context", "context")
-			}
-			if len(svc.Functions) > 0 {
-				ns.Add("fmt", "fmt")
-			}
-		}
-	}
-
-	structCount := len(ast.GetStructLikes())
-	ast.ForEachService(func(svc *parser.Service) bool {
-		structCount += len(svc.Functions)
-		return true
-	})
-	if structCount > 0 && cu.Features().KeepUnknownFields {
-		ns.Add("unknown", DefaultUnknownLib)
-	}
-
-	if cu.Features().GenDeepEqual {
-		ns.Add("strings", "strings")
-		ns.Add("bytes", "bytes")
-	} else if cu.Features().ValidateSet {
-		ns.Add("reflect", "reflect")
-	}
+// SetRootScope sets the root scope for rendering templates.
+func (cu *CodeUtils) SetRootScope(s *Scope) {
+	cu.rootScope = s
 }
 
-// UseStdLibrary claims to use a certain standard library.
-// This function is designed to be called during template rendering to
-// avoid tedious type checking for determine whether a library will be used.
-func (cu *CodeUtils) UseStdLibrary(lib string) string {
-	delete(cu.libNotUsed, lib)
-	return ""
+// RootScope returns the root scope previously set by SetRootScope.
+func (cu *CodeUtils) RootScope() *Scope {
+	return cu.rootScope
+}
+
+// BuildFuncMap builds a function map for templates.
+func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
+	m := map[string]interface{}{
+		"ToUpper":        strings.ToUpper,
+		"ToLower":        strings.ToLower,
+		"InsertionPoint": plugin.InsertionPoint,
+		"Unexport":       common.Unexport,
+
+		"Debug":          cu.Debug,
+		"Features":       cu.Features,
+		"GetPackageName": cu.GetPackageName,
+		"GenTags":        cu.GenTags,
+		"MkRWCtx": func(f *Field) (*ReadWriteContext, error) {
+			return cu.MkRWCtx(cu.rootScope, f)
+		},
+
+		"IsBaseType":        IsBaseType,
+		"NeedRedirect":      NeedRedirect,
+		"IsFixedLengthType": IsFixedLengthType,
+		"SupportIsSet":      SupportIsSet,
+		"GetTypeIDConstant": GetTypeIDConstant,
+		"UseStdLibrary": func(lib string) string {
+			cu.rootScope.imports.UseStdLibrary(lib)
+			return ""
+		},
+		"ServicePrefix": func(svc *Service) (string, error) {
+			if svc == nil || svc.From() == cu.rootScope {
+				return "", nil
+			}
+			ast := svc.From().AST()
+			inc := cu.rootScope.Includes().ByAST(ast)
+			if inc == nil {
+				return "", fmt.Errorf("unexpected service[%s] from scope[%s]", svc.Name, ast.Filename)
+			}
+			return inc.PackageName + ".", nil
+		},
+		"ServiceName": func(svc *Service) Name {
+			if svc == nil {
+				return Name("")
+			}
+			return svc.GoName()
+		},
+	}
+	return m
 }

@@ -76,7 +76,7 @@ func (d *sizeDiff) percent() float64 {
 	return float64(d.arranged-d.original) / float64(d.original) * 100
 }
 
-func reorderFields(cu *CodeUtils, s *parser.StructLike) *sizeDiff {
+func reorderFields(s *parser.StructLike) *sizeDiff {
 	if len(s.Fields) == 0 {
 		return nil
 	}
@@ -88,7 +88,7 @@ func reorderFields(cu *CodeUtils, s *parser.StructLike) *sizeDiff {
 	var a1, a2 align
 	sizes := make(map[*parser.Field]int, len(fs))
 	for _, f := range fs {
-		if cu.NeedRedirect(f) {
+		if NeedRedirect(f) {
 			sizes[f] = pointerSize
 		} else {
 			sizes[f] = sizeof[f.Type.Category]

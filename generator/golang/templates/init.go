@@ -17,7 +17,7 @@ package templates
 // Templates returns all templates defined in this package.
 func Templates() []string {
 	return []string{
-		File, Imports, Enum, Typedef, Constant,
+		File, Imports, Constant, Enum, Typedef,
 		StructLike,
 		StructLikeDefault,
 		StructLikeRead,
@@ -40,12 +40,12 @@ func Templates() []string {
 		FieldWriteMap,
 		FieldWriteSet,
 		FieldWriteList,
-		FunctionSignature, Service, Processor,
 		StructLikeDeepEqual,
 		StructLikeDeepEqualField,
 		FieldDeepEqual,
 		FieldDeepEqualBase,
 		FieldDeepEqualContainer,
 		FieldDeepEqualStructLike,
+		FunctionSignature, Service, Processor,
 	}
 }

@@ -17,7 +17,7 @@ package templates
 // Imports .
 var Imports = `
 {{define "Imports"}}
-	{{- range $path, $alias := .Imports}}
+	{{- range $path, $alias := .}}
 	{{$alias }}"{{$path}}"
 	{{- end}}
 {{end}}

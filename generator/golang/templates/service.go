@@ -17,27 +17,24 @@ package templates
 // FunctionSignature .
 var FunctionSignature = `
 {{define "FunctionSignature"}}
-{{- $Service := .First}}
-{{- $Function := .Second}}
-{{- with .Second}}
-{{- Identify .Name $Service}}(ctx context.Context
+{{- $Function := .}}
+{{- .GoName}}(ctx context.Context
 	{{- range .Arguments -}}
-		, {{GetParamName $Function .Name}} {{.Type | ResolveTypeName}}
+		, {{.GoName}} {{.GoTypeName}}
 	{{- end -}}
 		) (
-	{{- if not .Void}}r {{.FunctionType | ResolveTypeName}}, {{- end -}}
+	{{- if not .Void}}r {{.ResponseGoTypeName}}, {{- end -}}
 		err error)
-{{- end}}{{/* with .Second */}}
 {{- end}}{{/* define "FunctionSignature" */}}
 `
 
 // Service .
 var Service = `
 {{define "Service"}}
-{{$BasePrefix := BaseServicePrefix .}}
-{{$BaseService := .Extends | GetServiceIdentifier}}
-{{$ServiceName := .Name | Identify}}
-{{$ClientName := printf "%s%s" $ServiceName "Client"}}
+{{- $BasePrefix := ServicePrefix .Base}}
+{{- $BaseService := ServiceName .Base}}
+{{- $ServiceName := .GoName}}
+{{- $ClientName := printf "%s%s" $ServiceName "Client"}}
 {{InsertionPoint "service" .Name}}
 type {{$ServiceName}} interface {
 	{{- if .Extends}}
@@ -45,7 +42,7 @@ type {{$ServiceName}} interface {
 	{{- end}}
 	{{- range .Functions}}
 	{{InsertionPoint "service" $.Name .Name}}
-	{{template "FunctionSignature" (Pair $ .)}}
+	{{template "FunctionSignature" .}}
 	{{- end}}
 }
 
@@ -95,12 +92,12 @@ func (p *{{$ClientName}}) Client_() thrift.TClient {
 
 {{- range .Functions}}
 {{- $Function := .}} 
-{{- $ArgType := GetArgType $ .}} 
-{{- $ResType := GetResType $ .}} 
-func (p *{{$ClientName}}) {{- template "FunctionSignature" (Pair $ .) -}} {
-	var _args {{$ArgType.Name | Identify}}
+{{- $ArgType := .ArgType}} 
+{{- $ResType := .ResType}} 
+func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
+	var _args {{$ArgType.GoName}}
 	{{- range .Arguments}}
-	_args.{{Identify .Name $ArgType}} = {{GetParamName $Function .Name}}
+	_args.{{($ArgType.Field .Name).GoName}} = {{.GoName}}
 	{{- end}}
 
 	{{- if .Void}}
@@ -109,22 +106,22 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" (Pair $ .) -}} {
 		return
 	}
 	{{- else}}
-	var _result {{$ResType.Name | Identify}}
+	var _result {{$ResType.GoName}}
 	if err = p.Client_().Call(ctx, "{{.Name}}", &_args, &_result); err != nil {
 		return
 	}
 	{{- end}}
 	return nil
 	{{- else}}{{/* If .Void */}}
-	var _result {{$ResType.Name | Identify}}
+	var _result {{$ResType.GoName}}
 	if err = p.Client_().Call(ctx, "{{.Name}}", &_args, &_result); err != nil {
 		return
 	}
 	{{- if .Throws}}
 	switch {
 	{{- range .Throws}}
-	case _result.{{Identify .Name $ResType}} != nil:
-		return r, _result.{{Identify .Name $ResType}}
+	case _result.{{($ResType.Field .Name).GoName}} != nil:
+		return r, _result.{{($ResType.Field .Name).GoName}}
 	{{- end}}
 	}
 	{{- end}}

@@ -17,8 +17,8 @@ package templates
 // Typedef .
 var Typedef = `
 {{define "Typedef"}}
-{{- $NewTypeName := .Alias | Identify}}
-{{- $OldTypeName := .Type | ResolveTypeName | Deref}}
+{{- $NewTypeName := .GoName}}
+{{- $OldTypeName := .GoTypeName}}
 {{- if Features.TypedefAsTypeAlias }}
 type {{$NewTypeName}} = {{$OldTypeName}}
 {{- else}}
@@ -27,7 +27,7 @@ type {{$NewTypeName}} {{$OldTypeName}}
 
 {{if .Type.Category.IsStructLike}} 
 func New{{$NewTypeName}}() *{{$NewTypeName}} {
-	return {{GetNewFunc $OldTypeName}}()
+	return {{$OldTypeName.NewFunc}}()
 }
 {{- end}}{{/* if .Type.Category.IsStructLike */}} 
 {{- end}}{{/* define "Typedef" */}}

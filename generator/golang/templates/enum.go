@@ -17,21 +17,21 @@ package templates
 // Enum .
 var Enum = `
 {{define "Enum"}}
-{{- $EnumType := .Name | Identify}}
+{{- $EnumType := .GoName}}
 {{InsertionPoint "enum" .Name}}
 type {{$EnumType}} int64
 
 const (
 	{{- range .Values}}
-	{{MakeEnumValueName $ .}} {{$EnumType}} = {{.Value}}
+	{{.GoName}} {{$EnumType}} = {{.Value}}
 	{{- end}}
 )
 
 func (p {{$EnumType}}) String() string {
 	switch p {
 	{{- range .Values}}
-	case {{MakeEnumValueName $ .}}:
-		return "{{GetEnumValueLiteral $ .}}"
+	case {{.GoName}}:
+		return "{{.GoLiteral}}"
 	{{- end}}
 	}
 	return "<UNSET>"
@@ -40,8 +40,8 @@ func (p {{$EnumType}}) String() string {
 func {{$EnumType}}FromString(s string) ({{$EnumType}}, error) {
 	switch s {
 	{{- range .Values}}
-	case "{{GetEnumValueLiteral $ .}}":
-		return {{MakeEnumValueName $ .}}, nil
+	case "{{.GoLiteral}}":
+		return {{.GoName}}, nil
 	{{- end}}
 	}
 	return {{$EnumType}}(0), fmt.Errorf("not a valid {{$EnumType}} string")

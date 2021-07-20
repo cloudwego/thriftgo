@@ -25,9 +25,9 @@ import (
 // map value, a list elemement, or a set elemement.
 type ReadWriteContext struct {
 	Type      *parser.Type
-	TypeName  string // The type name in Go code
-	TypeID    string // For `thrift.TProtocol.(Read|Write)${TypeID}` methods
-	IsPointer bool   // Whether the target type is a pointer type in Go
+	TypeName  TypeName // The type name in Go code
+	TypeID    string   // For `thrift.TProtocol.(Read|Write)${TypeID}` methods
+	IsPointer bool     // Whether the target type is a pointer type in Go
 
 	KeyCtx *ReadWriteContext // sub-context if the type is map
 	ValCtx *ReadWriteContext // sub-context if the type is container
@@ -67,10 +67,10 @@ func (c *ReadWriteContext) WithSource(s string) *ReadWriteContext {
 	return c
 }
 
-func (c *ReadWriteContext) asKeyCtx(cu *CodeUtils) *ReadWriteContext {
+func (c *ReadWriteContext) asKeyCtx() *ReadWriteContext {
 	switch c.TypeID {
 	case typeids.Struct:
-		c.TypeName = cu.Deref(c.TypeName)
+		c.TypeName = c.TypeName.Deref()
 		c.IsPointer = false
 	case typeids.Binary:
 		c.TypeName = "string"
@@ -78,19 +78,19 @@ func (c *ReadWriteContext) asKeyCtx(cu *CodeUtils) *ReadWriteContext {
 	return c
 }
 
-func mkRWCtx(cu *CodeUtils, s *Scope, t *parser.Type, top *ReadWriteContext) (*ReadWriteContext, error) {
-	tn, err := cu.resolver.getTypeName(s, t)
+func mkRWCtx(r *Resolver, s *Scope, t *parser.Type, top *ReadWriteContext) (*ReadWriteContext, error) {
+	tn, err := r.GetTypeName(s, t)
 	if err != nil {
 		return nil, err
 	}
 	if t.Category.IsStructLike() {
-		tn = "*" + tn
+		tn = tn.Pointerize()
 	}
 	ctx := &ReadWriteContext{
 		Type:      t,
 		TypeName:  tn,
-		TypeID:    cu.GetTypeID(t),
-		IsPointer: cu.IsPointerTypeName(tn),
+		TypeID:    GetTypeID(t),
+		IsPointer: tn.IsPointer(),
 	}
 	if top != nil {
 		ctx.ids = top.ids // share the namespace for temporary variables
@@ -100,48 +100,24 @@ func mkRWCtx(cu *CodeUtils, s *Scope, t *parser.Type, top *ReadWriteContext) (*R
 
 	// create sub-contexts.
 	if t.Category == parser.Category_Map {
-		ss, tt, err := cu.GetKeyType(s, t)
+		ss, tt, err := r.util.GetKeyType(s, t)
 		if err != nil {
 			return nil, err
 		}
-		if ctx.KeyCtx, err = mkRWCtx(cu, ss, tt, ctx); err != nil {
+		if ctx.KeyCtx, err = mkRWCtx(r, ss, tt, ctx); err != nil {
 			return nil, err
 		}
-		ctx.KeyCtx.asKeyCtx(cu)
+		ctx.KeyCtx.asKeyCtx()
 	}
 
 	if t.Category.IsContainerType() {
-		ss, tt, err := cu.GetValType(s, t)
+		ss, tt, err := r.util.GetValType(s, t)
 		if err != nil {
 			return nil, err
 		}
-		if ctx.ValCtx, err = mkRWCtx(cu, ss, tt, ctx); err != nil {
+		if ctx.ValCtx, err = mkRWCtx(r, ss, tt, ctx); err != nil {
 			return nil, err
 		}
 	}
-	return ctx, nil
-}
-
-// MkRWCtx = MakeReadWriteContext.
-func (cu *CodeUtils) MkRWCtx(s *parser.StructLike, f *parser.Field) (*ReadWriteContext, error) {
-	t, err := cu.ResolveFieldName(s, f)
-	if err != nil {
-		return nil, fmt.Errorf("MkRWCtx ResolveFieldName%+v: %w", f, err)
-	}
-	tn, err := cu.ResolveFieldTypeName(f)
-	if err != nil {
-		return nil, fmt.Errorf("MkRWCtx ResolveFieldTypeName %+v: %w", f, err)
-	}
-
-	ctx, err := mkRWCtx(cu, cu.rootScope, f.Type, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// adjust for fields
-	ctx.Target = "p." + t
-	ctx.Source = "src"
-	ctx.TypeName = tn
-	ctx.IsPointer = cu.IsPointerTypeName(tn)
 	return ctx, nil
 }

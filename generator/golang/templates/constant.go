@@ -17,23 +17,23 @@ package templates
 // Constant .
 var Constant = `
 {{define "Constant"}}
-{{- $Consts := GetConstGlobals .}}
+{{- $Consts := .Constants.GoConstants}}
 {{- if $Consts}}
 const (
 	{{- range $Consts}}
 	{{InsertionPoint "constant" .Name}}
-	{{.Name | Identify}} = {{GetConstInit .Name .Type .Value}}
+	{{.GoName}} = {{.GoValue.Initialization}}
 	{{- end}}{{/* range $Consts */}}
 	{{InsertionPoint "constants"}}
 )
 {{- end}}{{/* fi $Consts */}}
 
-{{- $NonConsts := GetNonConstGlobals .}}
+{{- $NonConsts := .Constants.GoVariables}}
 {{- if $NonConsts}}
 var (
 	{{- range $NonConsts }}
 	{{InsertionPoint "constant" .Name }}
-	{{.Name | Identify}} = {{GetConstInit .Name .Type .Value}}
+	{{.GoName}} = {{.GoValue.Initialization}}
 	{{- end}}
 	{{InsertionPoint "variables"}}
 )

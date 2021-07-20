@@ -28,7 +28,7 @@ func indent(lines, pad string) string {
 	return strings.Join(ss, "\n")
 }
 
-// Append append key value pair to Annotation slice
+// Append append key value pair to Annotation slice.
 func (a *Annotations) Append(key string, value string) {
 	old := *a
 	for _, anno := range old {
@@ -40,7 +40,7 @@ func (a *Annotations) Append(key string, value string) {
 	*a = append(old, &Annotation{Key: key, Values: []string{value}})
 }
 
-// Get return annotations values
+// Get return annotations values.
 func (a *Annotations) Get(key string) []string {
 	for _, anno := range *a {
 		if anno.Key == key {

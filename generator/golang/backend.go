@@ -151,13 +151,14 @@ func (g *GoBackend) executeTemplates() {
 
 func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	var buf strings.Builder
-	data, err := g.utils.MakeTemplateData(ast)
+	scope, err := BuildScope(g.utils, ast)
 	if err != nil {
 		return err
 	}
+	g.utils.SetRootScope(scope)
 
 	path := filepath.Join(g.req.OutputPath, g.utils.GetFilePath(ast))
-	err = g.tpl.ExecuteTemplate(&buf, g.tpl.Name(), data)
+	err = g.tpl.ExecuteTemplate(&buf, g.tpl.Name(), scope)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ast.Filename, err)
 	}
@@ -168,12 +169,11 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	})
 
 	buf.Reset()
-	imports, err := g.utils.ResolveImports()
+	imports, err := scope.ResolveImports()
 	if err != nil {
 		return err
 	}
-	data = &struct{ Imports map[string]string }{Imports: imports}
-	err = g.tpl.ExecuteTemplate(&buf, "Imports", data)
+	err = g.tpl.ExecuteTemplate(&buf, "Imports", imports)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ast.Filename, err)
 	}
