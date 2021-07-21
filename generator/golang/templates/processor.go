@@ -17,10 +17,10 @@ package templates
 // Processor .
 var Processor = `
 {{define "Processor"}}
-{{$BasePrefix := BaseServicePrefix .}}
-{{$BaseService := .Extends | GetServiceIdentifier}}
-{{$ServiceName := .Name | Identify}}
-{{$ProcessorName := printf "%s%s" $ServiceName "Processor"}}
+{{- $BasePrefix := ServicePrefix .Base}}
+{{- $BaseService := ServiceName .Base}}
+{{- $ServiceName := .GoName}}
+{{- $ProcessorName := printf "%s%s" $ServiceName "Processor"}}
 {{- if .Extends}}
 type {{$ProcessorName}} struct {
 	*{{$BasePrefix}}{{$BaseService}}Processor
@@ -52,7 +52,7 @@ func New{{$ProcessorName}}(handler {{$ServiceName}}) *{{$ProcessorName}} {
 	self := &{{$ProcessorName}}{handler: handler, processorMap: make(map[string]thrift.TProcessorFunction)}
 	{{- end}}
 	{{- range .Functions}}
-	self.AddToProcessorMap("{{.Name}}", &{{$ProcessorName | Unexport}}{{Identify .Name $}}{handler: handler})
+	self.AddToProcessorMap("{{.Name}}", &{{$ProcessorName | Unexport}}{{.GoName}}{handler: handler})
 	{{- end}}
 	return self
 }
@@ -78,15 +78,16 @@ func (p *{{$ProcessorName}}) Process(ctx context.Context, iprot, oprot thrift.TP
 {{- end}}
 
 {{- range .Functions}}
-{{$FuncName := Identify .Name $}}
-{{$ArgType := GetArgType $ .}}
-{{$ResType := GetResType $ .}}
+{{$FuncName := .GoName}}
+{{$ProcessName := print ($ProcessorName | Unexport) $FuncName}}
+{{$ArgType := .ArgType}}
+{{$ResType := .ResType}}
 type {{$ProcessorName | Unexport}}{{$FuncName}} struct {
 	handler {{$ServiceName}}
 }
 
-func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := {{$ArgType.Name | Identify}}{}
+func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	args := {{$ArgType.GoName}}{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
 		{{- if not .Oneway}}
@@ -102,24 +103,24 @@ func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context
 	iprot.ReadMessageEnd()
 	var err2 error
 	{{- if .Oneway}}
-	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{Identify .Name $ArgType}}{{- end}}); err2 != nil {
+	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{($ArgType.Field .Name).GoName}}{{- end}}); err2 != nil {
 		return true, err2
 	}
 	return true, nil
 	{{- else}}
-	result := {{$ResType.Name | Identify}}{}
+	result := {{$ResType.GoName}}{}
 		{{- if .Void}}
-	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{Identify .Name $ArgType}}{{- end}}); err2 != nil {
+	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{($ArgType.Field .Name).GoName}}{{- end}}); err2 != nil {
 		{{- else}}
-	var retval {{.FunctionType | ResolveTypeName}}
-	if retval, err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{Identify .Name $ArgType}}{{- end}}); err2 != nil {
+	var retval {{.ResponseGoTypeName}}
+	if retval, err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{($ArgType.Field .Name).GoName}}{{- end}}); err2 != nil {
 		{{- end}}{{/* if .Void */}}
 
 		{{- if .Throws}}
 		switch v := err2.(type) {
 		{{- range .Throws}}
-		case {{.Type | ResolveTypeName}}:
-			result.{{Identify .Name $ResType}} = v
+		case {{.GoTypeName}}:
+			result.{{($ResType.Field .Name).GoName}} = v
 		{{- end}}
 		default:
 			x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing {{.Name}}: "+err2.Error())
@@ -140,7 +141,7 @@ func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context
 	{{- if not .Void}}
 	} else {
 		{{- with $rt := (index $ResType.Fields 0)}}
-		result.Success = {{if and (NeedRedirect $rt) (IsBaseType $rt.Type)}}&{{end}}retval
+		result.Success = {{if and (NeedRedirect $rt.Field) (IsBaseType $rt.Type)}}&{{end}}retval
 		{{- end}}
 	{{- end}}
 	}
@@ -165,10 +166,10 @@ func (p *{{$ProcessorName | Unexport}}{{$FuncName}}) Process(ctx context.Context
 {{- end}}{{/* range .Functions */}}
 
 {{- range .Functions}}
-{{$ArgsType := GetArgType $ .}}
+{{$ArgsType := .ArgType}}
 {{template "StructLike" $ArgsType}}
 {{- if not .Oneway}}
-	{{$ResType := GetResType $ .}}
+	{{$ResType := .ResType}}
 	{{template "StructLike" $ResType}}
 {{- end}}
 

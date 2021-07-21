@@ -22,17 +22,80 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 )
 
-type resolver struct {
-	util *CodeUtils
+// Resolver resolves names for types, names and initialization value for thrift AST
+// nodes in a scope (the root scope).
+type Resolver struct {
 	root *Scope
+	util *CodeUtils
 }
 
-// getTypeName returns a an type name (with selector if necessary) of the
+// NewResolver creates a new Resolver with the given scope.
+func NewResolver(root *Scope, cu *CodeUtils) *Resolver {
+	return &Resolver{
+		root: root,
+		util: cu,
+	}
+}
+
+// GetDefaultValueTypeName returns a type name suitable for the default value of the given field.
+func (r *Resolver) GetDefaultValueTypeName(f *parser.Field) (TypeName, error) {
+	t, err := r.ResolveFieldTypeName(f)
+	if err != nil {
+		return "", err
+	}
+	if IsBaseType(f.Type) {
+		t = t.Deref()
+	}
+	return t, nil
+}
+
+// GetFieldInit returns the initialization code for a field.
+// The given field must have a default value.
+func (r *Resolver) GetFieldInit(f *parser.Field) (Code, error) {
+	return r.GetConstInit(f.Name, f.Type, f.Default)
+}
+
+// GetConstInit returns the initialization code for a constant.
+func (r *Resolver) GetConstInit(name string, t *parser.Type, v *parser.ConstValue) (Code, error) {
+	return r.ResolveConst(r.root, name, t, v)
+}
+
+// ResolveFieldTypeName returns a legal type name in go for the given field.
+func (r *Resolver) ResolveFieldTypeName(f *parser.Field) (TypeName, error) {
+	tn, err := r.GetTypeName(r.root, f.Type)
+	if err != nil {
+		return "", err
+	}
+
+	if NeedRedirect(f) {
+		return "*" + tn.Deref(), nil
+	}
+	return tn, nil
+}
+
+// ResolveTypeName returns a legal type name in go for the given AST type.
+func (r *Resolver) ResolveTypeName(t *parser.Type) (TypeName, error) {
+	tn, err := r.GetTypeName(r.root, t)
+	if err != nil {
+		return "", err
+	}
+	if t.Category.IsStructLike() {
+		return "*" + tn, nil
+	}
+	return tn, nil
+}
+
+// GetTypeName returns a an type name (with selector if necessary) of the
 // given type to be used in the root file.
 // The type t must be a parser.Type associated with g.
-func (r *resolver) getTypeName(g *Scope, t *parser.Type) (name string, err error) {
+func (r *Resolver) GetTypeName(g *Scope, t *parser.Type) (name TypeName, err error) {
+	str, err := r.getTypeName(g, t)
+	return TypeName(str), err
+}
+
+func (r *Resolver) getTypeName(g *Scope, t *parser.Type) (name string, err error) {
 	if ref := t.GetReference(); ref != nil {
-		g = g.includes[ref.Index]
+		g = g.includes[ref.Index].Scope
 		name = g.globals.Get(ref.Name)
 	} else {
 		if s := baseTypes[t.Name]; s != "" {
@@ -55,7 +118,7 @@ func (r *resolver) getTypeName(g *Scope, t *parser.Type) (name string, err error
 	return
 }
 
-func (r *resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, err error) {
+func (r *Resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, err error) {
 	if t.Name == "map" {
 		var k string
 		if t.KeyType.Category == parser.Category_Binary {
@@ -90,21 +153,23 @@ func (r *resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, 
 // getIDValue returns the literal representation of a const value.
 // The extra must be associated with g and from a const value that has
 // type parser.ConstType_ConstIdentifier.
-func (r *resolver) getIDValue(g *Scope, extra *parser.ConstValueExtra) (v string, ok bool) {
+func (r *Resolver) getIDValue(g *Scope, extra *parser.ConstValueExtra) (v string, ok bool) {
 	if extra.Index == -1 {
 		if extra.IsEnum {
 			enum, ok := g.ast.GetEnum(extra.Sel)
 			if !ok {
 				return "", false
 			}
-			if scope, ok := g.namespaces[enum]; ok {
-				v = scope.Get(extra.Name)
+			if en := g.Enum(enum.Name); en != nil {
+				if ev := en.Value(extra.Name); ev != nil {
+					v = ev.GoName().String()
+				}
 			}
 		} else {
 			v = g.globals.Get(extra.Name)
 		}
 	} else {
-		g = g.includes[extra.Index]
+		g = g.includes[extra.Index].Scope
 		extra = &parser.ConstValueExtra{
 			Index:  -1,
 			IsEnum: extra.IsEnum,
@@ -120,9 +185,14 @@ func (r *resolver) getIDValue(g *Scope, extra *parser.ConstValueExtra) (v string
 	return v, v != ""
 }
 
-// resolve returns the initialization code for a constant or a default value.
+// ResolveConst returns the initialization code for a constant or a default value.
 // The type t must be a parser.Type associated with g.
-func (r *resolver) resolveConst(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+func (r *Resolver) ResolveConst(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (Code, error) {
+	str, err := r.resolveConst(g, name, t, v)
+	return Code(str), err
+}
+
+func (r *Resolver) resolveConst(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
 	goType, err := r.getTypeName(g, t)
 	if err != nil {
 		return "", err
@@ -223,13 +293,13 @@ func (r *resolver) resolveConst(g *Scope, name string, t *parser.Type, v *parser
 				)
 			}
 
-			key := file.namespaces[st].Get(f.Name)
+			key := file.StructLike(st.Name).Field(f.Name).GoName().String()
 			val, err := r.resolveConst(file, st.Name+"."+f.Name, f.Type, mcv.Value)
 			if err != nil {
 				return "", err
 			}
 
-			if r.util.NeedRedirect(f) {
+			if NeedRedirect(f) {
 				if f.Type.Category.IsBaseType() {
 					// a trick to create pointers without temporary variables
 					val = fmt.Sprintf("(&struct{x %s}{%s}).x", typ, val)
@@ -248,7 +318,7 @@ func (r *resolver) resolveConst(g *Scope, name string, t *parser.Type, v *parser
 	return "", fmt.Errorf("type error: '%s' was declared as type %s(value[%v] file[%s] Category[%s])", name, t, v, g.ast.Filename, t.Category)
 }
 
-func (r *resolver) onBool(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+func (r *Resolver) onBool(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
 	switch v.Type {
 	case parser.ConstType_ConstInt:
 		val := v.TypedValue.GetInt()
@@ -270,7 +340,7 @@ func (r *resolver) onBool(g *Scope, name string, t *parser.Type, v *parser.Const
 	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
 }
 
-func (r *resolver) onInt(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+func (r *Resolver) onInt(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
 	switch v.Type {
 	case parser.ConstType_ConstInt:
 		val := v.TypedValue.GetInt()
@@ -293,7 +363,7 @@ func (r *resolver) onInt(g *Scope, name string, t *parser.Type, v *parser.ConstV
 	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
 }
 
-func (r *resolver) onDouble(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+func (r *Resolver) onDouble(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
 	switch v.Type {
 	case parser.ConstType_ConstInt:
 		val := v.TypedValue.GetInt()
@@ -317,7 +387,7 @@ func (r *resolver) onDouble(g *Scope, name string, t *parser.Type, v *parser.Con
 	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
 }
 
-func (r *resolver) onStrBin(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (res string, err error) {
+func (r *Resolver) onStrBin(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (res string, err error) {
 	defer func() {
 		if err == nil && t.Category == parser.Category_Binary {
 			res = "[]byte(" + res + ")"
@@ -341,7 +411,7 @@ func (r *resolver) onStrBin(g *Scope, name string, t *parser.Type, v *parser.Con
 	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
 }
 
-func (r *resolver) onEnum(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+func (r *Resolver) onEnum(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
 	switch v.Type {
 	case parser.ConstType_ConstInt:
 		return fmt.Sprintf("%d", v.TypedValue.GetInt()), nil
@@ -354,15 +424,19 @@ func (r *resolver) onEnum(g *Scope, name string, t *parser.Type, v *parser.Const
 	return "", fmt.Errorf("expect const value for %q is a int or enum, got %+v", name, v)
 }
 
-func (r *resolver) getStructLike(g *Scope, t *parser.Type) (f *Scope, s *parser.StructLike, err error) {
+func (r *Resolver) getStructLike(g *Scope, t *parser.Type) (f *Scope, s *parser.StructLike, err error) {
 	ast, x, err := semantic.Deref(g.ast, t)
 	if err != nil {
 		err = fmt.Errorf("expect %q a typedef or struct-like in %q: %w",
 			t.Name, g.ast.Filename, err)
 		return nil, nil, err
 	}
-	if f = r.util.scopeCache[ast]; f == nil {
-		panic(fmt.Errorf("%q not build", ast.Filename))
+	if ast == g.ast {
+		f = g
+	} else {
+		if f = r.util.scopeCache[ast]; f == nil {
+			panic(fmt.Errorf("%q not build", ast.Filename))
+		}
 	}
 	for _, y := range ast.GetStructLikes() {
 		if x.Name == y.Name {
@@ -377,25 +451,7 @@ func (r *resolver) getStructLike(g *Scope, t *parser.Type) (f *Scope, s *parser.
 	return
 }
 
-var category2TypeID = map[parser.Category]string{
-	parser.Category_Bool:      "Bool",
-	parser.Category_Byte:      "Byte", // i8 is byte
-	parser.Category_I16:       "I16",
-	parser.Category_I32:       "I32",
-	parser.Category_I64:       "I64",
-	parser.Category_Double:    "Double",
-	parser.Category_String:    "String",
-	parser.Category_Binary:    "Binary",
-	parser.Category_Map:       "Map",
-	parser.Category_List:      "List",
-	parser.Category_Set:       "Set",
-	parser.Category_Enum:      "I32",
-	parser.Category_Struct:    "Struct",
-	parser.Category_Union:     "Struct",
-	parser.Category_Exception: "Struct",
-}
-
-func (r *resolver) bin2str(t *parser.Type) *parser.Type {
+func (r *Resolver) bin2str(t *parser.Type) *parser.Type {
 	if t.Category == parser.Category_Binary {
 		r := *t
 		r.Category = parser.Category_String

@@ -17,12 +17,12 @@ package templates
 // StructLike is the code template for struct, union, and exception.
 var StructLike = `
 {{define "StructLike"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 {{InsertionPoint .Category .Name}}
 type {{$TypeName}} struct {
 {{- range .Fields}}
 	{{- InsertionPoint $.Category $.Name .Name}}
-	{{ResolveFieldName $ .}} {{ResolveFieldTypeName .}} {{GenTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
+	{{(.GoName)}} {{.GoTypeName}} {{GenTags .Field (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
 	{{if Features.KeepUnknownFields}}_unknownFields unknown.Fields{{end}}
 }
@@ -39,9 +39,8 @@ func New{{$TypeName}}() *{{$TypeName}} {
 func (p *{{$TypeName}}) CountSetFields{{$TypeName}}() int {
 	count := 0
 	{{- range .Fields}}
-	{{- if SupportIsSet .}}
-	{{- $IsSetName := GetFieldIsSetName $ .}}
-	if p.{{$IsSetName}}() {
+	{{- if SupportIsSet .Field}}
+	if p.{{.IsSetter}}() {
 		count++
 	}
 	{{- end}}
@@ -99,7 +98,7 @@ var StructLikeDefault = `
 {{- define "StructLikeDefault"}}
 {{- range .Fields}}
 	{{- if .IsSetDefault}}
-		{{ResolveFieldName $ .}}: {{GetFieldInit .}},
+		{{.GoName}}: {{.DefaultValue}},
 	{{- end}}
 {{- end}}
 {{- end -}}`
@@ -107,14 +106,14 @@ var StructLikeDefault = `
 // StructLikeRead .
 var StructLikeRead = `
 {{define "StructLikeRead"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{if Features.KeepUnknownFields}}var name string{{end}}
 	var fieldTypeId thrift.TType
 	var fieldId int16
 	{{- range .Fields}}
 	{{- if .Requiredness.IsRequired}}
-	var isset{{ResolveFieldName $ .}} bool = false
+	var isset{{.GoName}} bool = false
 	{{- end}}
 	{{- end}}
 
@@ -135,11 +134,11 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 		{{- range .Fields}}
 		case {{.ID}}:
 			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }} {
-				if err = p.ReadField{{ID .}}(iprot); err != nil {
+				if err = p.{{.Reader}}(iprot); err != nil {
 					goto ReadFieldError
 				}
 				{{- if .Requiredness.IsRequired}}
-				isset{{ResolveFieldName $ .}} = true
+				isset{{.GoName}} = true
 				{{- end}}
 			} else {
 				if err = iprot.Skip(fieldTypeId); err != nil {
@@ -175,12 +174,12 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{- range .Fields}}
 	{{- if .Requiredness.IsRequired}}
 	{{ $RequiredFieldNotSetError = true }}
-	if !isset{{ResolveFieldName $ .}} {
+	if !isset{{.GoName}} {
 		fieldId = {{.ID}}
 		goto RequiredFieldNotSetError
 	}
 	{{- end}}
-	{{- end}}
+	{{- end}}{{/* range .Fields */}}
 	return nil
 ReadStructBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
@@ -219,11 +218,11 @@ RequiredFieldNotSetError:
 // StructLikeReadField .
 var StructLikeReadField = `
 {{define "StructLikeReadField"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 {{- range .Fields}}
-{{$FieldName := ResolveFieldName $ .}}
-func (p *{{$TypeName}}) ReadField{{ID .}}(iprot thrift.TProtocol) error {
-	{{- $ctx := MkRWCtx $ .}}
+{{$FieldName := .GoName}}
+func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
+	{{- $ctx := MkRWCtx .}}
 	{{- template "FieldRead" $ctx}}
 	return nil
 }
@@ -234,7 +233,7 @@ func (p *{{$TypeName}}) ReadField{{ID .}}(iprot thrift.TProtocol) error {
 // StructLikeWrite .
 var StructLikeWrite = `
 {{define "StructLikeWrite"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	{{- if gt (len .Fields) 0 }}
 	var fieldId int16
@@ -250,7 +249,7 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	}
 	if p != nil {
 		{{- range .Fields}}
-		if err = p.writeField{{ID .}}(oprot); err != nil {
+		if err = p.{{.Writer}}(oprot); err != nil {
 			fieldId = {{.ID}}
 			goto WriteFieldError
 		}
@@ -293,19 +292,19 @@ UnknownFieldsWriteError:
 // StructLikeWriteField .
 var StructLikeWriteField = `
 {{define "StructLikeWriteField"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 {{- range .Fields}}
-{{- $FieldName := ResolveFieldName $ .}}
-{{- $IsSetName := GetFieldIsSetName $ .}}
+{{- $FieldName := .GoName}}
+{{- $IsSetName := .IsSetter}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
-func (p *{{$TypeName}}) writeField{{ID .}}(oprot thrift.TProtocol) (err error) {
+func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
 	{{- end}}
 	if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 		goto WriteFieldBeginError
 	}
-	{{- $ctx := MkRWCtx $ .}}
+	{{- $ctx := MkRWCtx .}}
 	{{- template "FieldWrite" $ctx}}
 	if err = oprot.WriteFieldEnd(); err != nil {
 		goto WriteFieldEndError
@@ -315,9 +314,9 @@ func (p *{{$TypeName}}) writeField{{ID .}}(oprot thrift.TProtocol) (err error) {
 	{{- end}}
 	return nil
 WriteFieldBeginError:
-	return thrift.PrependError(fmt.Sprintf("%T write field {{ID .}} begin error: ", p), err)
+	return thrift.PrependError(fmt.Sprintf("%T write field {{.ID}} begin error: ", p), err)
 WriteFieldEndError:
-	return thrift.PrependError(fmt.Sprintf("%T write field {{ID .}} end error: ", p), err)
+	return thrift.PrependError(fmt.Sprintf("%T write field {{.ID}} end error: ", p), err)
 }
 {{end}}{{/* range .Fields */}}
 {{- end}}{{/* define "StructLikeWriteField" */}}
@@ -326,25 +325,25 @@ WriteFieldEndError:
 // FieldGetOrSet .
 var FieldGetOrSet = `
 {{define "FieldGetOrSet"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 {{- range .Fields}}
-{{- $FieldName := ResolveFieldName $ .}}
-{{- $FieldTypeName := . | ResolveFieldTypeName}}
-{{- $DefaultVarTypeName := GetDefaultValueTypeName .}}
-{{- $GetterName := GetFieldGetterName $ .}}
-{{- $SetterName := GetFieldSetterName $ .}}
-{{- $IsSetName := GetFieldIsSetName $ .}}
+{{- $FieldName := .GoName}}
+{{- $FieldTypeName := .GoTypeName}}
+{{- $DefaultVarTypeName := .DefaultTypeName}}
+{{- $GetterName := .Getter}}
+{{- $SetterName := .Setter}}
+{{- $IsSetName := .IsSetter}}
 
-{{if SupportIsSet .}}
+{{if SupportIsSet .Field}}
 {{$DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
 var {{$DefaultVarName}} {{$DefaultVarTypeName}}
-{{- if .Default}} = {{GetFieldInit .}}{{- end}}
+{{- if .Default}} = {{.DefaultValue}}{{- end}}
 
 func (p *{{$TypeName}}) {{$GetterName}}() {{$DefaultVarTypeName}} {
 	if !p.{{$IsSetName}}() {
 		return {{$DefaultVarName}}
 	}
-	{{- if and (NeedRedirect .) (IsBaseType .Type)}}
+	{{- if and (NeedRedirect .Field) (IsBaseType .Type)}}
 	return *p.{{$FieldName}}
 	{{- else}}
 	return p.{{$FieldName}}
@@ -362,10 +361,10 @@ func (p *{{$TypeName}}) {{$GetterName}}() {{$FieldTypeName}} {
 
 {{- if Features.GenerateSetter}}
 {{- range .Fields}}
-{{- $FieldName := ResolveFieldName $ .}}
-{{- $FieldTypeName := . | ResolveFieldTypeName}}
-{{- $SetterName := GetFieldSetterName $ .}}
-{{- if IsSetterOfResponseType $TypeName $FieldName}}
+{{- $FieldName := .GoName}}
+{{- $FieldTypeName := .GoTypeName}}
+{{- $SetterName := .Setter}}
+{{- if .IsResponseFieldOfResult}}
 func (p *{{$TypeName}}) {{$SetterName}}(x interface{}) {
     p.{{$FieldName}} = x.({{$FieldTypeName}})
 }
@@ -383,13 +382,13 @@ func (p *{{$TypeName}}) {{$SetterName}}(val {{$FieldTypeName}}) {
 // FieldIsSet .
 var FieldIsSet = `
 {{define "FieldIsSet"}}
-{{- $TypeName := .Name | Identify}}
+{{- $TypeName := .GoName}}
 {{- range .Fields}}
-{{- $FieldName := ResolveFieldName $ .}}
-{{- $IsSetName := GetFieldIsSetName $ .}}
-{{- $FieldTypeName := . | ResolveFieldTypeName}}
+{{- $FieldName := .GoName}}
+{{- $IsSetName := .IsSetter}}
+{{- $FieldTypeName := .GoTypeName}}
 {{- $DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
-{{- if SupportIsSet .}}
+{{- if SupportIsSet .Field}}
 func (p *{{$TypeName}}) {{$IsSetName}}() bool {
 	{{- if .IsSetDefault}}
 		{{- if IsBaseType .Type}}
@@ -426,7 +425,7 @@ var FieldRead = `
 // FieldReadStructLike .
 var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
-	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName | Deref | GetNewFunc}}()
+	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
 	}
@@ -436,7 +435,7 @@ var FieldReadStructLike = `
 // FieldReadBaseType .
 var FieldReadBaseType = `
 {{define "FieldReadBaseType"}}
-	{{- $DiffType := or .Type.Category.IsEnum (.Type.Category.IsBinary)}}
+	{{- $DiffType := or .Type.Category.IsEnum .Type.Category.IsBinary}}
 	{{- if .NeedDecl}}
 	var {{.Target}} {{.TypeName}}
 	{{- end}}
@@ -445,7 +444,7 @@ var FieldReadBaseType = `
 	} else {
 	{{- if .IsPointer}}
 		{{- if $DiffType}}
-		tmp := {{.TypeName | Deref}}(v)
+		tmp := {{.TypeName.Deref}}(v)
 		{{.Target}} = &tmp
 		{{- else -}}
 		{{.Target}} = &v
@@ -557,11 +556,11 @@ var FieldReadList = `
 var FieldWrite = `
 {{define "FieldWrite"}}
 	{{- if .Type.Category.IsStructLike}}
-		{{- template "FieldWriteStructLike" . -}}
+		{{- template "FieldWriteStructLike" .}}
 	{{- else if .Type.Category.IsContainerType}}
-		{{- template "FieldWriteContainer" . -}}
+		{{- template "FieldWriteContainer" .}}
 	{{- else}}{{/* IsBaseType */}}
-		{{- template "FieldWriteBaseType" . -}}
+		{{- template "FieldWriteBaseType" .}}
 	{{- end}}
 {{- end}}{{/* define "FieldWrite" */}}
 `

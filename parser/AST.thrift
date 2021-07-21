@@ -39,7 +39,7 @@ struct Type {
     3: optional Type ValueType         // if Name is 'map', 'list', or 'set'
     4: string CppType                  // map, set, list
     5: Annotations Annotations
-    6: Category Category               // the final category resolved
+    6: Category Category               // the **final** category resolved
     7: optional Reference Reference    // when Name is an identifier referring to an external type
     8: optional bool IsTypedef         // whether this type is a typedef
 }
@@ -175,6 +175,6 @@ struct Thrift {
     10: list<StructLike> Exceptions
     11: list<Service> Services
 
-    // Name2Category keeps a mapping for all global names with their *direct* category.
+    // Name2Category keeps a mapping for all global names with their **direct** category.
     12: map<string, Category> Name2Category
 }

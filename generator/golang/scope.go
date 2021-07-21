@@ -18,299 +18,620 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cloudwego/thriftgo/generator/golang/common"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
 )
 
-// A prefix to denote synthesized identifiers.
-const prefix = "$"
+// Name is the type of identifiers converted from a thrift AST to Go code.
+type Name string
 
-func _p(id string) string {
-	return prefix + id
+func (n Name) String() string {
+	return string(n)
 }
 
-type synthesized struct {
-	ArgType *parser.StructLike
-	ResType *parser.StructLike
+// Code is the type of go code segments.
+type Code string
+
+func (c Code) String() string {
+	return string(c)
 }
 
-// Scope contains the type symbols defined in a thrift IDL and references of its pkg2paths.
+// TypeName is the type for Go symbols converted from a thrift AST.
+// It provides serveral methods to manipulate a type name of a symbol.
+type TypeName string
+
+func (tn TypeName) String() string {
+	return string(tn)
+}
+
+// IsForeign reports whether the type name is from another module.
+func (tn TypeName) IsForeign() bool {
+	return strings.Contains(string(tn), ".")
+}
+
+// Pointerize returns the pointer type of the current type name.
+func (tn TypeName) Pointerize() TypeName {
+	return TypeName("*" + string(tn))
+}
+
+// IsPointer reports whether the type name is a pointer type
+// by detecting the prefix "*".
+func (tn TypeName) IsPointer() bool {
+	return strings.HasPrefix(string(tn), "*")
+}
+
+// Deref removes the "&" and "*" prefix of the given type name.
+func (tn TypeName) Deref() TypeName {
+	return TypeName(strings.TrimLeft(string(tn), "&*"))
+}
+
+// NewFunc returns the construction function of the given type.
+func (tn TypeName) NewFunc() Name {
+	n := string(tn)
+	if idx := strings.Index(n, "."); idx >= 0 {
+		idx++
+		return Name(n[:idx] + "New" + n[idx:])
+	}
+	return Name("New" + n)
+}
+
+// BuildScope creates a scope of the AST with its includes processed recursively.
+func BuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
+	if scope, ok := cu.scopeCache[ast]; ok {
+		return scope, nil
+	}
+	scope := newScope(ast)
+	err := scope.init(cu)
+	if err != nil {
+		return nil, fmt.Errorf("process '%s' failed: %w", ast.Filename, err)
+	}
+	cu.scopeCache[ast] = scope
+	return scope, nil
+}
+
+// Scope contains the type symbols defined in a thrift IDL and wraps them to provide
+// access to resolved names in go code.
 type Scope struct {
 	ast       *parser.Thrift
+	globals   namespace.Namespace
+	imports   *importManager
 	namespace string
 
-	packages []string            // package name for each include
-	includes []*Scope            // scopes of includes
-	imports  namespace.Namespace // a namespace to solve package name collision
-
-	globals     namespace.Namespace
-	namespaces  map[interface{}]namespace.Namespace // AST node to namespace
-	synthesized map[*parser.Service]map[*parser.Function]*synthesized
+	includes    []*Include
+	constants   []*Constant
+	typedefs    []*Typedef
+	enums       []*Enum
+	structs     []*StructLike
+	unions      []*StructLike
+	exceptions  []*StructLike
+	services    []*Service
+	synthesized []*StructLike
 }
 
-// newScope creates an uninitialized scope from the given IDL.
-func newScope(ast *parser.Thrift) *Scope {
-	return &Scope{
-		ast:       ast,
-		namespace: ast.GetNamespaceOrReferenceName("go"),
-		imports: namespace.NewNamespace(func(name string, cnt int) string {
-			return fmt.Sprintf("%s%d", name, cnt-1) // zero-index
-		}),
-		globals:     namespace.NewNamespace(namespace.UnderscoreSuffix),
-		namespaces:  make(map[interface{}]namespace.Namespace),
-		synthesized: make(map[*parser.Service]map[*parser.Function]*synthesized),
+// AST returns the thrift AST associated with the scope.
+func (s *Scope) AST() *parser.Thrift {
+	return s.ast
+}
+
+// Namespace returns the global namespace of the current scope.
+func (s *Scope) Namespace() namespace.Namespace {
+	return s.globals
+}
+
+// ResolveImports returns a map of import path to alias built from the include list
+// of the IDL. An alias may be an empty string to indicate no alias is need for the
+// import path.
+func (s *Scope) ResolveImports() (map[string]string, error) {
+	return s.imports.ResolveImports()
+}
+
+// Includes returns the include list of the current scope.
+func (s *Scope) Includes() Includes {
+	return Includes(s.includes)
+}
+
+// Constant returns a constant defined in the current scope
+// with the given name. It returns nil if the constant is not found.
+func (s *Scope) Constant(name string) *Constant {
+	for _, c := range s.constants {
+		if c.Name == name {
+			return c
+		}
 	}
-}
-
-func (s *Scope) init(cu *CodeUtils) (err error) {
-	cu.addImports(s.imports, s.ast)
-	s.buildIncludes(cu)
-	s.installNames(cu)
 	return nil
 }
 
-func (s *Scope) buildIncludes(cu *CodeUtils) {
-	// the indices of includes must be kept because parser.Reference.Index counts the unused IDLs.
-	cnt := len(s.ast.Includes)
-	s.includes = make([]*Scope, cnt)
-	s.packages = make([]string, cnt)
+// Constants is a list of constants.
+type Constants []*Constant
 
-	for idx, inc := range s.ast.Includes {
-		if !inc.GetUsed() {
-			continue
+// GoVariables returns the subset of the current constants that
+// each one of them results a variable in Go.
+func (cs Constants) GoVariables() (gvs Constants) {
+	for _, c := range cs {
+		if !IsConstantInGo(c.Constant) {
+			gvs = append(gvs, c)
 		}
-		scope, pkg := s.include(cu, inc.Reference)
-		s.includes[idx] = scope
-		s.packages[idx] = pkg
-	}
-}
-
-func (s *Scope) include(cu *CodeUtils, t *parser.Thrift) (*Scope, string) {
-	scope, err := cu.BuildScope(t)
-	if err != nil {
-		panic(err)
-	}
-
-	pkg, pth := cu.getImport(t)
-	pkg = s.imports.Add(pkg, pth)
-	return scope, pkg
-}
-
-// includeIDL adds an probably new IDL to the include list.
-func (s *Scope) includeIDL(cu *CodeUtils, t *parser.Thrift) (pkgName string) {
-	_, pth := cu.getImport(t)
-	if pkgName = s.imports.Get(pth); pkgName != "" {
-		return
-	}
-	scope, pkg := s.include(cu, t)
-	s.includes = append(s.includes, scope)
-	s.packages = append(s.packages, pkg)
-	return pkg
-}
-
-func (s *Scope) addNamespace(obj interface{}) namespace.Namespace {
-	ns := namespace.NewNamespace(namespace.UnderscoreSuffix)
-	s.namespaces[obj] = ns
-	return ns
-}
-
-func (s *Scope) installNames(cu *CodeUtils) {
-	for _, v := range s.ast.Services {
-		s.installNamesForService(cu, v)
-	}
-	for _, v := range s.ast.GetStructLikes() {
-		s.installNamesForStructLike(cu, v)
-	}
-	for _, v := range s.ast.Typedefs {
-		s.installNamesForTypedef(cu, v)
-	}
-	for _, v := range s.ast.Enums {
-		s.installNamesForEnum(cu, v)
-	}
-	for _, v := range s.ast.Constants {
-		cn := s.identify(cu, v.Name)
-		s.globals.Add(cn, v.Name)
-	}
-}
-
-func (s *Scope) identify(cu *CodeUtils, raw string) string {
-	name, err := cu.identify0(raw)
-	if err != nil {
-		panic(err)
-	}
-	if !strings.HasPrefix(raw, prefix) && cu.Features().CompatibleNames {
-		if strings.HasPrefix(name, "New") || strings.HasSuffix(name, "Args") || strings.HasSuffix(name, "Result") {
-			name += "_"
-		}
-	}
-	return name
-}
-
-func (s *Scope) buildSynthesized(v *parser.Service, f *parser.Function) (syn *synthesized, err error) {
-	if scope := s.namespaces[v]; scope == nil {
-		err = fmt.Errorf("service %+v not defined in %q", v, s.ast.Filename)
-		return
-	}
-	syn = &synthesized{}
-	syn.ArgType = &parser.StructLike{
-		Category: "struct",
-		Name:     f.Name + "_args",
-		Fields:   f.Arguments,
-	}
-
-	if !f.Oneway {
-		syn.ResType = &parser.StructLike{
-			Category: "struct",
-			Name:     f.Name + "_result",
-		}
-		if !f.Void {
-			syn.ResType.Fields = append(syn.ResType.Fields, &parser.Field{
-				ID:           0,
-				Name:         "success",
-				Requiredness: parser.FieldType_Optional,
-				Type:         f.FunctionType,
-			})
-		}
-		syn.ResType.Fields = append(syn.ResType.Fields, f.Throws...)
 	}
 	return
 }
 
-func (s *Scope) installNamesForService(cu *CodeUtils, v *parser.Service) {
-	ns := s.addNamespace(v) // namespace of the Service
-
-	// service name
-	sn := s.identify(cu, v.Name)
-	sn = s.globals.Add(sn, v.Name)
-	ss := make(map[*parser.Function]*synthesized)
-
-	// function names
-	for _, f := range v.Functions {
-		fn := s.identify(cu, f.Name)
-		ns.Add(fn, f.Name)
-	}
-
-	// install names for argument types and response types
-	for _, f := range v.Functions {
-		syn, err := s.buildSynthesized(v, f)
-		if err != nil {
-			panic(err)
+// GoConstants returns the subset of the current constants that
+// each one of them results a constant in Go.
+func (cs Constants) GoConstants() (gcs Constants) {
+	for _, c := range cs {
+		if IsConstantInGo(c.Constant) {
+			gcs = append(gcs, c)
 		}
-		an, rn := v.Name+s.identify(cu, _p(f.Name+"_args")), v.Name+s.identify(cu, _p(f.Name+"_result"))
-		s.installNamesForStructLike(cu, syn.ArgType, _p(an))
-		if !f.Oneway {
-			s.installNamesForStructLike(cu, syn.ResType, _p(rn))
-		}
-		ss[f] = syn
-
-		s.installNamesForFunction(cu, f)
 	}
-	if len(v.Functions) > 0 {
-		s.synthesized[v] = ss
-	}
-
-	// install names for client and processor
-	cn := sn + "Client"
-	pn := sn + "Processor"
-	s.globals.MustReserve(cn, _p("client:"+v.Name))
-	s.globals.MustReserve(pn, _p("processor:"+v.Name))
+	return
 }
 
-// installNamesForFunction builds a namespace for parameters of a Function.
-// This function is used to resolve conflicts between parameter, receiver and local variables in generated method.
-// Template 'Service' and 'FunctionSignature' depend on this function.
-func (s *Scope) installNamesForFunction(cu *CodeUtils, v *parser.Function) {
-	ns := s.addNamespace(v) // namespace of the Function
-
-	ns.MustReserve("p", _p("p"))     // the receiver of method
-	ns.MustReserve("err", _p("err")) // error
-	ns.MustReserve("ctx", _p("ctx")) // first parameter
-
-	if !v.Void {
-		ns.MustReserve("r", _p("r"))             // response
-		ns.MustReserve("_result", _p("_result")) // a local variable
-	}
-
-	for _, a := range v.Arguments {
-		name := common.LowerFirstRune(s.identify(cu, a.Name))
-		if isKeywords[name] {
-			name = "_" + name
-		}
-		ns.Add(name, a.Name)
-	}
+// Constants returns all thrift constants defined in the current scope.
+func (s *Scope) Constants() Constants {
+	return Constants(s.constants)
 }
 
-func (s *Scope) installNamesForTypedef(cu *CodeUtils, t *parser.Typedef) {
-	tn := s.identify(cu, t.Alias)
-	tn = s.globals.Add(tn, t.Alias)
-	if t.Type.Category.IsStructLike() {
-		fn := "New" + tn
-		s.globals.MustReserve(fn, _p("new:"+t.Alias))
+// Typedef returns a typedef defined in the current scope with the
+// given name. It returns nil if the typedef is not found.
+func (s *Scope) Typedef(alias string) *Typedef {
+	for _, t := range s.typedefs {
+		if t.Alias == alias {
+			return t
+		}
 	}
+	return nil
 }
 
-func (s *Scope) installNamesForEnum(cu *CodeUtils, e *parser.Enum) {
-	en := s.identify(cu, e.Name)
-	en = s.globals.Add(en, e.Name)
-
-	ns := s.addNamespace(e)
-	for _, v := range e.Values {
-		// vn := s.identify(cu, v.Name)
-		// ns.add(en+"_"+vn, v.Name)
-		ns.Add(en+"_"+v.Name, v.Name)
-	}
+// Typedefs returns all typedefs defined in the current scope.
+func (s *Scope) Typedefs() []*Typedef {
+	return s.typedefs
 }
 
-func (s *Scope) installNamesForStructLike(cu *CodeUtils, v *parser.StructLike, usedName ...string) {
-	nn := v.Name
-	if len(usedName) != 0 {
-		nn = usedName[0]
-	}
-	sn := s.identify(cu, nn)
-	sn = s.globals.Add(sn, v.Name)
-	s.globals.MustReserve("New"+sn, _p("new:"+nn))
-
-	fids := "fieldIDToName_" + sn
-	s.globals.MustReserve(fids, _p("ids:"+nn))
-
-	ns := s.addNamespace(v) // namespace of the Struct-like
-
-	// built-in methods
-	funcs := []string{"Read", "Write", "String"}
-	if !strings.HasPrefix(v.Name, prefix) {
-		if v.Category == "union" {
-			funcs = append(funcs, "CountSetFields")
-		}
-		if v.Category == "exception" {
-			funcs = append(funcs, "Error")
-		}
-		if cu.Features().KeepUnknownFields {
-			funcs = append(funcs, "CarryingUnknownFields")
-		}
-		if cu.Features().GenDeepEqual {
-			funcs = append(funcs, "DeepEqual")
+// Enum returns an enum defined in the current scope with the
+// given name. It returns nil if the enum is not found.
+func (s *Scope) Enum(name string) *Enum {
+	for _, enum := range s.enums {
+		if enum.Name == name {
+			return enum
 		}
 	}
-	for _, fn := range funcs {
-		ns.MustReserve(fn, _p(fn))
+	return nil
+}
+
+// Enums returns all enums defined in the current scope.
+func (s *Scope) Enums() []*Enum {
+	return s.enums
+}
+
+// Struct returns a struct defined in the current scope with
+// the given name. It returns nil if the struct is not found.
+func (s *Scope) Struct(name string) *StructLike {
+	for _, s := range s.structs {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
+// Structs returns all struct defined in the current scope.
+func (s *Scope) Structs() []*StructLike {
+	return s.structs
+}
+
+// Union returns a union defined in the current scope with the
+// given name. It returns nil if the union is not found.
+func (s *Scope) Union(name string) *StructLike {
+	for _, u := range s.unions {
+		if u.Name == name {
+			return u
+		}
+	}
+	return nil
+}
+
+// Unions returns all union defined in the current scope.
+func (s *Scope) Unions() []*StructLike {
+	return s.unions
+}
+
+// Exception returns an exception defined in the current scope
+// with the given name. It returns nil if the exception is not found.
+func (s *Scope) Exception(name string) *StructLike {
+	for _, e := range s.exceptions {
+		if e.Name == name {
+			return e
+		}
+	}
+	return nil
+}
+
+// Exceptions returns all exception defined in the current scope.
+func (s *Scope) Exceptions() []*StructLike {
+	return s.exceptions
+}
+
+// StructLike returns a struct-like defined in the current scope with
+// the given name. It returns nil if the struct-like is not found.
+func (s *Scope) StructLike(name string) *StructLike {
+	for _, st := range s.StructLikes() {
+		if st.Name == name {
+			return st
+		}
+	}
+	return nil
+}
+
+// StructLikes returns all struct-like defined in the current scope.
+func (s *Scope) StructLikes() (ss []*StructLike) {
+	ss = make([]*StructLike, 0, len(s.structs)+len(s.unions)+len(s.exceptions))
+	ss = append(ss, s.structs...)
+	ss = append(ss, s.unions...)
+	ss = append(ss, s.exceptions...)
+	return
+}
+
+// Service returns a service defined in the current scope with the given
+// name. It returns nil if the service is not found.
+func (s *Scope) Service(name string) *Service {
+	for _, svc := range s.services {
+		if svc.Name == name {
+			return svc
+		}
+	}
+	return nil
+}
+
+// Services returns all service defined in the current scope.
+func (s *Scope) Services() []*Service {
+	return s.services
+}
+
+// Include associates an import in golang with the corresponding scope
+// that built from an thrift AST in the include list.
+type Include struct {
+	PackageName string
+	ImportPath  string
+	*Scope
+}
+
+// Includes is a list of Include objects.
+type Includes []*Include
+
+// ByIndex returns an Include at the given index. It returns nil if the
+// index is invalid.
+func (is Includes) ByIndex(i int) *Include {
+	if 0 <= i && i < len(is) {
+		return is[i]
+	}
+	return nil
+}
+
+// ByAST returns an Include whose scope matches the given AST. It returns
+// nil if such an Include is not found.
+func (is Includes) ByAST(ast *parser.Thrift) *Include {
+	for _, i := range is {
+		if i.Scope.ast == ast {
+			return i
+		}
+	}
+	return nil
+}
+
+// ByPackage returns an Include whose package name matches the given one.
+// It returns nil if such an Include is not found.
+func (is Includes) ByPackage(pkg string) *Include {
+	for _, i := range is {
+		if i.PackageName == pkg {
+			return i
+		}
+	}
+	return nil
+}
+
+// Constant is a wrapper for the parser.Constant.
+type Constant struct {
+	*parser.Constant
+	name     Name
+	typeName TypeName
+	init     Code
+}
+
+// GoName returns the name in go code of the constant.
+func (c *Constant) GoName() Name {
+	return c.name
+}
+
+// GoTypeName returns the type name in go code of the constant.
+func (c *Constant) GoTypeName() TypeName {
+	return c.typeName
+}
+
+// Initialization returns the initialization code of the constant.
+func (c *Constant) Initialization() Code {
+	return c.init
+}
+
+// Typedef is a wrapper for the parser.Typedef.
+type Typedef struct {
+	*parser.Typedef
+	name     Name
+	typeName TypeName
+}
+
+// GoName returns the name in go code of the typedef.
+func (t *Typedef) GoName() Name {
+	return t.name
+}
+
+// GoTypeName returns the type name in go code of the typedef.
+func (t *Typedef) GoTypeName() TypeName {
+	return t.typeName
+}
+
+// Enum is a wrapper for the parser.Enum.
+type Enum struct {
+	*parser.Enum
+	scope  namespace.Namespace
+	name   Name
+	values []*EnumValue
+}
+
+// GoName returns the name in go code of the enum.
+func (e *Enum) GoName() Name {
+	return e.name
+}
+
+// Value returns a value defined in the enum with the given name.
+// It returns nil if the value is not found.
+func (e *Enum) Value(name string) *EnumValue {
+	for _, ev := range e.values {
+		if ev.Name == name {
+			return ev
+		}
+	}
+	return nil
+}
+
+// Values returns all values defined in the enum.
+func (e *Enum) Values() []*EnumValue {
+	return e.values
+}
+
+// EnumValue is a wrapper for the parser.EnumValue.
+type EnumValue struct {
+	*parser.EnumValue
+	name    Name
+	literal Code
+}
+
+// GoName returns the name in go code of the enum value.
+func (ev *EnumValue) GoName() Name {
+	return ev.name
+}
+
+// GoLiteral returns the literal in go code of the enum value.
+func (ev *EnumValue) GoLiteral() Code {
+	return ev.literal
+}
+
+// Field is a wrapper for the parser.Field.
+type Field struct {
+	*parser.Field
+	name            Name
+	typeName        TypeName
+	defaultTypeName TypeName
+	defaultValue    Code
+	isResponse      bool
+	reader          Name
+	writer          Name
+	getter          Name
+	setter          Name
+	isset           Name
+	deepEqual       Name
+}
+
+// GoName returns the name in go code of the field.
+func (f *Field) GoName() Name {
+	return f.name
+}
+
+// GoTypeName returns the type name in go code of the field.
+func (f *Field) GoTypeName() TypeName {
+	return f.typeName
+}
+
+// DefaultTypeName returns the type name in go code of the default value of
+// the field. Note that it might be different with the result of GoTypeName.
+func (f *Field) DefaultTypeName() TypeName {
+	return f.defaultTypeName
+}
+
+// DefaultValue returns the go code of the field for its Initialization.
+// Note that the code exists only when the field has default value.
+func (f *Field) DefaultValue() Code {
+	return f.defaultValue
+}
+
+// IsResponseFieldOfResult tells if the field is the response of a result type of a method.
+func (f *Field) IsResponseFieldOfResult() bool {
+	return f.isResponse
+}
+
+// Reader returns the name of the method that reads the field.
+func (f *Field) Reader() Name {
+	return f.reader
+}
+
+// Writer returns the name of the method that writes the field.
+func (f *Field) Writer() Name {
+	return f.writer
+}
+
+// Getter returns the getter method's name for the field.
+func (f *Field) Getter() Name {
+	return f.getter
+}
+
+// Setter returns the setter method's name for the field.
+func (f *Field) Setter() Name {
+	return f.setter
+}
+
+// IsSetter returns the isset method's name for the field.
+func (f *Field) IsSetter() Name {
+	return f.isset
+}
+
+// DeepEqual returns the deep compare method's name for the field.
+func (f *Field) DeepEqual() Name {
+	return f.deepEqual
+}
+
+// StructLike is a wrapper for the parser.StructLike.
+type StructLike struct {
+	*parser.StructLike
+	scope  namespace.Namespace
+	name   Name
+	fields []*Field
+}
+
+// GoName returns the name in go code of the struct-like.
+func (s *StructLike) GoName() Name {
+	return s.name
+}
+
+// Field returns a field of the struct-like that has the given name.
+// It returns nil if such a field is not found.
+func (s *StructLike) Field(name string) *Field {
+	for _, f := range s.fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
+}
+
+// Fields returns all fields defined in the struct-like.
+func (s *StructLike) Fields() []*Field {
+	return s.fields
+}
+
+// Namespace returns the namescope of the struct-like.
+func (s *StructLike) Namespace() namespace.Namespace {
+	return s.scope
+}
+
+// Service is a wrapper for the parser.Service.
+type Service struct {
+	*parser.Service
+	scope     namespace.Namespace
+	from      *Scope
+	base      *Service
+	name      Name
+	functions []*Function
+}
+
+// Namespace returns the namespace of the service.
+func (s *Service) Namespace() namespace.Namespace {
+	return s.scope
+}
+
+// From returns the scope that the service is defined in.
+func (s *Service) From() *Scope {
+	return s.from
+}
+
+// Base returns the base service that the current service extends.
+// It returns nil if the service has no base service.
+func (s *Service) Base() *Service {
+	return s.base
+}
+
+// GoName returns the name in go code of the service.
+func (s *Service) GoName() Name {
+	return s.name
+}
+
+// Function returns a function defined in the service with the given name.
+// It returns nil if the function is not found.
+func (s *Service) Function(name string) *Function {
+	for _, f := range s.functions {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
+}
+
+// Functions returns all functions defined in the service.
+func (s *Service) Functions() []*Function {
+	return s.functions
+}
+
+// Function is a wrapper for the parser.Function.
+type Function struct {
+	*parser.Function
+	scope        namespace.Namespace
+	name         Name
+	responseType TypeName
+	arguments    []*Field
+	throws       []*Field
+	argType      *StructLike
+	resType      *StructLike
+}
+
+// GoName returns the go name of the function.
+func (f *Function) GoName() Name {
+	return f.name
+}
+
+// ResponseGoTypeName returns the go type of the response type of the function.
+func (f *Function) ResponseGoTypeName() TypeName {
+	return f.responseType
+}
+
+// Arguments returns the argument list of the function.
+func (f *Function) Arguments() []*Field {
+	return f.arguments
+}
+
+// Throws returns the throw list of the function.
+func (f *Function) Throws() []*Field {
+	return f.throws
+}
+
+// ArgType returns the synthesized structure that wraps of the function.
+func (f *Function) ArgType() *StructLike {
+	return f.argType
+}
+
+// ResType returns the synthesized structure of arguments of the function.
+func (f *Function) ResType() *StructLike {
+	return f.resType
+}
+
+func buildSynthesized(v *parser.Function) (argType, resType *parser.StructLike) {
+	argType = &parser.StructLike{
+		Category: "struct",
+		Name:     v.Name + "_args",
+		Fields:   v.Arguments,
 	}
 
-	// reserve method names
-	for _, f := range v.Fields {
-		fn := s.identify(cu, f.Name)
-		ns.Add("Get"+fn, _p("get:"+f.Name))
-		if cu.Features().GenerateSetter {
-			ns.Add("Set"+fn, _p("set:"+f.Name))
+	if !v.Oneway {
+		resType = &parser.StructLike{
+			Category: "struct",
+			Name:     v.Name + "_result",
 		}
-		if cu.SupportIsSet(f) {
-			ns.Add("IsSet"+fn, _p("isset:"+f.Name))
+		if !v.Void {
+			resType.Fields = append(resType.Fields, &parser.Field{
+				ID:           0,
+				Name:         "success",
+				Requiredness: parser.FieldType_Optional,
+				Type:         v.FunctionType,
+			})
 		}
+		resType.Fields = append(resType.Fields, v.Throws...)
 	}
-
-	// field names
-	for _, f := range v.Fields {
-		fn := s.identify(cu, f.Name)
-		fn = ns.Add(fn, f.Name)
-	}
+	return
 }

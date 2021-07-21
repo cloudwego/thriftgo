@@ -14,10 +14,9 @@
 
 package golang
 
-type pair struct {
-	First  interface{}
-	Second interface{}
-}
+import (
+	"github.com/cloudwego/thriftgo/parser"
+)
 
 var typeids = struct {
 	Bool   string
@@ -47,6 +46,24 @@ var typeids = struct {
 	List:   "List",
 	Map:    "Map",
 	Struct: "Struct",
+}
+
+var category2TypeID = map[parser.Category]string{
+	parser.Category_Bool:      "Bool",
+	parser.Category_Byte:      "Byte", // i8 is byte
+	parser.Category_I16:       "I16",
+	parser.Category_I32:       "I32",
+	parser.Category_I64:       "I64",
+	parser.Category_Double:    "Double",
+	parser.Category_String:    "String",
+	parser.Category_Binary:    "Binary",
+	parser.Category_Map:       "Map",
+	parser.Category_List:      "List",
+	parser.Category_Set:       "Set",
+	parser.Category_Enum:      "I32",
+	parser.Category_Struct:    "Struct",
+	parser.Category_Union:     "Struct",
+	parser.Category_Exception: "Struct",
 }
 
 var baseTypes = map[string]string{
