@@ -311,6 +311,9 @@ func (is Includes) ByIndex(i int) *Include {
 // nil if such an Include is not found.
 func (is Includes) ByAST(ast *parser.Thrift) *Include {
 	for _, i := range is {
+		if i == nil {
+			continue
+		}
 		if i.Scope.ast == ast {
 			return i
 		}
@@ -322,6 +325,9 @@ func (is Includes) ByAST(ast *parser.Thrift) *Include {
 // It returns nil if such an Include is not found.
 func (is Includes) ByPackage(pkg string) *Include {
 	for _, i := range is {
+		if i == nil {
+			continue
+		}
 		if i.PackageName == pkg {
 			return i
 		}
