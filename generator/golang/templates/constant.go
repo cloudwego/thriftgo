@@ -22,7 +22,7 @@ var Constant = `
 const (
 	{{- range $Consts}}
 	{{InsertionPoint "constant" .Name}}
-	{{.GoName}} = {{.GoValue.Initialization}}
+	{{.GoName}} = {{.Initialization}}
 	{{- end}}{{/* range $Consts */}}
 	{{InsertionPoint "constants"}}
 )
@@ -33,7 +33,7 @@ const (
 var (
 	{{- range $NonConsts }}
 	{{InsertionPoint "constant" .Name }}
-	{{.GoName}} = {{.GoValue.Initialization}}
+	{{.GoName}} = {{.Initialization}}
 	{{- end}}
 	{{InsertionPoint "variables"}}
 )
