@@ -42,6 +42,11 @@ func newScope(ast *parser.Thrift) *Scope {
 }
 
 func (s *Scope) init(cu *CodeUtils) (err error) {
+	defer func() {
+		if x, ok := recover().(error); ok && x != nil {
+			err = x
+		}
+	}()
 	if cu.Features().ReorderFields {
 		for _, x := range s.ast.GetStructLikes() {
 			diff := reorderFields(x)
