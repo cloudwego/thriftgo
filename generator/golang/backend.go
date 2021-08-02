@@ -197,10 +197,13 @@ func (g *GoBackend) buildResponse() *plugin.Response {
 // PostProcess implements the backend.PostProcessor interface to do
 // source formatting before writing files out.
 func (g *GoBackend) PostProcess(path string, content []byte) ([]byte, error) {
-	if formated, err := format.Source(content); err != nil {
-		g.log.Warn(fmt.Sprintf("Failed to format %s: %s", path, err.Error()))
-	} else {
-		content = formated
+	switch filepath.Ext(path) {
+	case ".go":
+		if formated, err := format.Source(content); err != nil {
+			g.log.Warn(fmt.Sprintf("Failed to format %s: %s", path, err.Error()))
+		} else {
+			content = formated
+		}
 	}
 	return content, nil
 }
