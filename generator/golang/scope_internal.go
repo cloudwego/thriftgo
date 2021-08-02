@@ -82,7 +82,9 @@ func (s *Scope) include(cu *CodeUtils, t *parser.Thrift) *Include {
 		panic(err)
 	}
 	pkg, pth := cu.Import(t)
-	pkg = s.imports.Add(pkg, pth)
+	if s.namespace != scope.namespace {
+		pkg = s.imports.Add(pkg, pth)
+	}
 
 	return &Include{
 		PackageName: pkg,
