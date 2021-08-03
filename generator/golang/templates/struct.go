@@ -19,9 +19,13 @@ var StructLike = `
 {{define "StructLike"}}
 {{- $TypeName := .GoName}}
 {{InsertionPoint .Category .Name}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 type {{$TypeName}} struct {
 {{- range .Fields}}
 	{{- InsertionPoint $.Category $.Name .Name}}
+	{{- if and Features.ReserveComments .ReservedComments}}
+	{{.ReservedComments}}
+	{{- end}}
 	{{(.GoName)}} {{.GoTypeName}} {{GenTags .Field (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
 	{{if Features.KeepUnknownFields}}_unknownFields unknown.Fields{{end}}

@@ -19,6 +19,7 @@ var Enum = `
 {{define "Enum"}}
 {{- $EnumType := .GoName}}
 {{InsertionPoint "enum" .Name}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 type {{$EnumType}} int64
 
 const (

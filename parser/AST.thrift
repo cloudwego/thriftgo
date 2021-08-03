@@ -54,6 +54,7 @@ struct Typedef {
     1: optional Type Type
     2: string Alias
     3: Annotations Annotations
+    4: string ReservedComments
 }
 
 struct EnumValue {
@@ -66,6 +67,7 @@ struct Enum {
     1: string Name
     2: list<EnumValue> Values
     3: Annotations Annotations
+    4: string ReservedComments
 }
 
 enum ConstType {
@@ -110,6 +112,7 @@ struct Constant {
     2: optional Type Type
     3: optional ConstValue Value
     4: Annotations Annotations
+    5: string ReservedComments
 }
 
 enum FieldType {
@@ -125,6 +128,7 @@ struct Field {
     4: Type Type
     5: optional ConstValue Default // ConstValue
     6: Annotations Annotations
+    7: string ReservedComments
 }
 
 struct StructLike {
@@ -132,6 +136,7 @@ struct StructLike {
     2: string Name
     3: list<Field> Fields
     4: Annotations Annotations
+    5: string ReservedComments
 }
 
 struct Function {
@@ -142,6 +147,7 @@ struct Function {
     5: list<Field> Arguments
     6: list<Field> Throws
     7: Annotations Annotations
+    8: string ReservedComments
 }
 
 struct Service {
@@ -153,6 +159,8 @@ struct Service {
     // If Extends is not empty and it references to a service defined in an
     // included IDL, then Reference will be set.
     5: optional Reference Reference
+
+    6: string ReservedComments
 }
 
 struct Include {
