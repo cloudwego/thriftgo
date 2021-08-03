@@ -107,8 +107,10 @@ func (g *GoLint) lintName(name string) string {
 		return w
 	}
 
+	var digitalEnd bool
 	newWord := func() {
 		words = append(words, testInitialisms(runes))
+		digitalEnd = unicode.IsDigit(runes[len(runes)-1])
 		runes = runes[:0]
 	}
 
@@ -120,8 +122,8 @@ func (g *GoLint) lintName(name string) string {
 				// Any run of underscores turn into only one
 				continue
 			}
-			if len(words) == 0 || unicode.IsDigit(r) {
-				// Only leading underscores or underscores before digitals will be kept
+			if len(words) == 0 || (digitalEnd && unicode.IsDigit(r)) {
+				// Only leading underscores or underscores between digitals will be kept
 				newWord()
 			} else {
 				runes = runes[:0]
