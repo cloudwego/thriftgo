@@ -109,7 +109,7 @@ func (s *Scope) installNames(cu *CodeUtils) {
 		s.buildService(cu, v)
 	}
 	for _, v := range s.ast.GetStructLikes() {
-		s.buildStructLike(cu, v)
+		s.buildStructLike(cu, v, false)
 	}
 	for _, v := range s.ast.Enums {
 		s.buildEnum(cu, v)
@@ -166,9 +166,9 @@ func (s *Scope) buildService(cu *CodeUtils, v *parser.Service) {
 		rn := v.Name + s.identify(cu, _p(f.Name+"_result"))
 
 		fun := svc.functions[idx]
-		fun.argType = s.buildStructLike(cu, argType, _p(an))
+		fun.argType = s.buildStructLike(cu, argType, false, _p(an))
 		if !f.Oneway {
-			fun.resType = s.buildStructLike(cu, resType, _p(rn))
+			fun.resType = s.buildStructLike(cu, resType, true, _p(rn))
 		}
 
 		s.buildFunction(cu, fun, f)
@@ -260,7 +260,7 @@ func (s *Scope) buildConstant(cu *CodeUtils, v *parser.Constant) {
 	})
 }
 
-func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ...string) *StructLike {
+func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, isResult bool, usedName ...string) *StructLike {
 	nn := v.Name
 	if len(usedName) != 0 {
 		nn = usedName[0]
@@ -329,15 +329,22 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 		fn := s.identify(cu, f.Name)
 		fn = st.scope.Add(fn, f.Name)
 		id := id2str(f.ID)
+
+		var isResponse bool
+		if isResult && f.Name == "success" {
+			isResponse = true
+		}
+
 		st.fields = append(st.fields, &Field{
-			Field:     f,
-			name:      Name(fn),
-			reader:    Name(st.scope.Get(_p("read:" + id))),
-			writer:    Name(st.scope.Get(_p("write:" + id))),
-			getter:    Name(st.scope.Get(_p("get:" + f.Name))),
-			setter:    Name(st.scope.Get(_p("set:" + f.Name))),
-			isset:     Name(st.scope.Get(_p("isset:" + f.Name))),
-			deepEqual: Name(st.scope.Get(_p("deepequal:" + id))),
+			Field:      f,
+			name:       Name(fn),
+			reader:     Name(st.scope.Get(_p("read:" + id))),
+			writer:     Name(st.scope.Get(_p("write:" + id))),
+			getter:     Name(st.scope.Get(_p("get:" + f.Name))),
+			setter:     Name(st.scope.Get(_p("set:" + f.Name))),
+			isset:      Name(st.scope.Get(_p("isset:" + f.Name))),
+			deepEqual:  Name(st.scope.Get(_p("deepequal:" + id))),
+			isResponse: isResponse,
 		})
 	}
 
