@@ -169,6 +169,9 @@ func (s *Scope) buildService(cu *CodeUtils, v *parser.Service) {
 		fun.argType = s.buildStructLike(cu, argType, _p(an))
 		if !f.Oneway {
 			fun.resType = s.buildStructLike(cu, resType, _p(rn))
+			if !f.Void {
+				fun.resType.fields[0].isResponse = true
+			}
 		}
 
 		s.buildFunction(cu, fun, f)
