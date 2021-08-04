@@ -283,7 +283,7 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 			return ""
 		},
 		"ServicePrefix": func(svc *Service) (string, error) {
-			if svc == nil || svc.From() == cu.rootScope {
+			if svc == nil || svc.From().namespace == cu.rootScope.namespace {
 				return "", nil
 			}
 			ast := svc.From().AST()
