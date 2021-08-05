@@ -17,6 +17,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/apache/thrift/lib/go/thrift"
 )
@@ -31,16 +32,36 @@ type Reader interface {
 	Read(iprot thrift.TProtocol) error
 }
 
+// CtxWriter writes out data to an output thrift.TProtocol.
+type CtxWriter interface {
+	Write(ctx context.Context, oprot thrift.TProtocol) error
+}
+
+// CtxReader reads data from an input thrift.TProtocol.
+type CtxReader interface {
+	Read(ctx context.Context, iprot thrift.TProtocol) error
+}
+
 // Marshal serializes the data with binary protocol.
-func Marshal(data Writer) ([]byte, error) {
+func Marshal(data interface{}) ([]byte, error) {
+	ctx := context.TODO()
 	var buf bytes.Buffer
 	trans := thrift.NewStreamTransportRW(&buf)
 	proto := thrift.NewTBinaryProtocol(trans, true, true)
-	err := data.Write(proto)
+
+	var err error
+	switch v := data.(type) {
+	case Writer:
+		err = v.Write(proto)
+	case CtxWriter:
+		err = v.Write(ctx, proto)
+	default:
+		return nil, fmt.Errorf("Marshal accepts only Writer or CtxWriter, got: %T", data)
+	}
 	if err != nil {
 		return nil, err
 	}
-	err = proto.Flush(context.TODO()) // NOTE: important
+	err = proto.Flush(ctx) // NOTE: important
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +69,17 @@ func Marshal(data Writer) ([]byte, error) {
 }
 
 // Unmarshal deserializes the data from bytes with binary protocol.
-func Unmarshal(data Reader, bs []byte) error {
+func Unmarshal(data interface{}, bs []byte) error {
 	trans := thrift.NewStreamTransportR(bytes.NewReader(bs))
 	proto := thrift.NewTBinaryProtocolTransport(trans)
-	return data.Read(proto)
+	switch v := data.(type) {
+	case Reader:
+		return v.Read(proto)
+	case CtxReader:
+		return v.Read(context.TODO(), proto)
+	default:
+		return fmt.Errorf("Unmarshal accepts only Reader or CtxReader, got: %T", data)
+	}
 }
 
 // MarshalRequest encodes a request with binary protocol.

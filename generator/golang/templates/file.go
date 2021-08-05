@@ -48,6 +48,7 @@ import (
 
 {{- range .Services}}
 {{template "Service" .}}
+{{template "Client" .}}
 {{- end}}
 
 {{- range .Services}}

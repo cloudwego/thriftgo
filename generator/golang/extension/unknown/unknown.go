@@ -24,6 +24,7 @@ import (
 	"fmt"
 
 	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/cloudwego/thriftgo/generator/golang/extension/compatible"
 )
 
 // WithUnknownFields is the interface of all structures that supports keeping unknown fields.
@@ -72,7 +73,8 @@ func (fs *Fields) Append(iprot thrift.TProtocol, name string, fieldType thrift.T
 }
 
 // Write writes out the unknown fields.
-func (fs *Fields) Write(oprot thrift.TProtocol) (err error) {
+func (fs *Fields) Write(xprot thrift.TProtocol) (err error) {
+	oprot := compatible.ProtocolDropContext(xprot)
 	var i int
 	var f *Field
 	for i, f = range *fs {
@@ -94,7 +96,8 @@ func (fs *Fields) Write(oprot thrift.TProtocol) (err error) {
 }
 
 // Write writes out the unknown field.
-func Write(oprot thrift.TProtocol, f *Field) (err error) {
+func Write(xprot thrift.TProtocol, f *Field) (err error) {
+	oprot := compatible.ProtocolDropContext(xprot)
 	switch f.Type {
 	case thrift.BOOL:
 		return oprot.WriteBool(f.Value.(bool))
@@ -173,10 +176,11 @@ func Write(oprot thrift.TProtocol, f *Field) (err error) {
 }
 
 // Read reads an unknown field from the given TProtocol.
-func Read(iprot thrift.TProtocol, name string, fieldType thrift.TType, id int16, maxDepth int) (f *Field, err error) {
+func Read(xprot thrift.TProtocol, name string, fieldType thrift.TType, id int16, maxDepth int) (f *Field, err error) {
 	if maxDepth <= 0 {
 		return nil, ErrExceedDepthLimit
 	}
+	iprot := compatible.ProtocolDropContext(xprot)
 
 	var size int
 	f = &Field{Name: name, ID: id, Type: fieldType}

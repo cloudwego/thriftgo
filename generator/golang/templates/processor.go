@@ -59,19 +59,19 @@ func New{{$ProcessorName}}(handler {{$ServiceName}}) *{{$ProcessorName}} {
 
 {{- if not .Extends}}
 func (p *{{$ProcessorName}}) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	name, _, seqId, err := iprot.ReadMessageBegin()
-	if err != nil {
-		return false, err
+	name, _, seqId, err2 := iprot.ReadMessageBegin({{ctx}})
+	if err2 != nil {
+		return false, {{err 2}}
 	}
 	if processor, ok := p.GetProcessorFunction(name); ok {
 		return processor.Process(ctx, seqId, iprot, oprot)
 	}
-	iprot.Skip(thrift.STRUCT)
-	iprot.ReadMessageEnd()
+	iprot.Skip({{ctx "thrift.STRUCT"}})
+	iprot.ReadMessageEnd({{ctx}})
 	x := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function "+name)
-	oprot.WriteMessageBegin(name, thrift.EXCEPTION, seqId)
-	x.Write(oprot)
-	oprot.WriteMessageEnd()
+	oprot.WriteMessageBegin({{ctx "name" "thrift.EXCEPTION" "seqId"}})
+	x.Write({{ctx "oprot"}})
+	oprot.WriteMessageEnd({{ctx}})
 	oprot.Flush(ctx)
 	return false, x
 }
@@ -88,23 +88,23 @@ type {{$ProcessorName | Unexport}}{{$FuncName}} struct {
 
 func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
 	args := {{$ArgType.GoName}}{}
-	if err = args.Read(iprot); err != nil {
-		iprot.ReadMessageEnd()
+	if err := args.Read({{ctx "iprot"}}); err != nil {
+		iprot.ReadMessageEnd({{ctx}})
 		{{- if not .Oneway}}
 		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err.Error())
-		oprot.WriteMessageBegin("{{.Name}}", thrift.EXCEPTION, seqId)
-		x.Write(oprot)
-		oprot.WriteMessageEnd()
+		oprot.WriteMessageBegin({{ctx (Quote .Name) "thrift.EXCEPTION" "seqId"}})
+		x.Write({{ctx "oprot"}})
+		oprot.WriteMessageEnd({{ctx}})
 		oprot.Flush(ctx)
 		{{- end}}
-		return false, err
+		return false, {{err}}
 	}
 
-	iprot.ReadMessageEnd()
+	iprot.ReadMessageEnd({{ctx}})
 	var err2 error
 	{{- if .Oneway}}
 	if err2 = p.handler.{{$FuncName}}(ctx {{- range .Arguments}}, args.{{($ArgType.Field .Name).GoName}}{{- end}}); err2 != nil {
-		return true, err2
+		return true, {{err 2}}
 	}
 	return true, nil
 	{{- else}}
@@ -124,19 +124,19 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 		{{- end}}
 		default:
 			x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing {{.Name}}: "+err2.Error())
-			oprot.WriteMessageBegin("{{.Name}}", thrift.EXCEPTION, seqId)
-			x.Write(oprot)
-			oprot.WriteMessageEnd()
+			oprot.WriteMessageBegin({{ctx (Quote .Name) "thrift.EXCEPTION" "seqId"}})
+			x.Write({{ctx "oprot"}})
+			oprot.WriteMessageEnd({{ctx}})
 			oprot.Flush(ctx)
-			return true, err2
+			return true, {{err 2}}
 		}
 		{{- else}}
 		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing {{.Name}}: "+err2.Error())
-		oprot.WriteMessageBegin("{{.Name}}", thrift.EXCEPTION, seqId)
-		x.Write(oprot)
-		oprot.WriteMessageEnd()
+		oprot.WriteMessageBegin({{ctx (Quote .Name) "thrift.EXCEPTION" "seqId"}})
+		x.Write({{ctx "oprot"}})
+		oprot.WriteMessageEnd({{ctx}})
 		oprot.Flush(ctx)
-		return true, err2
+		return true, {{err 2}}
 		{{- end}}{{/* if .Throws */}}
 	{{- if not .Void}}
 	} else {
@@ -145,17 +145,17 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 		{{- end}}
 	{{- end}}
 	}
-	if err2 = oprot.WriteMessageBegin("{{.Name}}", thrift.REPLY, seqId); err2 != nil {
-		err = err2
+	if err2 = oprot.WriteMessageBegin({{ctx (Quote .Name) "thrift.REPLY" "seqId"}}); err2 != nil {
+		err = {{err 2}}
 	}
-	if err2 = result.Write(oprot); err == nil && err2 != nil {
-		err = err2
+	if err2 = result.Write({{ctx "oprot"}}); err == nil && err2 != nil {
+		err = {{err 2}}
 	}
-	if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {
-		err = err2
+	if err2 = oprot.WriteMessageEnd({{ctx}}); err == nil && err2 != nil {
+		err = {{err 2}}
 	}
 	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-		err = err2
+		err = {{err 2}}
 	}
 	if err != nil {
 		return

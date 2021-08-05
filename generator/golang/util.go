@@ -17,6 +17,7 @@ package golang
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -30,8 +31,17 @@ import (
 
 // Default libraries.
 const (
-	DefaultThriftLib  = "github.com/apache/thrift/lib/go/thrift"
-	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
+	DefaultThriftLib     = "github.com/apache/thrift/lib/go/thrift"
+	DefaultUnknownLib    = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
+	DefaultCompatibleLib = "github.com/cloudwego/thriftgo/generator/golang/extension/compatible"
+)
+
+var (
+	v13                  = "v0.13.0"
+	v13c                 = "v0.13.0+"
+	v14                  = "v0.14.0"
+	compatibleVersions   = []string{v13, v13c, v14}
+	defaultCompatibility = compatibleVersions[0]
 )
 
 // CodeUtils contains a set of utility functions.
@@ -42,6 +52,7 @@ type CodeUtils struct {
 	features      Features          // Available features.
 	namingStyle   styles.Naming     // Naming style.
 	doInitialisms bool              // Make initialisms setting kept event naming style changes.
+	compatibility string
 
 	rootScope  *Scope
 	scopeCache map[*parser.Thrift]*Scope
@@ -50,11 +61,12 @@ type CodeUtils struct {
 // NewCodeUtils creates a new CodeUtils.
 func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 	cu := &CodeUtils{
-		LogFunc:     log,
-		customized:  make(map[string]string),
-		features:    defaultFeatures,
-		namingStyle: styles.NewNamingStyle("thriftgo"),
-		scopeCache:  make(map[*parser.Thrift]*Scope),
+		LogFunc:       log,
+		customized:    make(map[string]string),
+		features:      defaultFeatures,
+		namingStyle:   styles.NewNamingStyle("thriftgo"),
+		scopeCache:    make(map[*parser.Thrift]*Scope),
+		compatibility: defaultCompatibility,
 	}
 	return cu
 }
@@ -99,6 +111,11 @@ func (cu *CodeUtils) SetNamingStyle(style styles.Naming) {
 func (cu *CodeUtils) UseInitialisms(enable bool) {
 	cu.doInitialisms = enable
 	cu.namingStyle.UseInitialisms(cu.doInitialisms)
+}
+
+// Compatibility .
+func (cu *CodeUtils) Compatibility() string {
+	return cu.compatibility
 }
 
 // Identify converts an raw name from IDL into an exported identifier in go.
@@ -262,8 +279,10 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 	m := map[string]interface{}{
 		"ToUpper":        strings.ToUpper,
 		"ToLower":        strings.ToLower,
+		"HasPrefix":      strings.HasPrefix,
 		"InsertionPoint": plugin.InsertionPoint,
 		"Unexport":       common.Unexport,
+		"Quote":          func(s string) string { return `"` + s + `"` },
 
 		"Debug":          cu.Debug,
 		"Features":       cu.Features,
@@ -298,6 +317,37 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 				return Name("")
 			}
 			return svc.GoName()
+		},
+
+		"ctx": func(params ...string) (res string) {
+			if cu.Compatibility() == v14 {
+				if len(params) > 0 && strings.Contains(params[0], " ") {
+					res = "ctx context.Context"
+				} else {
+					res = "ctx"
+				}
+				if len(params) > 0 {
+					res += ", "
+				}
+			}
+			res += strings.Join(params, ", ")
+			return res
+		},
+		"meta": func() string {
+			if cu.Compatibility() == v14 {
+				return "_, " // ignore the meta
+			}
+			return ""
+		},
+		"err": func(no ...int) string {
+			err := "err"
+			if len(no) > 0 {
+				err += strconv.Itoa(no[0])
+			}
+			if cu.Compatibility() == v14 || cu.Compatibility() == v13c {
+				return fmt.Sprintf("thrift.WrapTException(" + err + ")")
+			}
+			return err
 		},
 	}
 	return m

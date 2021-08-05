@@ -86,11 +86,6 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 		}
 	}
 
-	if len(ast.GetStructLikes()) > 0 {
-		ns.Add("fmt", "fmt")
-		ns.Add("thrift", DefaultThriftLib)
-	}
-
 	if len(ast.Services) > 0 {
 		ns.Add("thrift", DefaultThriftLib)
 		for _, svc := range ast.Services {
@@ -108,8 +103,19 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 		structCount += len(svc.Functions)
 		return true
 	})
-	if structCount > 0 && cu.Features().KeepUnknownFields {
-		ns.Add("unknown", DefaultUnknownLib)
+
+	if structCount > 0 {
+		ns.Add("fmt", "fmt")
+		ns.Add("thrift", DefaultThriftLib)
+		if cu.Features().KeepUnknownFields {
+			ns.Add("unknown", DefaultUnknownLib)
+		}
+		switch cu.Compatibility() {
+		case v13c:
+			ns.Add("compatible", DefaultCompatibleLib)
+		case v14:
+			ns.Add("context", "context")
+		}
 	}
 
 	if cu.Features().GenDeepEqual {

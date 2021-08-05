@@ -25,6 +25,11 @@ import (
 // Name is the type of identifiers converted from a thrift AST to Go code.
 type Name string
 
+// Quote quotes the name.
+func (n Name) Quote() Name {
+	return Name(`"` + n + `"`)
+}
+
 func (n Name) String() string {
 	return string(n)
 }

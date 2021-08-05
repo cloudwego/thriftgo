@@ -195,7 +195,6 @@ func (p *ConstType) Value() (driver.Value, error) {
 	return int64(*p), nil
 }
 
-// ConstValueExtra provides extra information when the Type of a ConstValue is ConstIdentifier.
 type FieldType int64
 
 const (

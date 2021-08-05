@@ -124,6 +124,21 @@ var codeUtilsParams = []*param{
 			return nil
 		},
 	},
+	{
+		name: "compatibility",
+		desc: "Specify the version of the apache thrift go lib to be compatible with. " +
+			fmt.Sprintf("Values: %s (default is %s).",
+				strings.Join(compatibleVersions, ", "), defaultCompatibility),
+		action: func(value string, cu *CodeUtils) error {
+			cu.compatibility = defaultCompatibility
+			for _, v := range compatibleVersions {
+				if v == value {
+					cu.compatibility = v
+				}
+			}
+			return nil
+		},
+	},
 }
 
 // creates parameters by reflection.

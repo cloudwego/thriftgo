@@ -46,6 +46,6 @@ func Templates() []string {
 		FieldDeepEqualBase,
 		FieldDeepEqualContainer,
 		FieldDeepEqualStructLike,
-		FunctionSignature, Service, Processor,
+		FunctionSignature, Service, Client, Processor,
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"text/template"
 
 	"github.com/cloudwego/thriftgo/generator/backend"
+	"github.com/cloudwego/thriftgo/generator/golang/extension/compatible"
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
@@ -110,7 +111,6 @@ func (g *GoBackend) prepareTemplates() {
 		all = template.Must(all.Parse(tpl))
 	}
 
-	// XXX(lushaojie): support substutions by all.AddParseTree
 	g.tpl = all
 }
 
@@ -202,7 +202,14 @@ func (g *GoBackend) PostProcess(path string, content []byte) ([]byte, error) {
 		if formated, err := format.Source(content); err != nil {
 			g.log.Warn(fmt.Sprintf("Failed to format %s: %s", path, err.Error()))
 		} else {
-			content = formated
+			if g.utils.Compatibility() == v13c {
+				content, err = compatible.Patch(formated)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				content = formated
+			}
 		}
 	}
 	return content, nil
