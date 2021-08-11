@@ -132,3 +132,14 @@ func TestAnnotation(t *testing.T) {
 	test.Assert(t, has(ast.Services[0].Functions[0].Annotations, "what", "method-annotation"))
 	test.Assert(t, has(ast.Services[0].Functions[0].FunctionType.Annotations, "what", "response-annotation"))
 }
+
+func TestLiteralEscape(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", `
+const string str1 = "a\'b\"c\td\ve\nf\rg\\h"
+const string str2 = "a\'b\"c\td\ve\nf\rg\\h"
+	`)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(ast.Constants) == 2)
+	test.Assert(t, ast.Constants[0].Value.TypedValue.GetLiteral() == "a'b\"c\td\ve\nf\rg\\h", ast.Constants[0].Value.TypedValue.GetLiteral())
+	test.Assert(t, ast.Constants[1].Value.TypedValue.GetLiteral() == "a'b\"c\td\ve\nf\rg\\h")
+}
