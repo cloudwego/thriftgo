@@ -144,6 +144,11 @@ func (p *parser) parse() (err error) {
 	return nil
 }
 
+var escapes = map[rune]rune{
+	'\\': '\\', '"': '"', '\'': '\'',
+	't': '\t', 'v': '\v', 'n': '\n', 'r': '\r',
+}
+
 func (p *parser) pegText(node *node32) string {
 	for n := node; n != nil; n = n.next {
 		if s := p.pegText(n.up); s != "" {
@@ -152,8 +157,18 @@ func (p *parser) pegText(node *node32) string {
 		if n.pegRule != rulePegText {
 			continue
 		}
-		text := string(p.buffer[int(n.begin):int(n.end)])
-		if text != "" {
+		var runes []rune
+		for i := n.begin; i < n.end; i++ {
+			if p.buffer[i] == '\\' && i+1 < n.end {
+				if r, ok := escapes[p.buffer[i+1]]; ok {
+					runes = append(runes, r)
+					i++
+					continue
+				}
+			}
+			runes = append(runes, p.buffer[i])
+		}
+		if text := string(runes); text != "" {
 			return text
 		}
 	}

@@ -182,6 +182,10 @@ func (c *checker) CheckFunctions(t *parser.Thrift) (warns []string, err error) {
 				err = fmt.Errorf("%s.%s: oneway function must be void type", svc.Name, f.Name)
 				return
 			}
+			if f.Oneway && len(f.Throws) > 0 {
+				err = fmt.Errorf("%s.%s: oneway methods can't throw exceptions", svc.Name, f.Name)
+				return
+			}
 			for _, a := range f.Arguments {
 				if a.Requiredness == parser.FieldType_Optional {
 					argOpt = t.Filename + ": optional keyword is ignored in argument lists."
