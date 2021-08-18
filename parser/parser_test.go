@@ -143,3 +143,123 @@ const string str2 = "a\'b\"c\td\ve\nf\rg\\h"
 	test.Assert(t, ast.Constants[0].Value.TypedValue.GetLiteral() == "a'b\"c\td\ve\nf\rg\\h", ast.Constants[0].Value.TypedValue.GetLiteral())
 	test.Assert(t, ast.Constants[1].Value.TypedValue.GetLiteral() == "a'b\"c\td\ve\nf\rg\\h")
 }
+
+const testReservedComments = `
+// service definition
+service test_service {
+	// one-line comment
+	// one-line comment
+	string method0(1: string req) // non-reserved comment
+	# one-line comment
+	/* one-line comment */
+	string method1(1: string req) # non-reserved comment
+	/* cross-line
+		comment */
+	string method2(1: string req) /* non-reserved comment
+	non-reserved comment*/
+	string method3(1: string req)
+	// no reserved comment before
+	string method4(1: string req)
+}
+`
+
+func TestServiceReservedComment(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testReservedComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	test.Assert(t, ast.Services[0].ReservedComments == `// service definition`)
+	for _, f := range ast.Services[0].Functions {
+		switch f.Name {
+		case "method0":
+			test.Assert(t, f.ReservedComments == `// one-line comment
+// one-line comment`)
+		case "method1":
+			test.Assert(t, f.ReservedComments == `// one-line comment
+/* one-line comment */`)
+		case "method2":
+			test.Assert(t, f.ReservedComments == `/* cross-line
+		comment */`)
+		case "method3":
+			test.Assert(t, f.ReservedComments == ``)
+		case "method4":
+			test.Assert(t, f.ReservedComments == `// no reserved comment before`)
+		}
+	}
+}
+
+const testSpaceSkip = `
+namespace
+*
+test
+enum
+Numbers
+{
+ONE
+=
+1
+,
+TWO
+,
+}
+const
+Numbers
+MyNumber
+=
+ONE
+typedef
+i8
+MyByte
+struct
+MyStruct
+{
+1
+:
+string
+str
+,
+2
+:
+list
+<
+string
+>
+strList
+}
+service
+MyService
+{
+list
+<
+string
+>
+getStrList
+(
+1
+:
+i64
+id
+,
+)
+}
+`
+
+const testCommentSkip = `
+namespace /*c*/ * /*c*/test /*c*/ 
+enum /*c*/ Numbers /*c*/ { /*c*/ ONE /*c*/ = /*c*/ 1 /*c*/ , /*c*/ TWO /*c*/ , /*c*/ } /*c*/ 
+const /*c*/ Numbers /*c*/ MyNumber /*c*/ = /*c*/ ONE /*c*/ 
+typedef /*c*/ i8 /*c*/ MyByte /*c*/ 
+struct /*c*/ MyStruct /*c*/ { /*c*/ 1 /*c*/ : /*c*/ string /*c*/ str /*c*/ , /*c*/ 2 /*c*/ : /*c*/ list /*c*/ < /*c*/ string /*c*/ > /*c*/ strList /*c*/ } /*c*/ 
+service /*c*/ MyService /*c*/ { /*c*/ list /*c*/ < /*c*/ string /*c*/ > /*c*/ getStrList /*c*/ ( /*c*/ 1 /*c*/ : /*c*/ i64 /*c*/ id /*c*/ , /*c*/ ) /*c*/ } /*c*/
+`
+
+func TestSkip(t *testing.T) {
+	_, err := parser.ParseString("main.thrift", testSpaceSkip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = parser.ParseString("main.thrift", testCommentSkip)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

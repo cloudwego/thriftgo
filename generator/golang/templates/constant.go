@@ -22,6 +22,7 @@ var Constant = `
 const (
 	{{- range $Consts}}
 	{{InsertionPoint "constant" .Name}}
+	{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	{{.GoName}} = {{.Initialization}}
 	{{- end}}{{/* range $Consts */}}
 	{{InsertionPoint "constants"}}
@@ -33,6 +34,7 @@ const (
 var (
 	{{- range $NonConsts }}
 	{{InsertionPoint "constant" .Name }}
+	{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	{{.GoName}} = {{.Initialization}}
 	{{- end}}
 	{{InsertionPoint "variables"}}

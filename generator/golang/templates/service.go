@@ -36,12 +36,14 @@ var Service = `
 {{- $ServiceName := .GoName}}
 {{- $ClientName := printf "%s%s" $ServiceName "Client"}}
 {{InsertionPoint "service" .Name}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 type {{$ServiceName}} interface {
 	{{- if .Extends}}
 	{{$BasePrefix}}{{$BaseService}}
 	{{- end}}
 	{{- range .Functions}}
 	{{InsertionPoint "service" $.Name .Name}}
+	{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	{{template "FunctionSignature" .}}
 	{{- end}}
 }

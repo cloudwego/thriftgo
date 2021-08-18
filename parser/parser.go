@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // NOTSET is a value to express 'not set'.
@@ -31,8 +32,9 @@ const NOTSET = -999999
 type parser struct {
 	ThriftIDL
 	Thrift
-	IncludeDirs []string
-	Annotations *Annotations
+	IncludeDirs               []string
+	Annotations               *Annotations
+	DefinitionReservedComment string
 }
 
 func exists(path string) bool {
@@ -125,9 +127,10 @@ func (p *parser) parse() (err error) {
 	if root == nil || root.pegRule != ruleDocument {
 		return errors.New("not document")
 	}
+	// Header* Definition* !.
 	for n := root.up; n != nil; n = n.next {
 		switch n.pegRule {
-		case ruleSkip:
+		case ruleSkip, ruleSkipLine:
 			continue
 		case ruleHeader:
 			if err := p.parseHeader(n); err != nil {
@@ -183,6 +186,10 @@ func (p *parser) parseHeader(node *node32) (err error) {
 	node, err = checkrule(node, ruleHeader)
 	if err != nil {
 		return err
+	}
+	// Skip (Include / CppInclude / Namespace) SkipLine
+	if node.pegRule == ruleSkip {
+		node = node.next
 	}
 	switch node.pegRule {
 	case ruleInclude:
@@ -241,7 +248,7 @@ func (p *parser) parseNamespace(node *node32) (err error) {
 	node = node.next
 	ns.Name = p.pegText(node.up)
 	node = node.next
-	if node != nil { // ANNOTATIONS
+	if node != nil && node.pegRule == ruleAnnotations { // ANNOTATIONS
 		ns.Annotations, err = p.parseAnnotations(node)
 		if err != nil {
 			return err
@@ -256,7 +263,19 @@ func (p *parser) parseDefinition(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// Const / Typedef / Enum / Struct / Service / Exception
+	// ReservedComments Skip (Const / Typedef / Enum / Struct / Union / Service / Exception) Annotations? SkipLine
+	if node.pegRule == ruleReservedComments {
+		reservedComments, err := p.parseReservedComments(node)
+		if err != nil {
+			return err
+		}
+		p.DefinitionReservedComment = reservedComments
+		node = node.next
+	}
+	// skip Skip
+	if node.pegRule == ruleSkip {
+		node = node.next
+	}
 	switch node.pegRule {
 	case ruleConst:
 		if err := p.parseConst(node); err != nil {
@@ -319,6 +338,7 @@ func (p *parser) parseConst(node *node32) (err error) {
 		return err
 	}
 	c := &Constant{Name: name, Type: ft, Value: value}
+	c.ReservedComments = p.DefinitionReservedComment
 	p.Constants = append(p.Constants, c)
 	p.Annotations = &c.Annotations
 	return nil
@@ -481,6 +501,7 @@ func (p *parser) parseTypedef(node *node32) (err error) {
 	typd.Type = ft
 	node = node.next
 	typd.Alias = p.pegText(node)
+	typd.ReservedComments = p.DefinitionReservedComment
 	p.Typedefs = append(p.Typedefs, &typd)
 	p.Annotations = &typd.Annotations
 	return nil
@@ -521,6 +542,7 @@ func (p *parser) parseEnum(node *node32) (err error) {
 		}
 	}
 	e := &Enum{Name: name, Values: values}
+	e.ReservedComments = p.DefinitionReservedComment
 	p.Enums = append(p.Enums, e)
 	p.Annotations = &e.Annotations
 	return nil
@@ -554,6 +576,7 @@ func (p *parser) parseUnion(node *node32) (err error) {
 		}
 	}
 	u := &StructLike{Category: "union", Name: name, Fields: fields}
+	u.ReservedComments = p.DefinitionReservedComment
 	p.Unions = append(p.Unions, u)
 	p.Annotations = &u.Annotations
 	return nil
@@ -587,6 +610,7 @@ func (p *parser) parseStruct(node *node32) (err error) {
 		}
 	}
 	s := &StructLike{Category: "struct", Name: name, Fields: fields}
+	s.ReservedComments = p.DefinitionReservedComment
 	p.Structs = append(p.Structs, s)
 	p.Annotations = &s.Annotations
 	return nil
@@ -618,6 +642,7 @@ func (p *parser) parseException(node *node32) (err error) {
 		}
 	}
 	e := &StructLike{Category: "exception", Name: name, Fields: fields}
+	e.ReservedComments = p.DefinitionReservedComment
 	p.Exceptions = append(p.Exceptions, e)
 	p.Annotations = &e.Annotations
 	return nil
@@ -628,11 +653,19 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
+	// ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
 	var f Field
 	f.ID = NOTSET
 	for ; node != nil; node = node.next {
 		switch node.pegRule {
+		case ruleSkip, ruleSkipLine:
+			continue
+		case ruleReservedComments:
+			reservedComments, err := p.parseReservedComments(node)
+			if err != nil {
+				return nil, err
+			}
+			f.ReservedComments = reservedComments
 		case ruleFieldId:
 			i, _ := strconv.Atoi(p.pegText(node))
 			f.ID = int32(i)
@@ -723,6 +756,7 @@ func (p *parser) parseService(node *node32) (err error) {
 			s.Functions = append(s.Functions, fu)
 		}
 	}
+	s.ReservedComments = p.DefinitionReservedComment
 	p.Services = append(p.Services, &s)
 	p.Annotations = &s.Annotations
 	return nil
@@ -733,11 +767,16 @@ func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? ListSeparator?
+	// ReservedComments ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator?
 	var f Function
 	for ; node != nil; node = node.next {
 		switch node.pegRule {
+		case ruleReservedComments:
+			reservedComments, err := p.parseReservedComments(node)
+			if err != nil {
+				return nil, err
+			}
+			f.ReservedComments = reservedComments
 		case ruleONEWAY:
 			f.Oneway = true
 		case ruleFunctionType:
@@ -747,8 +786,7 @@ func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
 				if err != nil {
 					return nil, err
 				}
-			}
-			if n.pegRule == ruleVOID {
+			} else if n.pegRule == ruleVOID {
 				f.Void = true
 				f.FunctionType = &Type{Name: "void"}
 			}
@@ -794,4 +832,28 @@ func (p *parser) parseThrows(node *node32) (fs []*Field, err error) {
 		}
 	}
 	return fields, nil
+}
+
+func (p *parser) parseReservedComments(node *node32) (ReservedComments string, err error) {
+	node, err = checkrule(node, ruleReservedComments)
+	if err != nil {
+		return "", err
+	}
+	// Skip
+	node = node.up
+	// (Space / Comment)*
+	var comments []string
+	for ; node != nil; node = node.next {
+		if node.pegRule == ruleComment {
+			comment := strings.TrimRight(string(p.buffer[int(node.up.begin):int(node.up.end)]), "\r\n")
+			if strings.HasPrefix(comment, "#") {
+				comment = strings.TrimPrefix(comment, "#")
+				comment = "//" + comment
+			}
+			if comment != "" {
+				comments = append(comments, comment)
+			}
+		}
+	}
+	return strings.Join(comments, "\n"), nil
 }

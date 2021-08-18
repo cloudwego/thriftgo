@@ -19,6 +19,7 @@ var Typedef = `
 {{define "Typedef"}}
 {{- $NewTypeName := .GoName}}
 {{- $OldTypeName := .GoTypeName}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 {{- if Features.TypedefAsTypeAlias }}
 type {{$NewTypeName}} = {{$OldTypeName}}
 {{- else}}

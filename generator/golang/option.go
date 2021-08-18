@@ -37,6 +37,7 @@ type Features struct {
 	KeepUnknownFields  bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
 	GenDeepEqual       bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
 	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
+	ReserveComments    bool `reserve_comments:"Reserve comments of definitions in thrift file"`
 }
 
 var defaultFeatures = Features{
@@ -53,6 +54,7 @@ var defaultFeatures = Features{
 	KeepUnknownFields:  false,
 	GenDeepEqual:       false,
 	CompatibleNames:    false,
+	ReserveComments:    false,
 }
 
 type param struct {

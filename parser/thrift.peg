@@ -5,9 +5,9 @@ type ThriftIDL Peg {
 }
 
 
-Document <- Skip Header* Definition* !.
+Document <- Header* Definition* Skip !.
 
-Header <- Include / CppInclude / Namespace
+Header <- Skip (Include / CppInclude / Namespace) SkipLine
 
 Include <- INCLUDE Literal
 
@@ -15,11 +15,11 @@ CppInclude <- CPPINCLUDE Literal
 
 Namespace <- NAMESPACE NamespaceScope Identifier Annotations?
 
-NamespaceScope <-
-    <'*'> Skip
+NamespaceScope <- Skip
+    <'*'> Indent*
     / Identifier
 
-Definition <-  (Const / Typedef / Enum / Struct / Union / Service / Exception) Annotations?
+Definition <- ReservedComments Skip (Const / Typedef / Enum / Service / Struct / Union / Exception) Annotations? SkipLine
 
 Const <- CONST FieldType Identifier EQUAL ConstValue ListSeparator?
 
@@ -27,21 +27,21 @@ Typedef <- TYPEDEF FieldType Identifier
 
 Enum  <- ENUM Identifier LWING (Identifier (EQUAL IntConstant)? Annotations? ListSeparator?)* RWING
 
+Service <- SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
+
 Struct <- STRUCT Identifier LWING Field* RWING
 
 Union <- UNION Identifier LWING Field* RWING
 
-Service <- SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
-
 Exception <- EXCEPTION Identifier LWING Field* RWING
 
-Field <- FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
+Field <- ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
 
-FieldId <- IntConstant ':' Skip
+FieldId <- Skip IntConstant COLON Indent*
 
-FieldReq <- <('required' / 'optional')> Skip
+FieldReq <- Skip <('required' / 'optional')> Indent*
 
-Function  <- ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator?
+Function  <- ReservedComments Skip ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator? SkipLine
 
 FunctionType  <- VOID / FieldType
 
@@ -49,7 +49,7 @@ Throws <- THROWS LPAR Field* RPAR
 
 FieldType  <- (ContainerType / BaseType / Identifier) Annotations?
 
-BaseType <- BOOL / BYTE / I8 / I16 / I32 / I64 / DOUBLE / STRING / BINARY Skip
+BaseType <- (BOOL / BYTE / I8 / I16 / I32 / I64 / DOUBLE / STRING / BINARY)
 
 ContainerType <- MapType / SetType / ListType
 
@@ -59,16 +59,16 @@ SetType <- SET CppType? LPOINT FieldType RPOINT
 
 ListType <- LIST LPOINT FieldType RPOINT CppType?
 
-CppType <- CPPTYPE Literal Skip
+CppType <- CPPTYPE Literal
 
 ConstValue <- DoubleConstant / IntConstant / Literal / Identifier / ConstList / ConstMap
 
-IntConstant <- < '0x' ([0-9] / [A-Z] / [a-z])+ / '0o' Digit+ / [+\-]? Digit+ > Skip
+IntConstant <- Skip < '0x' ([0-9] / [A-Z] / [a-z])+ / '0o' Digit+ / [+\-]? Digit+ > Indent*
 
-DoubleConstant  <- <[+\-]? (
+DoubleConstant  <- Skip <[+\-]? (
         Digit* '.' Digit+  Exponent?
     /   Digit+ Exponent
-    )> Skip
+    )> Indent*
 
 Exponent <- ('e' / 'E') IntConstant
 
@@ -82,61 +82,67 @@ ConstMap  <- LWING (ConstValue COLON ConstValue ListSeparator?)* RWING
 
 EscapeLiteralChar <- '\\' ["']
 
-Literal <- '"' <(EscapeLiteralChar / !'"' .)*> '"' Skip
-        / "'" <(EscapeLiteralChar / !"'" .)*> "'" Skip
+Literal <- Skip '"' <(EscapeLiteralChar / !'"' .)*> '"' Indent*
+        / Skip "'" <(EscapeLiteralChar / !"'" .)*> "'" Indent*
 
-Identifier <- <Letter ( Letter / Digit / '.' )*> Skip
+Identifier <- Skip <Letter ( Letter / Digit / '.' )*> Indent*
 
-ListSeparator <- (',' / ';') Skip
+ListSeparator <- Skip (',' / ';') Indent*
 
 Letter <- [A-Z] / [a-z] / '_'
 LetterOrDigit <- [a-z] / [A-Z] / [0-9] / [_$]
 
 Digit <- [0-9]
 
-Skip <- (Space / LongComment / LineComment/ UnixComment)*
-Space <- [ \t\r\n]+
+ReservedComments <- Skip
+
+Skip <- (Space / Comment)*
+SkipLine <- (Indent / Comment)* CarriageReturnLineFeed?
+
+Space <- (Indent / CarriageReturnLineFeed)+
+Indent <- [ \t\v]
+CarriageReturnLineFeed <- [\r\n]
+
+Comment <- LongComment / LineComment / UnixComment
 LongComment <- '/*' (!'*/' .)* '*/'
 LineComment <- '//' (![\r\n] .)*
 UnixComment <- '#' (![\r\n] .)*
 
-BOOL        <-  <'bool'>        !LetterOrDigit  Skip
-BYTE        <-  <'byte'>        !LetterOrDigit  Skip
-I8          <-  <'i8'>          !LetterOrDigit  Skip
-I16         <-  <'i16'>         !LetterOrDigit  Skip
-I32         <-  <'i32'>         !LetterOrDigit  Skip
-I64         <-  <'i64'>         !LetterOrDigit  Skip
-DOUBLE      <-  <'double'>      !LetterOrDigit  Skip
-STRING      <-  <'string'>      !LetterOrDigit  Skip
-BINARY      <-  <'binary'>      !LetterOrDigit  Skip
-
-CONST       <-  'const'         !LetterOrDigit  Skip
-ONEWAY      <-  'oneway'        !LetterOrDigit  Skip
-TYPEDEF     <-  'typedef'       !LetterOrDigit  Skip
-MAP         <-  'map'           !LetterOrDigit  Skip
-SET         <-  'set'           !LetterOrDigit  Skip
-LIST        <-  'list'          !LetterOrDigit  Skip
-VOID        <-  'void'          !LetterOrDigit  Skip
-THROWS      <-  'throws'        !LetterOrDigit  Skip
-
-EXCEPTION   <-  'exception'     !LetterOrDigit  Skip
-EXTENDS     <-  'extends'       !LetterOrDigit  Skip
-SERVICE     <-  'service'       !LetterOrDigit  Skip
-STRUCT      <-  'struct'        !LetterOrDigit  Skip
-UNION       <-  'union'         !LetterOrDigit  Skip
-ENUM        <-  'enum'          !LetterOrDigit  Skip
-INCLUDE     <-  'include'       !LetterOrDigit  Skip
-CPPINCLUDE  <-  'cpp_include'   !LetterOrDigit  Skip
-NAMESPACE   <-  'namespace'     !LetterOrDigit  Skip
-CPPTYPE     <-  'cpp_type'      !LetterOrDigit  Skip
-LBRK        <-  '['     Skip
-RBRK        <-  ']'     Skip
-LWING       <-  '{'     Skip
-RWING       <-  '}'     Skip
-EQUAL       <-  '='     Skip
-LPOINT      <-  '<'     Skip
-RPOINT      <-  '>'     Skip
-COMMA       <-  ','     Skip
-LPAR        <-  '('     Skip
-RPAR        <-  ')'     Skip
-COLON       <-  ':'     Skip
+BOOL        <- Skip <'bool'>        !LetterOrDigit  Indent*
+BYTE        <- Skip <'byte'>        !LetterOrDigit  Indent*
+I8          <- Skip <'i8'>          !LetterOrDigit  Indent*
+I16         <- Skip <'i16'>         !LetterOrDigit  Indent*
+I32         <- Skip <'i32'>         !LetterOrDigit  Indent*
+I64         <- Skip <'i64'>         !LetterOrDigit  Indent*
+DOUBLE      <- Skip <'double'>      !LetterOrDigit  Indent*
+STRING      <- Skip <'string'>      !LetterOrDigit  Indent*
+BINARY      <- Skip <'binary'>      !LetterOrDigit  Indent*
+CONST       <- Skip 'const'         !LetterOrDigit  Indent*
+ONEWAY      <- Skip 'oneway'        !LetterOrDigit  Indent*
+TYPEDEF     <- Skip 'typedef'       !LetterOrDigit  Indent*
+MAP         <- Skip 'map'           !LetterOrDigit  Indent*
+SET         <- Skip 'set'           !LetterOrDigit  Indent*
+LIST        <- Skip 'list'          !LetterOrDigit  Indent*
+VOID        <- Skip 'void'          !LetterOrDigit  Indent*
+THROWS      <- Skip 'throws'        !LetterOrDigit  Indent*
+EXCEPTION   <- Skip 'exception'     !LetterOrDigit  Indent*
+EXTENDS     <- Skip 'extends'       !LetterOrDigit  Indent*
+SERVICE     <- Skip 'service'       !LetterOrDigit  Indent*
+STRUCT      <- Skip 'struct'        !LetterOrDigit  Indent*
+UNION       <- Skip 'union'         !LetterOrDigit  Indent*
+ENUM        <- Skip 'enum'          !LetterOrDigit  Indent*
+INCLUDE     <- Skip 'include'       !LetterOrDigit  Indent*
+CPPINCLUDE  <- Skip 'cpp_include'   !LetterOrDigit  Indent*
+NAMESPACE   <- Skip 'namespace'     !LetterOrDigit  Indent*
+CPPTYPE     <- Skip 'cpp_type'      !LetterOrDigit  Indent*
+LBRK        <- Skip '['     Indent*
+RBRK        <- Skip ']'     Indent*
+LWING       <- Skip '{'     Indent*
+RWING       <- Skip '}'     Indent*
+EQUAL       <- Skip '='     Indent*
+LPOINT      <- Skip '<'     Indent*
+RPOINT      <- Skip '>'     Indent*
+COMMA       <- Skip ','     Indent*
+LPAR        <- Skip '('     Indent*
+RPAR        <- Skip ')'     Indent*
+COLON       <- Skip ':'     Indent*
