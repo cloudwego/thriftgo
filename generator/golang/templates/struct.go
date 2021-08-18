@@ -343,7 +343,10 @@ var FieldGetOrSet = `
 var {{$DefaultVarName}} {{$DefaultVarTypeName}}
 {{- if .Default}} = {{.DefaultValue}}{{- end}}
 
-func (p *{{$TypeName}}) {{$GetterName}}() {{$DefaultVarTypeName}} {
+func (p *{{$TypeName}}) {{$GetterName}}() (v {{$DefaultVarTypeName}}) {
+	if p == nil {
+		return
+	}
 	if !p.{{$IsSetName}}() {
 		return {{$DefaultVarName}}
 	}
@@ -356,8 +359,11 @@ func (p *{{$TypeName}}) {{$GetterName}}() {{$DefaultVarTypeName}} {
 
 {{- else}}{{/*if SupportIsSet . */}}
 
-func (p *{{$TypeName}}) {{$GetterName}}() {{$FieldTypeName}} {
-	return p.{{$FieldName}}
+func (p *{{$TypeName}}) {{$GetterName}}() (v {{$FieldTypeName}}) {
+	if p != nil {
+		return p.{{$FieldName}}
+	}
+	return
 }
 
 {{- end}}{{/* if SupportIsSet . */}}

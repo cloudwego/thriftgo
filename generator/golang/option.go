@@ -38,6 +38,7 @@ type Features struct {
 	GenDeepEqual       bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
 	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
 	ReserveComments    bool `reserve_comments:"Reserve comments of definitions in thrift file"`
+	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
 }
 
 var defaultFeatures = Features{
@@ -55,6 +56,7 @@ var defaultFeatures = Features{
 	GenDeepEqual:       false,
 	CompatibleNames:    false,
 	ReserveComments:    false,
+	NilSafe:            false,
 }
 
 type param struct {
