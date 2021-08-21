@@ -344,9 +344,11 @@ var {{$DefaultVarName}} {{$DefaultVarTypeName}}
 {{- if .Default}} = {{.DefaultValue}}{{- end}}
 
 func (p *{{$TypeName}}) {{$GetterName}}() (v {{$DefaultVarTypeName}}) {
+	{{- if Features.NilSafe}}
 	if p == nil {
 		return
 	}
+	{{- end}}
 	if !p.{{$IsSetName}}() {
 		return {{$DefaultVarName}}
 	}
@@ -360,10 +362,14 @@ func (p *{{$TypeName}}) {{$GetterName}}() (v {{$DefaultVarTypeName}}) {
 {{- else}}{{/*if SupportIsSet . */}}
 
 func (p *{{$TypeName}}) {{$GetterName}}() (v {{$FieldTypeName}}) {
+	{{- if Features.NilSafe}}
 	if p != nil {
 		return p.{{$FieldName}}
 	}
 	return
+	{{- else}}
+		return p.{{$FieldName}}
+	{{- end}}{{/* if Features.NilSafe */}}
 }
 
 {{- end}}{{/* if SupportIsSet . */}}
