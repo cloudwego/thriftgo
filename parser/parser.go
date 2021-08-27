@@ -512,13 +512,22 @@ func (p *parser) parseEnum(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// ENUM Identifier LWING (Identifier (EQUAL IntConstant)? ListSeparator?)* RWING
+	// ENUM Identifier LWING ( ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator?)* RWING
 	node = node.next // ignore ENUM
 	name := p.pegText(node)
 	var values []*EnumValue
 	for n := node.next.next; n != nil; n = n.next {
+		valueComments := ""
+		if n.pegRule == ruleReservedComments {
+			valueComments, err = p.parseReservedComments(n)
+			if err != nil {
+				return err
+			}
+			n = n.next
+		}
 		if n.pegRule == ruleIdentifier {
 			var v EnumValue
+			v.ReservedComments = valueComments
 			v.Name = p.pegText(n)
 			if n.next.pegRule == ruleEQUAL {
 				n = n.next.next
@@ -537,7 +546,7 @@ func (p *parser) parseEnum(node *node32) (err error) {
 					return err
 				}
 			}
-
+			fmt.Println("valueComments", v.ReservedComments)
 			values = append(values, &v)
 		}
 	}

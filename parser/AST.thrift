@@ -61,6 +61,7 @@ struct EnumValue {
     1: string Name
     2: i64 Value
     3: Annotations Annotations
+    4: string ReservedComments
 }
 
 struct Enum {
