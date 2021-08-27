@@ -822,7 +822,7 @@ func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 			position, tokenIndex = position42, tokenIndex42
 			return false
 		},
-		/* 9 Enum <- <(ENUM Identifier LWING (Identifier (EQUAL IntConstant)? Annotations? ListSeparator?)* RWING)> */
+		/* 9 Enum <- <(ENUM Identifier LWING (ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator? SkipLine)* RWING)> */
 		func() bool {
 			position44, tokenIndex44 := position, tokenIndex
 			{
@@ -839,6 +839,9 @@ func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 			l46:
 				{
 					position47, tokenIndex47 := position, tokenIndex
+					if !_rules[ruleReservedComments]() {
+						goto l47
+					}
 					if !_rules[ruleIdentifier]() {
 						goto l47
 					}
@@ -875,6 +878,9 @@ func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 						position, tokenIndex = position52, tokenIndex52
 					}
 				l53:
+					if !_rules[ruleSkipLine]() {
+						goto l47
+					}
 					goto l46
 				l47:
 					position, tokenIndex = position47, tokenIndex47
