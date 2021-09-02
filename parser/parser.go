@@ -263,6 +263,7 @@ func (p *parser) parseDefinition(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
+	p.DefinitionReservedComment = ""
 	// ReservedComments Skip (Const / Typedef / Enum / Struct / Union / Service / Exception) Annotations? SkipLine
 	if node.pegRule == ruleReservedComments {
 		reservedComments, err := p.parseReservedComments(node)
@@ -546,7 +547,6 @@ func (p *parser) parseEnum(node *node32) (err error) {
 					return err
 				}
 			}
-			fmt.Println("valueComments", v.ReservedComments)
 			values = append(values, &v)
 		}
 	}

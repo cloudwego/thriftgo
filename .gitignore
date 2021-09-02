@@ -4,3 +4,4 @@
 testdata
 thriftgo
 gen-*
+.vscode
