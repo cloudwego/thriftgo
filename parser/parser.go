@@ -149,7 +149,8 @@ func (p *parser) parse() (err error) {
 
 var escapes = map[rune]rune{
 	'\\': '\\', '"': '"', '\'': '\'',
-	't': '\t', 'v': '\v', 'n': '\n', 'r': '\r',
+	'a': '\a', 'b': '\b', 't': '\t', 'n': '\n',
+	'v': '\v', 'f': '\f', 'r': '\r',
 }
 
 func (p *parser) pegText(node *node32) string {
@@ -178,8 +179,21 @@ func (p *parser) pegText(node *node32) string {
 	return ""
 }
 
+var unescapes = map[rune]rune{
+	'\a': 'a', '\b': 'b', '\t': 't', '\n': 'n',
+	'\v': 'v', '\f': 'f', '\r': 'r', '\\': '\\',
+}
+
 func (p *parser) unescapedText(node *node32) string {
-	return unescapeLiteral(p.pegText(node))
+	var runes []rune
+	for _, r := range p.pegText(node) {
+		if v, ok := unescapes[r]; ok {
+			runes = append(runes, '\\', v)
+		} else {
+			runes = append(runes, r)
+		}
+	}
+	return string(runes)
 }
 
 func (p *parser) parseHeader(node *node32) (err error) {
