@@ -59,18 +59,3 @@ func checkrule(node *node32, rule pegRule) (*node32, error) {
 	}
 	return node.up, nil
 }
-
-func unescapeLiteral(s string) string {
-	ret := make([]byte, 0, len(s))
-	escape := false
-	for _, c := range []byte(s) {
-		if escape {
-			escape = false
-		} else if c == '\\' {
-			escape = true
-			continue
-		}
-		ret = append(ret, c)
-	}
-	return string(ret)
-}
