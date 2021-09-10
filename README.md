@@ -9,9 +9,9 @@ Installation
 
 Note: before executing the following commands, **make sure your `GOPATH` environment is properly set**.
 
-Using `go get`:
+Using `go install`:
 
-`GO111MODULE=on go get github.com/cloudwego/thriftgo`
+`GO111MODULE=on go install github.com/cloudwego/thriftgo`
 
 Or build from source:
 
