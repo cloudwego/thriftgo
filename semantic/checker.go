@@ -173,11 +173,14 @@ func (c *checker) CheckUnions(t *parser.Thrift) (warns []string, err error) {
 func (c *checker) CheckFunctions(t *parser.Thrift) (warns []string, err error) {
 	var argOpt string
 	for _, svc := range t.Services {
-		names := make(map[string]bool)
+		defined := make(map[string]bool)
 		for _, f := range svc.Functions {
-			if names[f.Name] {
+			if defined[f.Name] {
 				err = fmt.Errorf("duplicated function name in %q: %q", svc.Name, f.Name)
+				return
 			}
+			defined[f.Name] = true
+
 			if f.Oneway && !f.Void {
 				err = fmt.Errorf("%s.%s: oneway function must be void type", svc.Name, f.Name)
 				return
