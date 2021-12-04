@@ -108,7 +108,7 @@ func Lookup(arg string) (Plugin, error) {
 	var name, full string
 	switch len(parts) {
 	case 0:
-		return nil, fmt.Errorf("invlaid plugin name: %s", arg)
+		return nil, fmt.Errorf("invalid plugin name: %s", arg)
 	case 1:
 		name, full = arg, "thrift-gen-"+arg
 	case 2:
