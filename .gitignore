@@ -5,3 +5,4 @@ testdata
 thriftgo
 gen-*
 .vscode
+.idea
