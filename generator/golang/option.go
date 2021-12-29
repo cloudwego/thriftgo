@@ -39,6 +39,7 @@ type Features struct {
 	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
 	ReserveComments    bool `reserve_comments:"Reserve comments of definitions in thrift file"`
 	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
+	FrugalTag          bool `frugal_tag:"generate 'frugal' tag"`
 }
 
 var defaultFeatures = Features{
@@ -57,6 +58,7 @@ var defaultFeatures = Features{
 	CompatibleNames:    false,
 	ReserveComments:    false,
 	NilSafe:            false,
+	FrugalTag:          false,
 }
 
 type param struct {

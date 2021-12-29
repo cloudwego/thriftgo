@@ -189,6 +189,12 @@ func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error
 		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d"`, f.Name, f.ID))
 	}
 
+	if cu.Features().FrugalTag {
+		requirness := strings.ToLower(f.Requiredness.String())
+		typed := strings.ReplaceAll(f.Type.String(), ",", ":")
+		tags = append(tags, fmt.Sprintf(`frugal:"%d,%s,%s"`, f.ID, requirness, typed))
+	}
+
 	if gotags := f.Annotations.Get("go.tag"); len(gotags) > 0 {
 		tags = append(tags, gotags[0])
 	} else {
