@@ -426,6 +426,7 @@ type Field struct {
 	*parser.Field
 	name            Name
 	typeName        TypeName
+	frugalTypeName  TypeName
 	defaultTypeName TypeName
 	defaultValue    Code
 	isResponse      bool
