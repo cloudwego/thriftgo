@@ -213,7 +213,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 {{- if $RequiredFieldNotSetError}}
 RequiredFieldNotSetError:
-	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field %s is not set", fieldIDToName_{{$TypeName}}[fieldId]))
+	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("required field %s is not set", fieldIDToName_{{$TypeName}}[fieldId]))
 {{- end}}{{/* if $RequiredFieldNotSetError */}}
 }
 {{- end}}{{/* define "StructLikeRead" */}}
