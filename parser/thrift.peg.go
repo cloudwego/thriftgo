@@ -1044,7 +1044,7 @@ func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 			position, tokenIndex = position68, tokenIndex68
 			return false
 		},
-		/* 14 Field <- <(ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?)> */
+		/* 14 Field <- <(ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? SkipLine)> */
 		func() bool {
 			position72, tokenIndex72 := position, tokenIndex
 			{
@@ -1114,6 +1114,9 @@ func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 					position, tokenIndex = position82, tokenIndex82
 				}
 			l83:
+				if !_rules[ruleSkipLine]() {
+					goto l72
+				}
 				add(ruleField, position73)
 			}
 			return true
