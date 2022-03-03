@@ -147,12 +147,6 @@ func (p *parser) parse() (err error) {
 	return nil
 }
 
-var escapes = map[rune]rune{
-	'\\': '\\', '"': '"', '\'': '\'',
-	'a': '\a', 'b': '\b', 't': '\t', 'n': '\n',
-	'v': '\v', 'f': '\f', 'r': '\r',
-}
-
 func (p *parser) pegText(node *node32) string {
 	for n := node; n != nil; n = n.next {
 		if s := p.pegText(n.up); s != "" {
@@ -161,39 +155,28 @@ func (p *parser) pegText(node *node32) string {
 		if n.pegRule != rulePegText {
 			continue
 		}
-		var runes []rune
-		for i := n.begin; i < n.end; i++ {
-			if p.buffer[i] == '\\' && i+1 < n.end {
-				if r, ok := escapes[p.buffer[i+1]]; ok {
-					runes = append(runes, r)
+
+		quote := p.buffer[n.begin-1]
+		runes := make([]rune, 0, n.end-n.begin)
+		for i := n.begin; i < n.end-1; i++ {
+			r := p.buffer[i]
+
+			// unescape \' for single quoted, \" for double quoted
+			if r == '\\' {
+				switch p.buffer[i+1] {
+				case '\\':
 					i++
+					runes = append(runes, r)
+				case quote:
 					continue
 				}
 			}
-			runes = append(runes, p.buffer[i])
-		}
-		if text := string(runes); text != "" {
-			return text
-		}
-	}
-	return ""
-}
-
-var unescapes = map[rune]rune{
-	'\a': 'a', '\b': 'b', '\t': 't', '\n': 'n',
-	'\v': 'v', '\f': 'f', '\r': 'r', '\\': '\\',
-}
-
-func (p *parser) unescapedText(node *node32) string {
-	var runes []rune
-	for _, r := range p.pegText(node) {
-		if v, ok := unescapes[r]; ok {
-			runes = append(runes, '\\', v)
-		} else {
 			runes = append(runes, r)
 		}
+		runes = append(runes, p.buffer[n.end-1])
+		return string(runes)
 	}
-	return string(runes)
+	return ""
 }
 
 func (p *parser) parseHeader(node *node32) (err error) {
@@ -752,7 +735,7 @@ func (p *parser) parseAnnotation(node *node32) (k, v string, err error) {
 
 	k = p.pegText(node) // Identifier
 	node = node.next.next
-	v = p.unescapedText(node) // Literal
+	v = p.pegText(node) // Literal
 	return k, v, nil
 }
 
