@@ -56,4 +56,8 @@ func NewS() *S {
 }
 ```
 
-Note that it is malformed to escape a single quote in a double quoted literal or vice versa.
+Note that it is unnecessary to escape a single quote in a double quoted literal or vice versa.
+But for compatibility with existing IDLs, escaped double quotes in a quoted literal is allowed in go generator by default. It can be disabled by specifying `unescape_double_quote=false`.
+
+
+
