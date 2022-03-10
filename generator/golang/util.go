@@ -17,6 +17,7 @@ package golang
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -33,6 +34,8 @@ const (
 	DefaultThriftLib  = "github.com/apache/thrift/lib/go/thrift"
 	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 )
+
+var escape = regexp.MustCompile(`\\.`)
 
 // CodeUtils contains a set of utility functions.
 type CodeUtils struct {
@@ -196,7 +199,16 @@ func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error
 	}
 
 	if gotags := f.Annotations.Get("go.tag"); len(gotags) > 0 {
-		tags = append(tags, gotags[0])
+		tag := gotags[0]
+		if cu.Features().EscapeDoubleInTag {
+			tag = escape.ReplaceAllStringFunc(tag, func(m string) string {
+				if m[1] == '"' {
+					return m[1:]
+				}
+				return m
+			})
+		}
+		tags = append(tags, tag)
 	} else {
 		if cu.Features().GenDatabaseTag {
 			tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))

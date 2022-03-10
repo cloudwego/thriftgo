@@ -39,7 +39,8 @@ type Features struct {
 	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
 	ReserveComments    bool `reserve_comments:"Reserve comments of definitions in thrift file"`
 	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
-	FrugalTag          bool `frugal_tag:"generate 'frugal' tag"`
+	FrugalTag          bool `frugal_tag:"Generate 'frugal' tags."`
+	EscapeDoubleInTag  bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
 }
 
 var defaultFeatures = Features{
@@ -59,6 +60,7 @@ var defaultFeatures = Features{
 	ReserveComments:    false,
 	NilSafe:            false,
 	FrugalTag:          false,
+	EscapeDoubleInTag:  true,
 }
 
 type param struct {
