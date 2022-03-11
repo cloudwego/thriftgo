@@ -26,7 +26,7 @@ import (
 )
 
 // Version of thriftgo.
-const Version = "0.1.5"
+const Version = "0.1.7"
 
 var (
 	a Arguments
