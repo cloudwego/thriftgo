@@ -26,7 +26,7 @@ type {{$TypeName}} struct {
 	{{- if and Features.ReserveComments .ReservedComments}}
 	{{.ReservedComments}}
 	{{- end}}
-	{{(.GoName)}} {{.GoTypeName}} {{GenTags .Field (InsertionPoint $.Category $.Name .Name "tag")}} 
+	{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
 	{{if Features.KeepUnknownFields}}_unknownFields unknown.Fields{{end}}
 }

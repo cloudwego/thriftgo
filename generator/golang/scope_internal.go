@@ -363,6 +363,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 
 func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	resolver := NewResolver(s, cu)
+	frugalResolver := NewFrugalResolver(s, cu)
 
 	ff := make(chan *Field)
 
@@ -392,6 +393,7 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	for f := range ff {
 		v := f.Field
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
+		f.frugalTypeName = ensureType(frugalResolver.ResolveFrugalTypeName(v.Type))
 		f.defaultTypeName = ensureType(resolver.GetDefaultValueTypeName(v))
 		if f.IsSetDefault() {
 			f.defaultValue = ensureCode(resolver.GetFieldInit(v))
