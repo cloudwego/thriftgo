@@ -60,6 +60,12 @@ func main() {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
 	}
 
+	if a.CheckKeyword {
+		if warns := parser.DetectKeyword(ast); len(warns) > 0 {
+			log.MultiWarn(warns)
+		}
+	}
+
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
 	warns, err := checker.CheckAll(ast)
 	log.MultiWarn(warns)
