@@ -42,15 +42,16 @@ func (ss *StringSlice) Set(value string) error {
 
 // Arguments contains command line arguments for thriftgo.
 type Arguments struct {
-	AskVersion bool
-	Recursive  bool
-	Verbose    bool
-	Quiet      bool
-	OutputPath string
-	Includes   StringSlice
-	Plugins    StringSlice
-	Langs      StringSlice
-	IDL        string
+	AskVersion   bool
+	Recursive    bool
+	Verbose      bool
+	Quiet        bool
+	CheckKeyword bool
+	OutputPath   string
+	Includes     StringSlice
+	Plugins      StringSlice
+	Langs        StringSlice
+	IDL          string
 }
 
 // Output returns an output path for generated codes for the target language.
@@ -143,6 +144,8 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 	f.Var(&a.Plugins, "p", "")
 	f.Var(&a.Plugins, "plugin", "")
 
+	f.BoolVar(&a.CheckKeyword, "check-keywords", true, "")
+
 	f.Usage = help
 	return f
 }
@@ -185,6 +188,7 @@ Options:
                       "false", "true" and "" (empty is treated as "true").
   -p, --plugin STR    Specify an external plugin to invoke.
                       STR has the form plugin[=path][:key1=val1[,key2[,key3=val3]]].
+  --check-keywords    Check if any identifer using a keyword in common languages. 
 
 Available generators (and options):
 `)
