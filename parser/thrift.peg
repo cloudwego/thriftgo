@@ -35,7 +35,7 @@ Union <- UNION Identifier LWING Field* RWING
 
 Exception <- EXCEPTION Identifier LWING Field* RWING
 
-Field <- ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
+Field <- ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? SkipLine
 
 FieldId <- Skip IntConstant COLON Indent*
 

@@ -26,7 +26,7 @@ type {{$TypeName}} struct {
 	{{- if and Features.ReserveComments .ReservedComments}}
 	{{.ReservedComments}}
 	{{- end}}
-	{{(.GoName)}} {{.GoTypeName}} {{GenTags .Field (InsertionPoint $.Category $.Name .Name "tag")}} 
+	{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
 	{{if Features.KeepUnknownFields}}_unknownFields unknown.Fields{{end}}
 }
@@ -213,7 +213,7 @@ ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
 {{- if $RequiredFieldNotSetError}}
 RequiredFieldNotSetError:
-	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field %s is not set", fieldIDToName_{{$TypeName}}[fieldId]))
+	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("required field %s is not set", fieldIDToName_{{$TypeName}}[fieldId]))
 {{- end}}{{/* if $RequiredFieldNotSetError */}}
 }
 {{- end}}{{/* define "StructLikeRead" */}}

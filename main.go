@@ -26,7 +26,7 @@ import (
 )
 
 // Version of thriftgo.
-const Version = "0.1.3"
+const Version = "0.1.7"
 
 var (
 	a Arguments
@@ -58,6 +58,12 @@ func main() {
 
 	if path := parser.CircleDetect(ast); len(path) > 0 {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+
+	if a.CheckKeyword {
+		if warns := parser.DetectKeyword(ast); len(warns) > 0 {
+			log.MultiWarn(warns)
+		}
 	}
 
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})

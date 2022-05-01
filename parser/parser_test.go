@@ -136,12 +136,12 @@ func TestAnnotation(t *testing.T) {
 func TestLiteralEscape(t *testing.T) {
 	ast, err := parser.ParseString("main.thrift", `
 const string str1 = "a\'b\"c\td\ve\nf\rg\\h"
-const string str2 = "a\'b\"c\td\ve\nf\rg\\h"
+const string str2 = 'a\'b\"c\td\ve\nf\rg\\h'
 	`)
 	test.Assert(t, err == nil, err)
 	test.Assert(t, len(ast.Constants) == 2)
-	test.Assert(t, ast.Constants[0].Value.TypedValue.GetLiteral() == "a'b\"c\td\ve\nf\rg\\h", ast.Constants[0].Value.TypedValue.GetLiteral())
-	test.Assert(t, ast.Constants[1].Value.TypedValue.GetLiteral() == "a'b\"c\td\ve\nf\rg\\h")
+	test.Assert(t, ast.Constants[0].Value.TypedValue.GetLiteral() == `a\'b"c\td\ve\nf\rg\\h`)
+	test.Assert(t, ast.Constants[1].Value.TypedValue.GetLiteral() == `a'b\"c\td\ve\nf\rg\\h`)
 }
 
 const testReservedComments = `
@@ -262,4 +262,27 @@ func TestSkip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+const testEscape = `
+const string str = "hello%s\nworld"
+
+struct s {
+	1: string f1 = "\"\'1\a2\\\t3\007本\u12e4456" (a = "vd:\"\'1\a2\\\t3\007本\u12e4456\"")
+	2: string f2 = '\"\'1\a2\\\t3\007本\u12e4456' (a = 'vd:\"\'1\a2\\\t3\007本\u12e4456\"')
+}
+`
+
+func TestEscape(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testEscape)
+	test.Assert(t, err == nil, err)
+
+	test.Assert(t, len(ast.Constants) == 1)
+	test.Assert(t, *ast.Constants[0].Value.TypedValue.Literal == `hello%s\nworld`)
+
+	test.Assert(t, len(ast.Structs) == 1)
+	test.Assert(t, *ast.Structs[0].Fields[0].Default.TypedValue.Literal == `"\'1\a2\\\t3\007本\u12e4456`)
+	test.Assert(t, *ast.Structs[0].Fields[1].Default.TypedValue.Literal == `\"'1\a2\\\t3\007本\u12e4456`)
+	test.Assert(t, ast.Structs[0].Fields[0].Annotations[0].Values[0] == `vd:"\'1\a2\\\t3\007本\u12e4456"`)
+	test.Assert(t, ast.Structs[0].Fields[1].Annotations[0].Values[0] == `vd:\"'1\a2\\\t3\007本\u12e4456\"`)
 }

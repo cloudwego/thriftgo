@@ -395,7 +395,8 @@ func (r *Resolver) onStrBin(g *Scope, name string, t *parser.Type, v *parser.Con
 	}()
 	switch v.Type {
 	case parser.ConstType_ConstLiteral:
-		return fmt.Sprintf("%q", v.TypedValue.GetLiteral()), nil
+		raw := strings.ReplaceAll(v.TypedValue.GetLiteral(), "\"", "\\\"")
+		return fmt.Sprintf(`"%s"`, raw), nil
 	case parser.ConstType_ConstIdentifier:
 		s := v.TypedValue.GetIdentifier()
 		if s == "true" || s == "false" {
