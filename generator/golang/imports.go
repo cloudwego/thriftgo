@@ -29,10 +29,6 @@ type importManager struct {
 
 func newImportManager() *importManager {
 	im := &importManager{
-		Namespace: namespace.NewNamespace(func(name string, cnt int) string {
-			return fmt.Sprintf("%s%d", name, cnt-1) // zero-index
-		}),
-
 		// The usage of these three libraries depends on specific code generation
 		// and feature settings which requires tedisous type cheking before rendering.
 		// So we register them into the namespace by addImports and mark them not-used,
@@ -73,10 +69,13 @@ func (im *importManager) UseStdLibrary(lib string) {
 }
 
 func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
-	ns := im.Namespace
-	for pkg, path := range cu.customized {
-		ns.Add(pkg, path)
+	im.Namespace = &idHijack{
+		Namespace: namespace.NewNamespace(func(name string, cnt int) string {
+			return fmt.Sprintf("%s%d", name, cnt-1) // zero-index
+		}),
+		replacement: cu.importReplace,
 	}
+	ns := im.Namespace
 
 	if len(ast.Enums) > 0 {
 		ns.Add("fmt", "fmt")
@@ -118,4 +117,32 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 	} else if cu.Features().ValidateSet {
 		ns.Add("reflect", "reflect")
 	}
+}
+
+type idHijack struct {
+	namespace.Namespace
+	replacement map[string]string
+}
+
+func (h *idHijack) get(id string) string {
+	if v, ok := h.replacement[id]; ok {
+		return v
+	}
+	return id
+}
+
+func (h *idHijack) Add(name, id string) (result string) {
+	return h.Namespace.Add(name, h.get(id))
+}
+
+func (h *idHijack) Get(id string) (name string) {
+	return h.Namespace.Get(h.get(id))
+}
+
+func (h *idHijack) Reserve(name, id string) (ok bool) {
+	return h.Namespace.Reserve(name, h.get(id))
+}
+
+func (h *idHijack) MustReserve(name, id string) {
+	h.Namespace.MustReserve(name, h.get(id))
 }

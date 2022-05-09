@@ -78,13 +78,13 @@ var codeUtilsParams = []*param{
 		name: "thrift_import_path",
 		desc: "Override thrift package import path (default:github.com/apache/thrift/lib/go/thrift)",
 		action: func(value string, cu *CodeUtils) error {
-			cu.UsePackage("thrift", value)
+			cu.UsePackage(DefaultThriftLib, value)
 			return nil
 		},
 	},
 	{
 		name: "use_package",
-		desc: "Specify an import path for a package. Form: 'pkg=path'",
+		desc: "Specify an import path replacement. Form: 'path=repl', (e.g. 'database/sql/driver=example.com/my/dirver')",
 		action: func(value string, cu *CodeUtils) error {
 			parts := strings.SplitN(value, "=", 2)
 			if len(parts) < 2 {
