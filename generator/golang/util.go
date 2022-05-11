@@ -41,7 +41,7 @@ var escape = regexp.MustCompile(`\\.`)
 type CodeUtils struct {
 	backend.LogFunc
 	packagePrefix string            // Package prefix for all generated codes.
-	customized    map[string]string // Customized imports, package => import path.
+	importReplace map[string]string // Customized imports, import path => replacement.
 	features      Features          // Available features.
 	namingStyle   styles.Naming     // Naming style.
 	doInitialisms bool              // Make initialisms setting kept event naming style changes.
@@ -53,11 +53,11 @@ type CodeUtils struct {
 // NewCodeUtils creates a new CodeUtils.
 func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 	cu := &CodeUtils{
-		LogFunc:     log,
-		customized:  make(map[string]string),
-		features:    defaultFeatures,
-		namingStyle: styles.NewNamingStyle("thriftgo"),
-		scopeCache:  make(map[*parser.Thrift]*Scope),
+		LogFunc:       log,
+		importReplace: make(map[string]string),
+		features:      defaultFeatures,
+		namingStyle:   styles.NewNamingStyle("thriftgo"),
+		scopeCache:    make(map[*parser.Thrift]*Scope),
 	}
 	return cu
 }
@@ -83,8 +83,8 @@ func (cu *CodeUtils) SetPackagePrefix(pp string) {
 }
 
 // UsePackage forces the generated codes to use the specific package.
-func (cu *CodeUtils) UsePackage(pkg, path string) {
-	cu.customized[pkg] = path
+func (cu *CodeUtils) UsePackage(path, repl string) {
+	cu.importReplace[path] = repl
 }
 
 // NamingStyle returns the current naming style.
