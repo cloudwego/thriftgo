@@ -6,10 +6,14 @@ header:
   paths:
     - '**/*.go'
     - '**/*.s'
+    - '**/*.thrift'
+    - '**/*.sh'
+    - '**/Makefile'
 
   paths-ignore:
     - 'parser/AST.go'
     - 'parser/thrift.peg.go'
     - 'plugin/protocol.go'
+    - 'test/golang/cases_and_options/thrifttest/a.thrift'
 
   comment: on-failure
