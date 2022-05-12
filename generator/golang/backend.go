@@ -106,11 +106,14 @@ func (g *GoBackend) prepareTemplates() {
 
 	name := "thrift"
 	all := template.New(name).Funcs(g.funcs)
-	for _, tpl := range templates.Templates() {
+	tpls := templates.Templates()
+
+	if name := g.utils.Template(); name != "" {
+		tpls = g.utils.alternative[name]
+	}
+	for _, tpl := range tpls {
 		all = template.Must(all.Parse(tpl))
 	}
-
-	// XXX(lushaojie): support substutions by all.AddParseTree
 	g.tpl = all
 }
 

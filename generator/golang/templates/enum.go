@@ -47,6 +47,7 @@ func {{$EnumType}}FromString(s string) ({{$EnumType}}, error) {
 		return {{.GoName}}, nil
 	{{- end}}
 	}
+	{{- UseStdLibrary "fmt"}}
 	return {{$EnumType}}(0), fmt.Errorf("not a valid {{$EnumType}} string")
 }
 
@@ -69,7 +70,7 @@ func (p *{{$EnumType}}) UnmarshalText(text []byte) error {
 {{- end}}{{/* if Features.MarshalEnumToText */}}
 
 {{- if Features.ScanValueForEnum}}
-
+{{- UseStdLibrary "sql" "driver"}}
 func (p *{{$EnumType}}) Scan(value interface{}) (err error) {
 	var result sql.NullInt64
 	err = result.Scan(value)

@@ -33,11 +33,7 @@ func newImportManager() *importManager {
 		// and feature settings which requires tedisous type cheking before rendering.
 		// So we register them into the namespace by addImports and mark them not-used,
 		// use the UseStdLibrary to confirm if they are actually used.
-		libNotUsed: map[string]bool{
-			"strings": true,
-			"bytes":   true,
-			"reflect": true,
-		},
+		libNotUsed: make(map[string]bool),
 	}
 	return im
 }
@@ -64,8 +60,10 @@ func (im *importManager) ResolveImports() (map[string]string, error) {
 // UseStdLibrary claims to use a certain standard library.
 // This function is designed to be called during template rendering to
 // avoid tedious type checking for determine whether a library will be used.
-func (im *importManager) UseStdLibrary(lib string) {
-	delete(im.libNotUsed, lib)
+func (im *importManager) UseStdLibrary(libs ...string) {
+	for _, lib := range libs {
+		delete(im.libNotUsed, lib)
+	}
 }
 
 func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
@@ -77,45 +75,20 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 	}
 	ns := im.Namespace
 
-	if len(ast.Enums) > 0 {
-		ns.Add("fmt", "fmt")
-		if cu.Features().ScanValueForEnum {
-			ns.Add("driver", "database/sql/driver")
-			ns.Add("sql", "database/sql")
-		}
+	std := map[string]string{
+		"context": "context",
+		"fmt":     "fmt",
+		"driver":  "database/sql/driver",
+		"sql":     "database/sql",
+		"strings": "strings",
+		"bytes":   "bytes",
+		"reflect": "reflect",
+		"thrift":  DefaultThriftLib,
+		"unknown": DefaultUnknownLib,
 	}
-
-	if len(ast.GetStructLikes()) > 0 {
-		ns.Add("fmt", "fmt")
-		ns.Add("thrift", DefaultThriftLib)
-	}
-
-	if len(ast.Services) > 0 {
-		ns.Add("thrift", DefaultThriftLib)
-		for _, svc := range ast.Services {
-			if svc.Extends == "" || len(svc.Functions) > 0 {
-				ns.Add("context", "context")
-			}
-			if len(svc.Functions) > 0 {
-				ns.Add("fmt", "fmt")
-			}
-		}
-	}
-
-	structCount := len(ast.GetStructLikes())
-	ast.ForEachService(func(svc *parser.Service) bool {
-		structCount += len(svc.Functions)
-		return true
-	})
-	if structCount > 0 && cu.Features().KeepUnknownFields {
-		ns.Add("unknown", DefaultUnknownLib)
-	}
-
-	if cu.Features().GenDeepEqual {
-		ns.Add("strings", "strings")
-		ns.Add("bytes", "bytes")
-	} else if cu.Features().ValidateSet {
-		ns.Add("reflect", "reflect")
+	for pkg, path := range std {
+		ns.Add(pkg, path)
+		im.libNotUsed[pkg] = true
 	}
 }
 

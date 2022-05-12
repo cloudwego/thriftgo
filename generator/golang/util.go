@@ -24,6 +24,7 @@ import (
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/common"
 	"github.com/cloudwego/thriftgo/generator/golang/styles"
+	"github.com/cloudwego/thriftgo/generator/golang/templates"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
@@ -46,8 +47,10 @@ type CodeUtils struct {
 	namingStyle   styles.Naming     // Naming style.
 	doInitialisms bool              // Make initialisms setting kept event naming style changes.
 
-	rootScope  *Scope
-	scopeCache map[*parser.Thrift]*Scope
+	rootScope   *Scope
+	scopeCache  map[*parser.Thrift]*Scope
+	useTemplate string
+	alternative map[string][]string
 }
 
 // NewCodeUtils creates a new CodeUtils.
@@ -58,6 +61,7 @@ func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 		features:      defaultFeatures,
 		namingStyle:   styles.NewNamingStyle("thriftgo"),
 		scopeCache:    make(map[*parser.Thrift]*Scope),
+		alternative:   templates.Alternative(),
 	}
 	return cu
 }
@@ -85,6 +89,20 @@ func (cu *CodeUtils) SetPackagePrefix(pp string) {
 // UsePackage forces the generated codes to use the specific package.
 func (cu *CodeUtils) UsePackage(path, repl string) {
 	cu.importReplace[path] = repl
+}
+
+// Template returns the current template name. Empty for the default.
+func (cu *CodeUtils) Template() string {
+	return cu.useTemplate
+}
+
+// UseTemplate specifies a different template to generate codes.
+func (cu *CodeUtils) UseTemplate(value string) error {
+	if cu.alternative[value] == nil {
+		return fmt.Errorf("unknown template name: %q", value)
+	}
+	cu.useTemplate = value
+	return nil
 }
 
 // NamingStyle returns the current naming style.
@@ -200,9 +218,12 @@ func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) 
 
 func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []string) (string, error) {
 	var tags []string
-	if f.Requiredness == parser.FieldType_Required {
+	switch f.Requiredness {
+	case parser.FieldType_Required:
 		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,required"`, f.Name, f.ID))
-	} else {
+	case parser.FieldType_Optional:
+		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,optional"`, f.Name, f.ID))
+	default:
 		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d"`, f.Name, f.ID))
 	}
 
@@ -307,8 +328,8 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"IsFixedLengthType": IsFixedLengthType,
 		"SupportIsSet":      SupportIsSet,
 		"GetTypeIDConstant": GetTypeIDConstant,
-		"UseStdLibrary": func(lib string) string {
-			cu.rootScope.imports.UseStdLibrary(lib)
+		"UseStdLibrary": func(libs ...string) string {
+			cu.rootScope.imports.UseStdLibrary(libs...)
 			return ""
 		},
 		"ServicePrefix": func(svc *Service) (string, error) {

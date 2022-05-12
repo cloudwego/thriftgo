@@ -28,14 +28,14 @@ import (
 // forceSingleDefinition panics if the given template contains multiple definition.
 // It is used to keep maintainability of templates.
 // The result is the name defined in the given template.
-func forceSingleDefinition(text string, funcMap template.FuncMap) string {
+func forceSingleDefinition(pkg, text string, funcMap template.FuncMap) string {
 	name := "force-single-definition"
 	tpl := template.New(name).Funcs(funcMap)
 	tpl = template.Must(tpl.Parse(text))
 	if tpls := tpl.Templates(); len(tpls) != 2 {
 		err := fmt.Errorf(
-			"templates must have only one definition: `\n----%s----\n`",
-			text)
+			"templates must have only one definition: pkg[%q] `\n----%s----\n`",
+			pkg, text)
 		panic(err)
 	} else {
 		if tpls[0].Name() == name {
@@ -64,7 +64,14 @@ func TestDefinitionNumber(t *testing.T) {
 	funcs := utils.BuildFuncMap()
 	for _, tpl := range templates.Templates() {
 		if tpl != templates.File {
-			forceSingleDefinition(tpl, funcs)
+			forceSingleDefinition("", tpl, funcs)
+		}
+	}
+	for pkg, tpls := range templates.Alternative() {
+		for _, tpl := range tpls {
+			if tpl != templates.File {
+				forceSingleDefinition(pkg, tpl, funcs)
+			}
 		}
 	}
 }
