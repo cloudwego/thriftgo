@@ -29,7 +29,7 @@ func indent(lines, pad string) string {
 }
 
 // Append append key value pair to Annotation slice.
-func (a *Annotations) Append(key string, value string) {
+func (a *Annotations) Append(key, value string) {
 	old := *a
 	for _, anno := range old {
 		if anno.Key == key {

@@ -4,6 +4,7 @@ package plugin
 
 import (
 	"fmt"
+
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/parser"
 )

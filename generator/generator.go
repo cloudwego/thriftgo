@@ -181,10 +181,10 @@ func (g *Generator) Persist(res *plugin.Response) error {
 
 		g.log.Info("Write", full)
 		path := filepath.Dir(full)
-		if err := os.MkdirAll(path, 0755); err != nil && !os.IsExist(err) {
+		if err := os.MkdirAll(path, 0o755); err != nil && !os.IsExist(err) {
 			return fmt.Errorf("failed to create path '%s': %w", path, err)
 		}
-		if err := ioutil.WriteFile(full, content, 0644); err != nil {
+		if err := ioutil.WriteFile(full, content, 0o644); err != nil {
 			return fmt.Errorf("failed to write file '%s': %w", full, err)
 		}
 	}

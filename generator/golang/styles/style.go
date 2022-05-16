@@ -17,9 +17,7 @@ package styles
 // Naming determine naming style of the identifier converted from IDL.
 type Naming interface {
 	Name() string
-
 	Identify(name string) (string, error)
-
 	UseInitialisms(enable bool)
 }
 
