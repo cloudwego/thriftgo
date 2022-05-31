@@ -30,17 +30,18 @@ type Features struct {
 	GenOmitEmptyTag    bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields. Enabled by default."`
 	TypedefAsTypeAlias bool `use_type_alias:"Generate type alias for typedef instead of type define. Enabled by default."`
 	ValidateSet        bool `validate_set:"Generate codes to validate the uniqueness of set elements. Enabled by default."`
-	ValueTypeForSIC    bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
+	ValueTypeForSIC    bool `value_type_in_container:"Generate value type for struct-like in container instead of pointer type."`
 	ScanValueForEnum   bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
 	ReorderFields      bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
 	TypedEnumString    bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
-	KeepUnknownFields  bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
+	KeepUnknownFields  bool `keep_unknown_fields:"Generate codes to store unrecognized fields in structs."`
 	GenDeepEqual       bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
 	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
 	ReserveComments    bool `reserve_comments:"Reserve comments of definitions in thrift file"`
 	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
 	FrugalTag          bool `frugal_tag:"Generate 'frugal' tags."`
 	EscapeDoubleInTag  bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
+	DefinitionOnly     bool `definition_only:"Only generate type definitions and constant variables declarations."`
 }
 
 var defaultFeatures = Features{
@@ -61,6 +62,7 @@ var defaultFeatures = Features{
 	NilSafe:            false,
 	FrugalTag:          false,
 	EscapeDoubleInTag:  true,
+	DefinitionOnly:     false,
 }
 
 type param struct {

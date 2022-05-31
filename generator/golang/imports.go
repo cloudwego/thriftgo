@@ -87,11 +87,15 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 
 	if len(ast.GetStructLikes()) > 0 {
 		ns.Add("fmt", "fmt")
-		ns.Add("thrift", DefaultThriftLib)
+		if !cu.features.DefinitionOnly {
+			ns.Add("thrift", DefaultThriftLib)
+		}
 	}
 
 	if len(ast.Services) > 0 {
-		ns.Add("thrift", DefaultThriftLib)
+		if !cu.features.DefinitionOnly {
+			ns.Add("thrift", DefaultThriftLib)
+		}
 		for _, svc := range ast.Services {
 			if svc.Extends == "" || len(svc.Functions) > 0 {
 				ns.Add("context", "context")

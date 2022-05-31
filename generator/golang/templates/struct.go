@@ -67,6 +67,8 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 
 {{template "FieldIsSet" .}}
 
+{{- if not Features.DefinitionOnly}}
+
 {{template "StructLikeRead" .}}
 
 {{template "StructLikeReadField" .}}
@@ -74,6 +76,8 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{template "StructLikeWrite" .}}
 
 {{template "StructLikeWriteField" .}}
+
+{{- end}}{{/* if not Features.DefinitionOnly */}}
 
 func (p *{{$TypeName}}) String() string {
 	if p == nil {

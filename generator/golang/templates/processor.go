@@ -17,6 +17,8 @@ package templates
 // Processor .
 var Processor = `
 {{define "Processor"}}
+{{- if not Features.DefinitionOnly}}
+
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
 {{- $ServiceName := .GoName}}
@@ -165,7 +167,10 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 }
 {{- end}}{{/* range .Functions */}}
 
+{{- end}}{{/* if not Features.DefinitionOnly */}}
+
 {{- range .Functions}}
+
 {{$ArgsType := .ArgType}}
 {{template "StructLike" $ArgsType}}
 {{- if not .Oneway}}

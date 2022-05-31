@@ -48,6 +48,8 @@ type {{$ServiceName}} interface {
 	{{- end}}
 }
 
+{{- if not Features.DefinitionOnly}}
+
 type {{$ClientName}} struct {
 	{{- if .Extends}}
 	*{{$BasePrefix}}{{$BaseService}}Client
@@ -131,5 +133,6 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 	{{- end}}{{/* If .Void */}}
 }
 {{end}}{{/* range .Functions */}}
+{{- end}}{{/* if not Features.DefinitionOnly */}}
 {{- end}}{{/* define "Service" */}}
 `
