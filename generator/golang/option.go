@@ -41,6 +41,7 @@ type Features struct {
 	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
 	FrugalTag          bool `frugal_tag:"Generate 'frugal' tags."`
 	EscapeDoubleInTag  bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
+	MetaReadWrite      bool `meta_read_write:"use the meta package to implement read write methods"`
 }
 
 var defaultFeatures = Features{
@@ -61,6 +62,7 @@ var defaultFeatures = Features{
 	NilSafe:            false,
 	FrugalTag:          false,
 	EscapeDoubleInTag:  true,
+	MetaReadWrite:      false,
 }
 
 type param struct {

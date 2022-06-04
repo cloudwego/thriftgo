@@ -21,7 +21,7 @@ var (
 	all  = make(map[string][]string) // word => langs
 )
 
-/// Register adds reserved words to the global set for the given language.
+// Register adds reserved words to the global set for the given language.
 func Register(lang string, words ...string) {
 	lock.Lock()
 	defer lock.Unlock()

@@ -14,13 +14,10 @@
 
 package slim
 
-// Extension.
+// Extension .
 func Extension() []string {
 	return []string{
-		StructLikeRead,
-		StructLikeReadField,
-		StructLikeWrite,
-		StructLikeWriteField,
+		StructLike,
 		Client,
 		Processor,
 	}
@@ -30,21 +27,87 @@ func Extension() []string {
 // Because text.Templates will not substitute an existing template with an empty one,
 // we use insertion points to walk around this problem and achieve deleting templates.
 var (
-	StructLikeRead       = `{{define "StructLikeRead"}}{{InsertionPoint "slim1"}}{{end}}`
-	StructLikeReadField  = `{{define "StructLikeReadField"}}{{InsertionPoint "slim2"}}{{end}}`
-	StructLikeWrite      = `{{define "StructLikeWrite"}}{{InsertionPoint "slim3"}}{{end}}`
-	StructLikeWriteField = `{{define "StructLikeWriteField"}}{{InsertionPoint "sim4"}}{{end}}`
-	Client               = `{{define "Client"}}{{InsertionPoint "slim5"}}{{end}}`
-	Processor            = `
-{{define "Processor"}}
-{{- range .Functions}}
-{{$ArgsType := .ArgType}}
-{{template "StructLike" $ArgsType}}
-{{- if not .Oneway}}
-	{{$ResType := .ResType}}
-	{{template "StructLike" $ResType}}
+	StructLike = `
+{{define "StructLike"}}
+{{- $TypeName := .GoName}}
+{{InsertionPoint .Category .Name}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
+type {{$TypeName}} struct {
+{{- range .Fields}}
+	{{- InsertionPoint $.Category $.Name .Name}}
+	{{- if and Features.ReserveComments .ReservedComments}}
+	{{.ReservedComments}}
+	{{- end}}
+	{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
-{{- end}}{{/* range .Functions */}}
+	{{- if Features.KeepUnknownFields}}
+	{{- UseStdLibrary "unknown"}}
+	_unknownFields unknown.Fields
+	{{- end}}
+}
+
+{{- if Features.MetaReadWrite}}
+{{- UseStdLibrary "meta"}}
+func init() {
+	meta.RegisterStruct(New{{$TypeName}}, {{Marshal .}})
+}
+{{- end}}{{/* if Features.MetaReadWrite */}}
+
+func New{{$TypeName}}() *{{$TypeName}} {
+	return &{{$TypeName}}{
+		{{template "StructLikeDefault" .}}
+	}
+}
+
+{{template "FieldGetOrSet" .}}
+
+{{if eq .Category "union"}}
+func (p *{{$TypeName}}) CountSetFields{{$TypeName}}() int {
+	count := 0
+	{{- range .Fields}}
+	{{- if SupportIsSet .Field}}
+	if p.{{.IsSetter}}() {
+		count++
+	}
+	{{- end}}
+	{{- end}}
+	return count
+}
+{{- end}}
+
+{{if Features.KeepUnknownFields}}
+func (p *{{$TypeName}}) CarryingUnknownFields() bool {
+	return len(p._unknownFields) > 0
+}
+{{end}}{{/* if Features.KeepUnknownFields */}}
+
+{{template "FieldIsSet" .}}
+
+func (p *{{$TypeName}}) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	{{- UseStdLibrary "fmt"}}
+	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
+}
+
+{{- if eq .Category "exception"}}
+func (p *{{$TypeName}}) Error() string {
+	return p.String()
+}
+{{- end}}
+
+{{- end}}{{/* define "StructLike" */}}
+	`
+
+	Client = `
+{{define "Client"}}
+{{InsertionPoint "slim.Client"}}
+{{end}}{{/* define "Client" */}}`
+
+	Processor = `
+{{define "Processor"}}
+{{InsertionPoint "slim.Processor"}}
 {{- end}}{{/* define "Processor" */}}
 	`
 )

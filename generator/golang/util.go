@@ -23,6 +23,7 @@ import (
 
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/common"
+	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	"github.com/cloudwego/thriftgo/generator/golang/styles"
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
 	"github.com/cloudwego/thriftgo/parser"
@@ -34,6 +35,7 @@ import (
 const (
 	DefaultThriftLib  = "github.com/apache/thrift/lib/go/thrift"
 	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
+	DefaultMetaLib    = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 )
 
 var escape = regexp.MustCompile(`\\.`)
@@ -348,6 +350,13 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 				return Name("")
 			}
 			return svc.GoName()
+		},
+		"Marshal": func(s *StructLike) (res string) {
+			bs, err := meta.Marshal(buildMeta(cu.rootScope.ast, s.StructLike))
+			if err != nil {
+				return fmt.Sprintf("<%s>", err.Error())
+			}
+			return prettifyBytesLiteral(fmt.Sprintf("%#v", bs))
 		},
 	}
 	return m

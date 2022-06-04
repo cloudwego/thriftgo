@@ -34,6 +34,13 @@ type {{$TypeName}} struct {
 	{{- end}}
 }
 
+{{- if Features.MetaReadWrite}}
+{{- UseStdLibrary "meta"}}
+func init() {
+	meta.RegisterStruct(New{{$TypeName}}, {{Marshal .}})
+}
+{{- end}}{{/* if Features.MetaReadWrite */}}
+
 func New{{$TypeName}}() *{{$TypeName}} {
 	return &{{$TypeName}}{
 		{{template "StructLikeDefault" .}}
