@@ -14,69 +14,31 @@
 
 package plugin
 
-import (
-	"bytes"
-	"context"
-
-	"github.com/apache/thrift/lib/go/thrift"
-)
-
-// Writer writes out data to an output thrift.TProtocol.
-type Writer interface {
-	Write(oprot thrift.TProtocol) error
-}
-
-// Reader reads data from an input thrift.TProtocol.
-type Reader interface {
-	Read(iprot thrift.TProtocol) error
-}
-
-// Marshal serializes the data with binary protocol.
-func Marshal(data Writer) ([]byte, error) {
-	var buf bytes.Buffer
-	trans := thrift.NewStreamTransportRW(&buf)
-	proto := thrift.NewTBinaryProtocol(trans, true, true)
-	err := data.Write(proto)
-	if err != nil {
-		return nil, err
-	}
-	err = proto.Flush(context.TODO()) // NOTE: important
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// Unmarshal deserializes the data from bytes with binary protocol.
-func Unmarshal(data Reader, bs []byte) error {
-	trans := thrift.NewStreamTransportR(bytes.NewReader(bs))
-	proto := thrift.NewTBinaryProtocolTransport(trans)
-	return data.Read(proto)
-}
+import "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 
 // MarshalRequest encodes a request with binary protocol.
-func MarshalRequest(data *Request) ([]byte, error) {
-	return Marshal(data)
+func MarshalRequest(req *Request) ([]byte, error) {
+	return meta.Marshal(req)
 }
 
 // UnmarshalRequest decodes a request with binary protocol.
 func UnmarshalRequest(bs []byte) (*Request, error) {
 	req := NewRequest()
-	if err := Unmarshal(req, bs); err != nil {
+	if err := meta.Unmarshal(bs, req); err != nil {
 		return nil, err
 	}
 	return req, nil
 }
 
 // MarshalResponse encodes a response with binary protocol.
-func MarshalResponse(data *Response) ([]byte, error) {
-	return Marshal(data)
+func MarshalResponse(res *Response) ([]byte, error) {
+	return meta.Marshal(res)
 }
 
 // UnmarshalResponse decodes a response with binary protocol.
 func UnmarshalResponse(bs []byte) (*Response, error) {
 	res := NewResponse()
-	if err := Unmarshal(res, bs); err != nil {
+	if err := meta.Unmarshal(bs, res); err != nil {
 		return nil, err
 	}
 	return res, nil

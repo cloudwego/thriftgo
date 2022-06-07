@@ -22,8 +22,6 @@ package unknown
 import (
 	"errors"
 	"fmt"
-
-	"github.com/apache/thrift/lib/go/thrift"
 )
 
 // WithUnknownFields is the interface of all structures that supports keeping unknown fields.
@@ -34,10 +32,10 @@ type WithUnknownFields interface {
 
 // errors .
 var (
-	ErrExceedDepthLimit = thrift.NewTProtocolExceptionWithType(thrift.DEPTH_LIMIT, errors.New("depth limit exceeded"))
+	ErrExceedDepthLimit = errors.New("depth limit exceeded")
 
-	ErrUnknownType = func(t thrift.TType) error {
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("unknown data type %d", t))
+	ErrUnknownType = func(t int) error {
+		return fmt.Errorf("unknown data type %d", t)
 	}
 
 	maxNestingDepth = 64
@@ -52,9 +50,9 @@ func SetNestingDepthLimit(d int) {
 type Field struct {
 	Name    string
 	ID      int16
-	Type    thrift.TType
-	KeyType thrift.TType
-	ValType thrift.TType
+	Type    int
+	KeyType int
+	ValType int
 	Value   interface{}
 }
 
@@ -62,8 +60,12 @@ type Field struct {
 type Fields []*Field
 
 // Append reads an unrecognized field and append it to the current slice.
-func (fs *Fields) Append(iprot thrift.TProtocol, name string, fieldType thrift.TType, id int16) error {
-	f, err := Read(iprot, name, fieldType, id, maxNestingDepth)
+func (fs *Fields) Append(xprot TProtocol, name string, fieldType TType, id int16) error {
+	iprot, err := convert(xprot)
+	if err != nil {
+		return err
+	}
+	f, err := read(iprot, name, asInt(fieldType), id, maxNestingDepth)
 	if err != nil {
 		return err
 	}
@@ -72,99 +74,103 @@ func (fs *Fields) Append(iprot thrift.TProtocol, name string, fieldType thrift.T
 }
 
 // Write writes out the unknown fields.
-func (fs *Fields) Write(oprot thrift.TProtocol) (err error) {
+func (fs *Fields) Write(xprot TProtocol) (err error) {
+	oprot, err := convert(xprot)
+	if err != nil {
+		return err
+	}
 	var i int
 	var f *Field
 	for i, f = range *fs {
-		if err = oprot.WriteFieldBegin(f.Name, f.Type, f.ID); err != nil {
+		if err = oprot.WriteFieldBegin(ctx, f.Name, f.Type, f.ID); err != nil {
 			break
 		}
-		if err = Write(oprot, f); err != nil {
+		if err = write(oprot, f); err != nil {
 			break
 		}
-		if err = oprot.WriteFieldEnd(); err != nil {
+		if err = oprot.WriteFieldEnd(ctx); err != nil {
 			break
 		}
 	}
 	if err != nil {
-		msg := fmt.Sprintf("write field error unknown.%d(name:%s type:%d id:%d): ", i, f.Name, f.Type, f.ID)
-		err = thrift.PrependError(msg, err)
+		err = fmt.Errorf("write field error unknown.%d(name:%s type:%d id:%d): %w",
+			i, f.Name, f.Type, f.ID, err)
 	}
 	return err
 }
 
-// Write writes out the unknown field.
-func Write(oprot thrift.TProtocol, f *Field) (err error) {
+// write writes out the unknown field.
+func write(oprot *protocol, f *Field) (err error) {
 	switch f.Type {
-	case thrift.BOOL:
-		return oprot.WriteBool(f.Value.(bool))
-	case thrift.BYTE:
-		return oprot.WriteByte(f.Value.(int8))
-	case thrift.DOUBLE:
-		return oprot.WriteDouble(f.Value.(float64))
-	case thrift.I16:
-		return oprot.WriteI16(f.Value.(int16))
-	case thrift.I32:
-		return oprot.WriteI32(f.Value.(int32))
-	case thrift.I64:
-		return oprot.WriteI64(f.Value.(int64))
-	case thrift.STRING:
-		return oprot.WriteString(f.Value.(string))
-	case thrift.SET:
+	case TBool:
+		return oprot.WriteBool(ctx, f.Value.(bool))
+	case TByte:
+		return oprot.WriteByte(ctx, f.Value.(int8))
+	case TDouble:
+		return oprot.WriteDouble(ctx, f.Value.(float64))
+	case TI16:
+		return oprot.WriteI16(ctx, f.Value.(int16))
+	case TI32:
+		return oprot.WriteI32(ctx, f.Value.(int32))
+	case TI64:
+		return oprot.WriteI64(ctx, f.Value.(int64))
+	case TString:
+		return oprot.WriteString(ctx, f.Value.(string))
+	case TSet:
 		vs := f.Value.([]*Field)
-		if err = oprot.WriteSetBegin(f.ValType, len(vs)); err != nil {
-			return thrift.PrependError("write set begin error: ", err)
+		if err = oprot.WriteSetBegin(ctx, f.ValType, len(vs)); err != nil {
+			return fmt.Errorf("write set begin error: %w", err)
 		}
 		for _, v := range vs {
-			if err = Write(oprot, v); err != nil {
-				return thrift.PrependError("write set elem error: ", err)
+			if err = write(oprot, v); err != nil {
+				return fmt.Errorf("write set elem error: %w", err)
 			}
 		}
-		if err = oprot.WriteSetEnd(); err != nil {
-			return thrift.PrependError("write set end error: ", err)
+		if err = oprot.WriteSetEnd(ctx); err != nil {
+			return fmt.Errorf("write set end error: %w", err)
 		}
-	case thrift.LIST:
+	case TList:
 		vs := f.Value.([]*Field)
-		if err = oprot.WriteListBegin(f.ValType, len(vs)); err != nil {
-			return thrift.PrependError("write list begin error: ", err)
+		if err = oprot.WriteListBegin(ctx, f.ValType, len(vs)); err != nil {
+			return fmt.Errorf("write list begin error: %w", err)
 		}
 		for _, v := range vs {
-			if err = Write(oprot, v); err != nil {
-				return thrift.PrependError("write list elem error: ", err)
+			if err = write(oprot, v); err != nil {
+				return fmt.Errorf("write list elem error: %w", err)
 			}
 		}
-		if err = oprot.WriteListEnd(); err != nil {
-			return thrift.PrependError("write list end error: ", err)
+		if err = oprot.WriteListEnd(ctx); err != nil {
+			return fmt.Errorf("write list end error: %w", err)
 		}
-	case thrift.MAP:
+	case TMap:
 		kvs := f.Value.([]*Field)
-		if err = oprot.WriteMapBegin(f.KeyType, f.ValType, len(kvs)/2); err != nil {
-			return thrift.PrependError("write map begin error: ", err)
+		if err = oprot.WriteMapBegin(ctx, f.KeyType, f.ValType, len(kvs)/2); err != nil {
+			return fmt.Errorf("write map begin error: %w", err)
 		}
 		for i := 0; i < len(kvs); i += 2 {
-			if err = Write(oprot, kvs[i]); err != nil {
-				return thrift.PrependError("write map key error: ", err)
+			if err = write(oprot, kvs[i]); err != nil {
+				return fmt.Errorf("write map key error: %w", err)
 			}
-			if err = Write(oprot, kvs[i+1]); err != nil {
-				return thrift.PrependError("write map value error: ", err)
+			if err = write(oprot, kvs[i+1]); err != nil {
+				return fmt.Errorf("write map value error: %w", err)
 			}
 		}
-		if err = oprot.WriteMapEnd(); err != nil {
-			return thrift.PrependError("write map end error: ", err)
+		if err = oprot.WriteMapEnd(ctx); err != nil {
+			return fmt.Errorf("write map end error: %w", err)
 		}
-	case thrift.STRUCT:
+	case TStruct:
 		fs := Fields(f.Value.([]*Field))
-		if err = oprot.WriteStructBegin(f.Name); err != nil {
-			return thrift.PrependError("write struct begin error: ", err)
+		if err = oprot.WriteStructBegin(ctx, f.Name); err != nil {
+			return fmt.Errorf("write struct begin error: %w", err)
 		}
 		if err = fs.Write(oprot); err != nil {
-			return thrift.PrependError("write struct field error: ", err)
+			return fmt.Errorf("write struct field error: %w", err)
 		}
-		if err = oprot.WriteFieldStop(); err != nil {
-			return thrift.PrependError("write struct stop error: ", err)
+		if err = oprot.WriteFieldStop(ctx); err != nil {
+			return fmt.Errorf("write struct stop error: %w", err)
 		}
-		if err = oprot.WriteStructEnd(); err != nil {
-			return thrift.PrependError("write struct end error: ", err)
+		if err = oprot.WriteStructEnd(ctx); err != nil {
+			return fmt.Errorf("write struct end error: %w", err)
 		}
 	default:
 		return ErrUnknownType(f.Type)
@@ -172,109 +178,109 @@ func Write(oprot thrift.TProtocol, f *Field) (err error) {
 	return
 }
 
-// Read reads an unknown field from the given TProtocol.
-func Read(iprot thrift.TProtocol, name string, fieldType thrift.TType, id int16, maxDepth int) (f *Field, err error) {
+// read reads an unknown field from the given TProtocol.
+func read(iprot *protocol, name string, fieldType int, id int16, maxDepth int) (f *Field, err error) {
 	if maxDepth <= 0 {
 		return nil, ErrExceedDepthLimit
 	}
 
 	var size int
-	f = &Field{Name: name, ID: id, Type: fieldType}
+	f = &Field{Name: name, ID: id, Type: asInt(fieldType)}
 	switch fieldType {
-	case thrift.BOOL:
-		f.Value, err = iprot.ReadBool()
-	case thrift.BYTE:
-		f.Value, err = iprot.ReadByte()
-	case thrift.I16:
-		f.Value, err = iprot.ReadI16()
-	case thrift.I32:
-		f.Value, err = iprot.ReadI32()
-	case thrift.I64:
-		f.Value, err = iprot.ReadI64()
-	case thrift.DOUBLE:
-		f.Value, err = iprot.ReadDouble()
-	case thrift.STRING:
-		f.Value, err = iprot.ReadString()
-	case thrift.SET:
-		f.ValType, size, err = iprot.ReadSetBegin()
+	case TBool:
+		f.Value, err = iprot.ReadBool(ctx)
+	case TByte:
+		f.Value, err = iprot.ReadByte(ctx)
+	case TI16:
+		f.Value, err = iprot.ReadI16(ctx)
+	case TI32:
+		f.Value, err = iprot.ReadI32(ctx)
+	case TI64:
+		f.Value, err = iprot.ReadI64(ctx)
+	case TDouble:
+		f.Value, err = iprot.ReadDouble(ctx)
+	case TString:
+		f.Value, err = iprot.ReadString(ctx)
+	case TSet:
+		f.ValType, size, err = iprot.ReadSetBegin(ctx)
 		if err != nil {
-			return nil, thrift.PrependError("read set begin error: ", err)
+			return nil, fmt.Errorf("read set begin error: %w", err)
 		}
 		set := make([]*Field, 0, size)
 		for i := 0; i < size; i++ {
-			v, err2 := Read(iprot, "", f.ValType, int16(i), maxDepth-1)
+			v, err2 := read(iprot, "", f.ValType, int16(i), maxDepth-1)
 			if err2 != nil {
-				return nil, thrift.PrependError("read set elem error: ", err)
+				return nil, fmt.Errorf("read set elem error: %w", err)
 			}
 			set = append(set, v)
 		}
-		if err = iprot.ReadSetEnd(); err != nil {
-			return nil, thrift.PrependError("read set end error: ", err)
+		if err = iprot.ReadSetEnd(ctx); err != nil {
+			return nil, fmt.Errorf("read set end error: %w", err)
 		}
 		f.Value = set
-	case thrift.LIST:
-		f.ValType, size, err = iprot.ReadListBegin()
+	case TList:
+		f.ValType, size, err = iprot.ReadListBegin(ctx)
 		if err != nil {
-			return nil, thrift.PrependError("read list begin error: ", err)
+			return nil, fmt.Errorf("read list begin error: %w", err)
 		}
 		list := make([]*Field, 0, size)
 		for i := 0; i < size; i++ {
-			v, err2 := Read(iprot, "", f.ValType, int16(i), maxDepth-1)
+			v, err2 := read(iprot, "", f.ValType, int16(i), maxDepth-1)
 			if err2 != nil {
-				return nil, thrift.PrependError("read list elem error: ", err)
+				return nil, fmt.Errorf("read list elem error: %w", err)
 			}
 			list = append(list, v)
 		}
-		if err = iprot.ReadListEnd(); err != nil {
-			return nil, thrift.PrependError("read list end error: ", err)
+		if err = iprot.ReadListEnd(ctx); err != nil {
+			return nil, fmt.Errorf("read list end error: %w", err)
 		}
 		f.Value = list
-	case thrift.MAP:
-		f.KeyType, f.ValType, size, err = iprot.ReadMapBegin()
+	case TMap:
+		f.KeyType, f.ValType, size, err = iprot.ReadMapBegin(ctx)
 		if err != nil {
-			return nil, thrift.PrependError("read map begin error: ", err)
+			return nil, fmt.Errorf("read map begin error: %w", err)
 		}
 		flatMap := make([]*Field, 0, size*2)
 		for i := 0; i < size; i++ {
-			k, err2 := Read(iprot, "", f.KeyType, int16(i), maxDepth-1)
+			k, err2 := read(iprot, "", f.KeyType, int16(i), maxDepth-1)
 			if err2 != nil {
-				return nil, thrift.PrependError("read map key error: ", err)
+				return nil, fmt.Errorf("read map key error: %w", err)
 			}
-			v, err2 := Read(iprot, "", f.ValType, int16(i), maxDepth-1)
+			v, err2 := read(iprot, "", f.ValType, int16(i), maxDepth-1)
 			if err2 != nil {
-				return nil, thrift.PrependError("read map value error: ", err)
+				return nil, fmt.Errorf("read map value error: %w", err)
 			}
 			flatMap = append(flatMap, k, v)
 		}
-		if err = iprot.ReadMapEnd(); err != nil {
-			return nil, thrift.PrependError("read map end error: ", err)
+		if err = iprot.ReadMapEnd(ctx); err != nil {
+			return nil, fmt.Errorf("read map end error: %w", err)
 		}
 		f.Value = flatMap
-	case thrift.STRUCT:
-		_, err = iprot.ReadStructBegin()
+	case TStruct:
+		_, err = iprot.ReadStructBegin(ctx)
 		if err != nil {
-			return nil, thrift.PrependError("read struct begin error: ", err)
+			return nil, fmt.Errorf("read struct begin error: %w", err)
 		}
 		var fields []*Field
 		for {
-			name, fieldTypeID, fieldID, err := iprot.ReadFieldBegin()
+			name, fieldTypeID, fieldID, err := iprot.ReadFieldBegin(ctx)
 			if err != nil {
-				return nil, thrift.PrependError("read field begin error: ", err)
+				return nil, fmt.Errorf("read field begin error: %w", err)
 			}
-			if fieldTypeID == thrift.STOP {
+			if fieldTypeID == TStop {
 				break
 			}
-			v, err := Read(iprot, name, fieldTypeID, fieldID, maxDepth-1)
+			v, err := read(iprot, name, fieldTypeID, fieldID, maxDepth-1)
 			if err != nil {
-				return nil, thrift.PrependError("read struct field error: ", err)
+				return nil, fmt.Errorf("read struct field error: %w", err)
 			}
-			if err := iprot.ReadFieldEnd(); err != nil {
-				return nil, thrift.PrependError("read field end error: ", err)
+			if err := iprot.ReadFieldEnd(ctx); err != nil {
+				return nil, fmt.Errorf("read field end error: %w", err)
 			}
 			fields = append(fields, v)
 		}
-		if err = iprot.ReadStructEnd(); err != nil {
-			return nil, thrift.PrependError("read struct end error: ", err)
+		if err = iprot.ReadStructEnd(ctx); err != nil {
+			return nil, fmt.Errorf("read struct end error: %w", err)
 		}
 		f.Value = fields
 	default:
