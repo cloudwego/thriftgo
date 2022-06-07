@@ -292,6 +292,7 @@ var (
 	ctx              = context.TODO()
 	protocolType     = reflect.TypeOf((*protocol)(nil))
 	protocols        sync.Map // reflect.Type => errro
+	intType          = reflect.TypeOf((*int)(nil)).Elem()
 )
 
 func convert(x interface{}) (*protocol, error) {
@@ -320,12 +321,9 @@ func asInt(x interface{}) int {
 	if !ok {
 		v = reflect.ValueOf(x)
 	}
-	switch {
-	case v.CanInt():
-		return int(v.Int())
-	case v.CanUint():
-		return int(v.Uint())
-	default:
-		panic(fmt.Errorf("expected int or uint type, got %s", v.Type()))
+	i := v.Convert(intType)
+	if i.IsValid() {
+		return int(i.Int())
 	}
+	panic(fmt.Errorf("expected int or uint type, got %s", v.Type()))
 }
