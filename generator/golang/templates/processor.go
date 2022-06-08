@@ -17,6 +17,7 @@ package templates
 // Processor .
 var Processor = `
 {{define "Processor"}}
+{{- UseStdLibrary "thrift" "context"}}
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
 {{- $ServiceName := .GoName}}
@@ -172,7 +173,6 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 	{{$ResType := .ResType}}
 	{{template "StructLike" $ResType}}
 {{- end}}
-
 {{- end}}{{/* range .Functions */}}
 {{- end}}{{/* define "Processor" */}}
 `

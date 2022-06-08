@@ -128,6 +128,13 @@ var codeUtilsParams = []*param{
 			return nil
 		},
 	},
+	{
+		name: "template",
+		desc: "Specify a different template to generate codes. (current available templates: 'slim')",
+		action: func(value string, cu *CodeUtils) error {
+			return cu.UseTemplate(value)
+		},
+	},
 }
 
 // creates parameters by reflection.

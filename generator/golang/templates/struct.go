@@ -28,7 +28,10 @@ type {{$TypeName}} struct {
 	{{- end}}
 	{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
 {{- end}}
-	{{if Features.KeepUnknownFields}}_unknownFields unknown.Fields{{end}}
+	{{- if Features.KeepUnknownFields}}
+	{{- UseStdLibrary "unknown"}}
+	_unknownFields unknown.Fields
+	{{- end}}
 }
 
 func New{{$TypeName}}() *{{$TypeName}} {
@@ -79,6 +82,7 @@ func (p *{{$TypeName}}) String() string {
 	if p == nil {
 		return "<nil>"
 	}
+	{{- UseStdLibrary "fmt"}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
 }
 
@@ -110,6 +114,7 @@ var StructLikeDefault = `
 // StructLikeRead .
 var StructLikeRead = `
 {{define "StructLikeRead"}}
+{{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{if Features.KeepUnknownFields}}var name string{{end}}
@@ -222,6 +227,7 @@ RequiredFieldNotSetError:
 // StructLikeReadField .
 var StructLikeReadField = `
 {{define "StructLikeReadField"}}
+{{- UseStdLibrary "thrift"}}
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
 {{$FieldName := .GoName}}
@@ -237,6 +243,7 @@ func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
 // StructLikeWrite .
 var StructLikeWrite = `
 {{define "StructLikeWrite"}}
+{{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	{{- if gt (len .Fields) 0 }}
@@ -296,6 +303,7 @@ UnknownFieldsWriteError:
 // StructLikeWriteField .
 var StructLikeWriteField = `
 {{define "StructLikeWriteField"}}
+{{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
 {{- $FieldName := .GoName}}
@@ -658,6 +666,7 @@ var FieldWriteSet = `
 				{{- UseStdLibrary "reflect"}}
 				if reflect.DeepEqual({{.Target}}[i], {{.Target}}[j]) {
 		{{- end}}
+					{{- UseStdLibrary "fmt"}}
 					return thrift.PrependError("", fmt.Errorf("%T error writing set field: slice is not unique", {{.Target}}[i]))
 				}
 			}

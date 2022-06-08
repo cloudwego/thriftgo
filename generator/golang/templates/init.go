@@ -14,6 +14,15 @@
 
 package templates
 
+import "github.com/cloudwego/thriftgo/generator/golang/templates/slim"
+
+// Alternative returns all alternative templates.
+func Alternative() map[string][]string {
+	return map[string][]string{
+		"slim": append(Templates(), slim.Extension()...),
+	}
+}
+
 // Templates returns all templates defined in this package.
 func Templates() []string {
 	return []string{
@@ -46,6 +55,6 @@ func Templates() []string {
 		FieldDeepEqualBase,
 		FieldDeepEqualContainer,
 		FieldDeepEqualStructLike,
-		FunctionSignature, Service, Processor,
+		FunctionSignature, Service, Client, Processor,
 	}
 }
