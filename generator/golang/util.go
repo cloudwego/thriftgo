@@ -36,6 +36,7 @@ const (
 	DefaultThriftLib  = "github.com/apache/thrift/lib/go/thrift"
 	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 	DefaultMetaLib    = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
+	defaultTemplate   = "default"
 )
 
 var escape = regexp.MustCompile(`\\.`)
@@ -63,6 +64,7 @@ func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 		features:      defaultFeatures,
 		namingStyle:   styles.NewNamingStyle("thriftgo"),
 		scopeCache:    make(map[*parser.Thrift]*Scope),
+		useTemplate:   defaultTemplate,
 		alternative:   templates.Alternative(),
 	}
 	return cu
@@ -100,7 +102,7 @@ func (cu *CodeUtils) Template() string {
 
 // UseTemplate specifies a different template to generate codes.
 func (cu *CodeUtils) UseTemplate(value string) error {
-	if cu.alternative[value] == nil {
+	if value != defaultTemplate && cu.alternative[value] == nil {
 		return fmt.Errorf("unknown template name: %q", value)
 	}
 	cu.useTemplate = value
