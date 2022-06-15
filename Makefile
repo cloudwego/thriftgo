@@ -23,8 +23,8 @@ all: lint test bench
 
 lint:
 	go install mvdan.cc/gofumpt@v0.2.0
-	test -z "$(gofumpt -l -extra .)" 
-	go vet -stdmethods=false $(go list ./...)
+	test -z "$$(gofumpt -l -extra .)" 
+	go vet -stdmethods=false $$(go list ./...)
 
 bench:
 	go test -bench=. -benchmem -run=none ./...

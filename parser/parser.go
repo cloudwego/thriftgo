@@ -230,7 +230,6 @@ func (p *parser) parseHeaders() {
 			return
 		}
 	}
-	return
 }
 
 // Definition <- (Const / Typedef / Enum / Service / Struct / Union / Exception) Annotations? NewLine
