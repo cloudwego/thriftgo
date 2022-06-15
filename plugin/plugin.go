@@ -135,7 +135,7 @@ func (e *external) Name() string {
 
 // Execute implements the Plugin interface.
 func (e *external) Execute(req *Request) (res *Response) {
-	data, err := Marshal(req)
+	data, err := MarshalRequest(req)
 	if err != nil {
 		err = fmt.Errorf("failed to marshal request: %w", err)
 		return BuildErrorResponse(err.Error())

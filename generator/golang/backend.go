@@ -108,7 +108,7 @@ func (g *GoBackend) prepareTemplates() {
 	all := template.New(name).Funcs(g.funcs)
 	tpls := templates.Templates()
 
-	if name := g.utils.Template(); name != "" {
+	if name := g.utils.Template(); name != defaultTemplate {
 		tpls = g.utils.alternative[name]
 	}
 	for _, tpl := range tpls {

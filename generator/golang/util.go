@@ -23,6 +23,7 @@ import (
 
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/common"
+	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	"github.com/cloudwego/thriftgo/generator/golang/styles"
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
 	"github.com/cloudwego/thriftgo/parser"
@@ -34,6 +35,8 @@ import (
 const (
 	DefaultThriftLib  = "github.com/apache/thrift/lib/go/thrift"
 	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
+	DefaultMetaLib    = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
+	defaultTemplate   = "default"
 )
 
 var escape = regexp.MustCompile(`\\.`)
@@ -61,6 +64,7 @@ func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 		features:      defaultFeatures,
 		namingStyle:   styles.NewNamingStyle("thriftgo"),
 		scopeCache:    make(map[*parser.Thrift]*Scope),
+		useTemplate:   defaultTemplate,
 		alternative:   templates.Alternative(),
 	}
 	return cu
@@ -98,7 +102,7 @@ func (cu *CodeUtils) Template() string {
 
 // UseTemplate specifies a different template to generate codes.
 func (cu *CodeUtils) UseTemplate(value string) error {
-	if cu.alternative[value] == nil {
+	if value != defaultTemplate && cu.alternative[value] == nil {
 		return fmt.Errorf("unknown template name: %q", value)
 	}
 	cu.useTemplate = value
@@ -348,6 +352,13 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 				return Name("")
 			}
 			return svc.GoName()
+		},
+		"Marshal": func(s *StructLike) (res string) {
+			bs, err := meta.Marshal(buildMeta(cu.rootScope.ast, s.StructLike))
+			if err != nil {
+				return fmt.Sprintf("<%s>", err.Error())
+			}
+			return prettifyBytesLiteral(fmt.Sprintf("%#v", bs))
 		},
 	}
 	return m
