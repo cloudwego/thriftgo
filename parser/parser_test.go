@@ -175,7 +175,7 @@ func TestServiceReservedComment(t *testing.T) {
 			test.Assert(t, f.ReservedComments == `// one-line comment
 // one-line comment`)
 		case "method1":
-			test.Assert(t, f.ReservedComments == `// one-line comment
+			test.Assert(t, f.ReservedComments == `# one-line comment
 /* one-line comment */`)
 		case "method2":
 			test.Assert(t, f.ReservedComments == `/* cross-line
@@ -285,4 +285,62 @@ func TestEscape(t *testing.T) {
 	test.Assert(t, *ast.Structs[0].Fields[1].Default.TypedValue.Literal == `\"'1\a2\\\t3\007本\u12e4456`)
 	test.Assert(t, ast.Structs[0].Fields[0].Annotations[0].Values[0] == `vd:"\'1\a2\\\t3\007本\u12e4456"`)
 	test.Assert(t, ast.Structs[0].Fields[1].Annotations[0].Values[0] == `vd:\"'1\a2\\\t3\007本\u12e4456\"`)
+}
+
+const testEnum = `
+enum A {}
+
+enum B {
+	B1
+	B2,B3
+}
+
+enum C {
+	C1 = 1
+
+	C2 = 10
+
+	C3
+
+	C4 = 1
+	C5,C6
+}
+`
+
+func TestEnumValue(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testEnum)
+	test.Assert(t, err == nil)
+
+	test.Assert(t, len(ast.Enums) == 3)
+	e1, e2, e3 := ast.Enums[0], ast.Enums[1], ast.Enums[2]
+	test.Assert(t, len(e1.Values) == 0)
+	test.Assert(t, len(e2.Values) == 3)
+	test.Assert(t, len(e3.Values) == 6)
+	test.Assert(t, e2.Values[0].Value == 0)
+	test.Assert(t, e2.Values[1].Value == 1)
+	test.Assert(t, e2.Values[2].Value == 2)
+	test.Assert(t, e3.Values[0].Value == 1)
+	test.Assert(t, e3.Values[1].Value == 10)
+	test.Assert(t, e3.Values[2].Value == 11)
+	test.Assert(t, e3.Values[3].Value == 1)
+	test.Assert(t, e3.Values[4].Value == 2)
+	test.Assert(t, e3.Values[5].Value == 3)
+}
+
+const testNamespace = `
+namespace * whatever
+namespace go golang
+namespace py python.org
+`
+
+func TestNamespace(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testNamespace)
+	test.Assert(t, err == nil)
+	test.Assert(t, len(ast.Namespaces) == 3)
+	test.Assert(t, ast.Namespaces[0].Language == "*")
+	test.Assert(t, ast.Namespaces[0].Name == "whatever")
+	test.Assert(t, ast.Namespaces[1].Language == "go")
+	test.Assert(t, ast.Namespaces[1].Name == "golang")
+	test.Assert(t, ast.Namespaces[2].Language == "py")
+	test.Assert(t, ast.Namespaces[2].Name == "python.org")
 }
