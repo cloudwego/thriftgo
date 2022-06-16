@@ -78,7 +78,7 @@ func parseFileRecursively(file, dir string, includeDirs []string, parsed map[str
 	p := newParser(path, src)
 	t, err := p.parse()
 	if err != nil {
-		return nil, fmt.Errorf("parse %s err: %w", path, err)
+		return nil, err
 	}
 	parsed[path] = t
 	dir = filepath.Dir(path)
@@ -146,8 +146,7 @@ func (p *parser) expect(t token.Tok, more ...token.Tok) {
 	}
 
 	if !meet(p.next.Tok, t, more) {
-		pos := p.lexer.Pos2Pos(p.next.Span.Beg)
-		panic(fmt.Errorf("expect %s, got %s %+v", t, p.next.String(), pos))
+		panic(p.syntaxError(t, more))
 	}
 
 	p.last = p.next
@@ -156,7 +155,7 @@ func (p *parser) expect(t token.Tok, more ...token.Tok) {
 		p.next = move()
 		switch p.next.Tok {
 		case token.LexicalError:
-			panic("?")
+			panic(p.lexicalError())
 		case token.EOF:
 			return
 		case token.BlockComment, token.LineComment, token.UnixComment:
@@ -179,7 +178,17 @@ func (p *parser) expect(t token.Tok, more ...token.Tok) {
 	}
 }
 
-func (p *parser) parse() (*Thrift, error) {
+func (p *parser) parse() (ast *Thrift, err error) {
+	defer func() {
+		if x := recover(); x != nil {
+			switch v := x.(type) {
+			case error:
+				err = v
+			default:
+				err = fmt.Errorf("panic: %+v", v)
+			}
+		}
+	}()
 	p.expect(p.next.Tok) // read the first token
 	p.parserDocument()
 	return p.ast, nil
@@ -495,24 +504,27 @@ func (p *parser) parseField() *Field {
 // SetType        <- 'set' CppType? '<' FieldType '>'
 // ListType       <- 'list' '<' FieldType '>' CppType?
 func (p *parser) parseFieldType() (typ *Type) {
+	p.expect(token.Identifier,
+		token.Bool, token.Byte,
+		token.I8, token.I16, token.I32, token.I64,
+		token.Double, token.String, token.Binary,
+		token.Map, token.Set, token.List)
+
 	defer func() {
 		if typ != nil && p.next.Tok == token.LParenthesis {
 			typ.Annotations = p.parseAnnotations()
 		}
 	}()
-	switch p.next.Tok {
+	switch p.last.Tok {
 	case token.Identifier,
 		token.Bool, token.Byte,
 		token.I8, token.I16, token.I32, token.I64,
 		token.Double, token.String, token.Binary:
-		p.expect(p.next.Tok)
 		return &Type{Name: p.last.AsString()}
 
 	case token.Map:
-		p.expect(token.Map)
 		typ = &Type{Name: p.last.AsString()}
 		p.checkCPPType()
-
 		p.expect(token.LChevron)
 		typ.KeyType = p.parseFieldType()
 		p.expect(token.Comma)
@@ -521,7 +533,6 @@ func (p *parser) parseFieldType() (typ *Type) {
 		return typ
 
 	case token.Set:
-		p.expect(token.Set)
 		typ = &Type{Name: p.last.AsString()}
 		p.checkCPPType()
 		p.expect(token.LChevron)
@@ -530,7 +541,6 @@ func (p *parser) parseFieldType() (typ *Type) {
 		return typ
 
 	case token.List:
-		p.expect(token.List)
 		typ = &Type{Name: p.last.AsString()}
 		p.expect(token.LChevron)
 		typ.ValueType = p.parseFieldType()
@@ -555,9 +565,10 @@ func (p *parser) checkCPPType() {
 // ConstList  <- '[' (ConstValue ListSeparator?)* ']'
 // ConstMap   <- '{' (ConstValue ':' ConstValue ListSeparator?)* '}'
 func (p *parser) parseConstValue() *ConstValue {
-	switch p.next.Tok {
+	p.expect(token.FloatLiteral, token.IntLiteral, token.StringLiteral, token.Identifier, token.LBracket, token.LBrace)
+
+	switch p.last.Tok {
 	case token.FloatLiteral:
-		p.expect(token.FloatLiteral)
 		d := p.last.AsFloat()
 		return &ConstValue{
 			Type: ConstType_ConstDouble,
@@ -567,7 +578,6 @@ func (p *parser) parseConstValue() *ConstValue {
 		}
 
 	case token.IntLiteral:
-		p.expect(token.IntLiteral)
 		i := p.last.AsInt()
 		return &ConstValue{
 			Type: ConstType_ConstInt,
@@ -577,7 +587,6 @@ func (p *parser) parseConstValue() *ConstValue {
 		}
 
 	case token.StringLiteral:
-		p.expect(token.StringLiteral)
 		s := p.last.Unquote()
 		return &ConstValue{
 			Type: ConstType_ConstLiteral,
@@ -587,7 +596,6 @@ func (p *parser) parseConstValue() *ConstValue {
 		}
 
 	case token.Identifier:
-		p.expect(token.Identifier)
 		id := p.last.AsString()
 		return &ConstValue{
 			Type: ConstType_ConstIdentifier,
@@ -598,7 +606,6 @@ func (p *parser) parseConstValue() *ConstValue {
 
 	case token.LBracket:
 		cvs := []*ConstValue{} // important: can't not be nil
-		p.expect(token.LBracket)
 		for p.next.Tok != token.RBracket {
 			cv := p.parseConstValue()
 			p.consumeListSeparator()
@@ -614,7 +621,6 @@ func (p *parser) parseConstValue() *ConstValue {
 
 	case token.LBrace:
 		mcvs := []*MapConstValue{} // important: can't not be nil
-		p.expect(token.LBrace)
 		for p.next.Tok != token.RBrace {
 			k := p.parseConstValue()
 			p.expect(token.Colon)
@@ -671,4 +677,17 @@ func (p *parser) prefixComment() (res string) {
 	p.comments = p.comments[:i+1]
 	p.comspans = p.comspans[:i+1]
 	return
+}
+
+func (p *parser) syntaxError(t token.Tok, more []token.Tok) error {
+	pos := p.lexer.Pos2Pos(p.next.Span.Beg)
+	expected := append([]token.Tok{t}, more...)
+	return fmt.Errorf("%q:%d:%d expect %+v, got %s",
+		p.ast.Filename, pos.Line, pos.Offset, expected, &p.next)
+}
+
+func (p *parser) lexicalError() error {
+	pos := p.lexer.Pos2Pos(p.next.Span.Beg)
+	return fmt.Errorf("%q:%d:%d unknown token: %q",
+		p.ast.Filename, pos.Line, pos.Offset, string(p.next.Data))
 }

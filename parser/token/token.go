@@ -95,7 +95,7 @@ const (
 )
 
 func (t Tok) String() string {
-	if str, ok := tokNames[t]; ok {
+	if str, ok := tokRepr[t]; ok {
 		return str
 	}
 	return fmt.Sprintf("<Tok %d>", t)
@@ -110,11 +110,10 @@ type Token struct {
 
 func (t *Token) String() string {
 	if len(t.Data) > 0 {
-		return fmt.Sprintf("%s(%d): [%d-%d] %q",
-			tokNames[t.Tok], t.Tok, t.Beg, t.End, string(t.Data))
+		return fmt.Sprintf("%s(%d): %q",
+			tokNames[t.Tok], t.Tok, string(t.Data))
 	}
-	return fmt.Sprintf("%s(%d): [%d-%d]",
-		tokNames[t.Tok], t.Tok, t.Beg, t.End)
+	return fmt.Sprintf("%s(%d)", tokNames[t.Tok], t.Tok)
 }
 
 // AsString returns the data of the token as a string.
