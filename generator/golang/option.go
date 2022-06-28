@@ -24,45 +24,47 @@ import (
 
 // Features controls the behavior of CodeUtils.
 type Features struct {
-	MarshalEnumToText  bool `json_enum_as_text:"Generate MarshalText for enum values"`
-	GenerateSetter     bool `gen_setter:"Generate Set* methods for fields"`
-	GenDatabaseTag     bool `gen_db_tag:"Generate 'db:$field' tag"`
-	GenOmitEmptyTag    bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields. Enabled by default."`
-	TypedefAsTypeAlias bool `use_type_alias:"Generate type alias for typedef instead of type define. Enabled by default."`
-	ValidateSet        bool `validate_set:"Generate codes to validate the uniqueness of set elements. Enabled by default."`
-	ValueTypeForSIC    bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
-	ScanValueForEnum   bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
-	ReorderFields      bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
-	TypedEnumString    bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
-	KeepUnknownFields  bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
-	GenDeepEqual       bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
-	CompatibleNames    bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
-	ReserveComments    bool `reserve_comments:"Reserve comments of definitions in thrift file"`
-	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
-	FrugalTag          bool `frugal_tag:"Generate 'frugal' tags."`
-	EscapeDoubleInTag  bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
-	GenerateTypeMeta   bool `gen_type_meta:"generate and register type meta for structures."`
+	MarshalEnumToText       bool `json_enum_as_text:"Generate MarshalText for enum values"`
+	GenerateSetter          bool `gen_setter:"Generate Set* methods for fields"`
+	GenDatabaseTag          bool `gen_db_tag:"Generate 'db:$field' tag"`
+	GenOmitEmptyTag         bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields. Enabled by default."`
+	TypedefAsTypeAlias      bool `use_type_alias:"Generate type alias for typedef instead of type define. Enabled by default."`
+	ValidateSet             bool `validate_set:"Generate codes to validate the uniqueness of set elements. Enabled by default."`
+	ValueTypeForSIC         bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
+	ScanValueForEnum        bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
+	ReorderFields           bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
+	TypedEnumString         bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
+	KeepUnknownFields       bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
+	GenDeepEqual            bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
+	CompatibleNames         bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
+	ReserveComments         bool `reserve_comments:"Reserve comments of definitions in thrift file"`
+	NilSafe                 bool `nil_safe:"Generate nil-safe getters."`
+	FrugalTag               bool `frugal_tag:"Generate 'frugal' tags."`
+	EscapeDoubleInTag       bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
+	GenerateTypeMeta        bool `gen_type_meta:"generate and register type meta for structures."`
+	GenerateDefaultFunction bool `gen_default_func:"generate Default function to get a new struct with default values."`
 }
 
 var defaultFeatures = Features{
-	MarshalEnumToText:  false,
-	GenerateSetter:     false,
-	GenDatabaseTag:     false,
-	GenOmitEmptyTag:    true,
-	TypedefAsTypeAlias: true,
-	ValidateSet:        true,
-	ValueTypeForSIC:    false,
-	ScanValueForEnum:   true,
-	ReorderFields:      false,
-	TypedEnumString:    false,
-	KeepUnknownFields:  false,
-	GenDeepEqual:       false,
-	CompatibleNames:    false,
-	ReserveComments:    false,
-	NilSafe:            false,
-	FrugalTag:          false,
-	EscapeDoubleInTag:  true,
-	GenerateTypeMeta:   false,
+	MarshalEnumToText:       false,
+	GenerateSetter:          false,
+	GenDatabaseTag:          false,
+	GenOmitEmptyTag:         true,
+	TypedefAsTypeAlias:      true,
+	ValidateSet:             true,
+	ValueTypeForSIC:         false,
+	ScanValueForEnum:        true,
+	ReorderFields:           false,
+	TypedEnumString:         false,
+	KeepUnknownFields:       false,
+	GenDeepEqual:            false,
+	CompatibleNames:         false,
+	ReserveComments:         false,
+	NilSafe:                 false,
+	FrugalTag:               false,
+	EscapeDoubleInTag:       true,
+	GenerateTypeMeta:        false,
+	GenerateDefaultFunction: false,
 }
 
 type param struct {

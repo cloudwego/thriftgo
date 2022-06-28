@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -215,7 +216,11 @@ func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) 
 	var tags []string
 	if cu.Features().FrugalTag {
 		requiredness := strings.ToLower(f.Requiredness.String())
-		tags = append(tags, fmt.Sprintf(`frugal:"%d,%s,%s"`, f.ID, requiredness, f.frugalTypeName))
+		frugalTags := []string{strconv.Itoa(int(f.ID)), requiredness, f.frugalTypeName.String()}
+		if f.IsSetDefault() {
+			frugalTags = append(frugalTags, "with_default")
+		}
+		tags = append(tags, fmt.Sprintf(`frugal:"%s"`, strings.Join(frugalTags, ",")))
 	}
 	return cu.genFieldTags(f.Field, insertPoint, tags)
 }

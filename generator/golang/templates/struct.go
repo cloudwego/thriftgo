@@ -47,6 +47,14 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
+{{- if Features.GenerateDefaultFunction}}
+func (p *{{$TypeName}}) Default() *{{$TypeName}} {
+	return &{{$TypeName}}{
+		{{template "StructLikeDefault" .}}
+	}
+}
+{{- end}}{{/* if Features.GenerateDefaultFunction */}}
+
 {{template "FieldGetOrSet" .}}
 
 {{if eq .Category "union"}}
