@@ -403,6 +403,7 @@ func (p *parser) parseFunction() *Function {
 	if p.next.Tok == token.Void {
 		p.expect(token.Void)
 		fn.Void = true
+		fn.FunctionType = &Type{Name: "void"}
 	} else {
 		fn.FunctionType = p.parseFieldType()
 	}
