@@ -24,7 +24,7 @@ type {{$EnumType}} int64
 
 const (
 	{{- range .Values}}
-	{{- if .ReservedComments}}
+	{{- if and Features.ReserveComments .ReservedComments}}
 	{{.ReservedComments}}{{end}}
 	{{.GoName}} {{$EnumType}} = {{.Value}}
 	{{- end}}
