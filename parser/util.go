@@ -15,26 +15,9 @@
 package parser
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 )
-
-func normalizeFilename(fn string) string {
-	abs, err := filepath.Abs(fn)
-	if err != nil {
-		return fn
-	}
-	base, err := os.Getwd()
-	if err != nil {
-		return abs
-	}
-	ref, err := filepath.Rel(base, abs)
-	if err != nil {
-		return abs
-	}
-	return ref
-}
 
 func refName(filename string) string {
 	n := strings.Split(filepath.Base(filename), ".")

@@ -35,13 +35,19 @@ func exists(path string) bool {
 }
 
 func search(file, dir string, includeDirs []string) (string, error) {
-	ps := []string{file, filepath.Join(dir, file)}
+	ps := []string{filepath.Join(dir, file)}
 	for _, inc := range includeDirs {
 		ps = append(ps, filepath.Join(inc, file))
 	}
 	for _, p := range ps {
 		if exists(p) {
-			return normalizeFilename(p), nil
+			if filepath.IsAbs(p) {
+				return p, nil
+			}
+			if v, err := filepath.Abs(p); err == nil {
+				return v, nil
+			}
+			return p, nil
 		}
 	}
 	return file, &os.PathError{Op: "search", Path: file, Err: os.ErrNotExist}
@@ -52,8 +58,7 @@ func search(file, dir string, includeDirs []string) (string, error) {
 func ParseFile(path string, includeDirs []string, recursive bool) (*Thrift, error) {
 	if recursive {
 		parsed := make(map[string]*Thrift)
-		dir := filepath.Dir(normalizeFilename(path))
-		return parseFileRecursively(path, dir, includeDirs, parsed)
+		return parseFileRecursively(path, "", includeDirs, parsed)
 	}
 	src, err := os.Open(path)
 	if err != nil {
