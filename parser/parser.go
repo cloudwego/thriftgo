@@ -145,9 +145,14 @@ func (p *parser) expect(t token.Tok, more ...token.Tok) {
 		return t
 	}
 
-	if t == token.NewLine && p.newlineNumberBeforeNext > 0 {
-		p.newlineNumberBeforeNext--
-		return
+	if t == token.NewLine {
+		if p.newlineNumberBeforeNext > 0 {
+			p.newlineNumberBeforeNext--
+			return
+		}
+		if p.next.Tok == token.EOF {
+			return
+		}
 	}
 
 	if !meet(p.next.Tok, t, more) {

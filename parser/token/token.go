@@ -301,7 +301,7 @@ func (p *Tokenizer) Next() Token {
 		}
 		return p.token(UnixComment)
 	case ' ', '\t', '\v', '\r':
-		for !eof && (c == ' ' || c == '\t' || c == '\v') {
+		for !eof && (c == ' ' || c == '\t' || c == '\v' || c == '\r') {
 			c, eof = p.nextc()
 		}
 		if !eof {
