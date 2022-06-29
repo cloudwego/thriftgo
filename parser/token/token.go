@@ -265,19 +265,15 @@ func (p *Tokenizer) Next() Token {
 		c2, eof := p.nextc()
 		switch c2 {
 		case '*':
+			gotStar := false
 			for {
 				if c, eof = p.nextc(); eof {
 					break
 				}
-				if c == '*' {
-					if c2, eof = p.nextc(); eof {
-						break
-					}
-					if c2 == '/' {
-						return p.token(BlockComment)
-					}
+				if c == '/' && gotStar {
+					return p.token(BlockComment)
 				}
-				continue
+				gotStar = c == '*'
 			}
 			return p.lexicalError()
 		case '/':
@@ -457,6 +453,9 @@ TryGetFloatPart:
 		goto ReturnInteger
 	}
 ReturnInteger:
+	if p.pickAll(isDigit) > 0 {
+		return p.lexicalError() // invalid integer literal: "000123"
+	}
 	return p.token(IntLiteral)
 ReturnFloat:
 	return p.token(FloatLiteral)
