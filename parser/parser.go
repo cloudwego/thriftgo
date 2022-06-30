@@ -230,7 +230,9 @@ func (p *parser) parseHeaders() {
 			p.ast.CppIncludes = append(p.ast.CppIncludes, p.last.AsString())
 
 		case token.Namespace:
-			// Namespace  <- 'namespace' NamespaceScope Identifier Annotations?
+			// Namespace      <- 'namespace' Language Scope Annotations?
+			// Language       <- '*' / Identifier
+			// Scope          <- Identifier
 			p.expect(token.Namespace)
 			p.expect(token.Identifier, token.Asterisk)
 
@@ -511,9 +513,9 @@ func (p *parser) parseField() *Field {
 // FieldType      <- (ContainerType / BaseType / Identifier) Annotations?
 // BaseType       <- 'bool' / 'byte' / 'i8' / 'i16' / 'i32' / 'i64' / 'double' / 'string' / 'binary'
 // ContainerType  <- MapType / SetType / ListType
-// MapType        <- 'map' CppType? '<' FieldType ',' FieldType '>'
-// SetType        <- 'set' CppType? '<' FieldType '>'
-// ListType       <- 'list' '<' FieldType '>' CppType?
+// MapType        <- 'map' '<' FieldType ',' FieldType '>'
+// SetType        <- 'set' '<' FieldType '>'
+// ListType       <- 'list' '<' FieldType '>'
 func (p *parser) parseFieldType() (typ *Type) {
 	p.expect(token.Identifier,
 		token.Bool, token.Byte,
@@ -535,7 +537,6 @@ func (p *parser) parseFieldType() (typ *Type) {
 
 	case token.Map:
 		typ = &Type{Name: p.last.AsString()}
-		p.checkCPPType()
 		p.expect(token.LChevron)
 		typ.KeyType = p.parseFieldType()
 		p.expect(token.Comma)
@@ -545,7 +546,6 @@ func (p *parser) parseFieldType() (typ *Type) {
 
 	case token.Set:
 		typ = &Type{Name: p.last.AsString()}
-		p.checkCPPType()
 		p.expect(token.LChevron)
 		typ.ValueType = p.parseFieldType()
 		p.expect(token.RChevron)
@@ -556,19 +556,10 @@ func (p *parser) parseFieldType() (typ *Type) {
 		p.expect(token.LChevron)
 		typ.ValueType = p.parseFieldType()
 		p.expect(token.RChevron)
-		p.checkCPPType()
 		return typ
 
 	default:
 		panic("?")
-	}
-}
-
-// for compatibility
-func (p *parser) checkCPPType() {
-	if p.next.Tok == token.CppType {
-		p.expect(token.CppType)
-		p.expect(token.StringLiteral)
 	}
 }
 

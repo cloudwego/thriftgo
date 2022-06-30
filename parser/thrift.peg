@@ -2,8 +2,9 @@ Document       <- Header* Definition* !.
 Header         <- (Include / CppInclude / Namespace) NewLine
 Include        <- 'include' Literal
 CppInclude     <- 'cppinclude' Literal
-Namespace      <- 'namespace' NamespaceScope Identifier Annotations?
-NamespaceScope <- '*' / Identifier
+Namespace      <- 'namespace' Language Scope Annotations?
+Language       <- '*' / Identifier
+Scope          <- Identifier
 Definition     <- (Const / Typedef / Enum / Service / Struct / Union / Exception) Annotations? ';'? NewLine
 Const          <- 'const' FieldType Identifier '=' ConstValue
 Typedef        <- 'typedef' FieldType Identifier
@@ -21,9 +22,9 @@ Throws         <- 'throws' '(' Field* ')'
 FieldType      <- (ContainerType / BaseType / Identifier) Annotations?
 BaseType       <- 'bool' / 'byte' / 'i8' / 'i16' / 'i32' / 'i64' / 'double' / 'string' / 'binary'
 ContainerType  <- MapType / SetType / ListType
-MapType        <- 'map' CppType? '<' FieldType ',' FieldType '>'
-SetType        <- 'set' CppType? '<' FieldType '>'
-ListType       <- 'list' '<' FieldType '>' CppType?
+MapType        <- 'map' '<' FieldType ',' FieldType '>'
+SetType        <- 'set' '<' FieldType '>'
+ListType       <- 'list' '<' FieldType '>'
 CppType        <- 'cpptype' Literal
 ConstValue     <- FloatLiteral / IntLiteral / Literal / Identifier / ConstList / ConstMap
 Annotations    <- '(' Annotation+ ')'

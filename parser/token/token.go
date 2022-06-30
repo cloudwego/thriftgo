@@ -63,7 +63,6 @@ const (
 	Enum              // enum
 	Include           // include
 	CppInclude        // cpp_include
-	CppType           // cpp_type
 	Namespace         // namespace
 	Asterisk          // *
 	LBracket          // [
@@ -539,6 +538,5 @@ var keywords = map[string]Tok{
 	"enum":        Enum,
 	"include":     Include,
 	"cpp_include": CppInclude,
-	"cpp_type":    CppType,
 	"namespace":   Namespace,
 }
