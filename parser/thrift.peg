@@ -4,31 +4,32 @@ Include        <- 'include' Literal
 CppInclude     <- 'cppinclude' Literal
 Namespace      <- 'namespace' Language Scope Annotations?
 Language       <- '*' / Identifier
-Scope          <- Identifier
-Definition     <- (Const / Typedef / Enum / Service / Struct / Union / Exception) Annotations? ';'? NewLine
+Scope          <- Identifiers
+Definition     <- (Const / Typedef / Enum / Struct / Union / Exception / Service) Annotations? ';'? NewLine
 Const          <- 'const' FieldType Identifier '=' ConstValue
 Typedef        <- 'typedef' FieldType Identifier
 Enum           <- 'enum' Identifier '{' (Identifier ('=' IntLiteral)? Annotations? ListSeparator?)* '}'
-Service        <- 'service' Identifier ( EXTENDS Identifier )? '{' Function* '}'
 Struct         <- 'struct' Identifier '{' Field* '}'
 Union          <- 'union' Identifier '{' Field* '}'
 Exception      <- 'exception' Identifier '{' Field* '}'
-Field          <- FieldId? FieldReq? FieldType Identifier ('=' ConstValue)? Annotations? ListSeparator? 
+Service        <- 'service' Identifier ( 'extends' Identifiers )? '{' Function* '}'
+Field          <- FieldId? FieldReq? FieldType Identifier ('=' ConstValue)? Annotations? ListSeparator?
 FieldId        <- IntLiteral ':'
 FieldReq       <- 'required' / 'optional'
-Function       <- 'oneway'? FunctionType Identifier '(' Field* ')' Throws? Annotations? ListSeparator? NewLine
+Function       <- 'oneway'? FunctionType Identifier '(' Field* ')' Throws?  Annotations? ListSeparator? NewLine
 FunctionType   <- 'void' / FieldType
 Throws         <- 'throws' '(' Field* ')'
-FieldType      <- (ContainerType / BaseType / Identifier) Annotations?
+FieldType      <- (BaseType / ContainerType / Identifiers) Annotations?
 BaseType       <- 'bool' / 'byte' / 'i8' / 'i16' / 'i32' / 'i64' / 'double' / 'string' / 'binary'
 ContainerType  <- MapType / SetType / ListType
 MapType        <- 'map' '<' FieldType ',' FieldType '>'
 SetType        <- 'set' '<' FieldType '>'
 ListType       <- 'list' '<' FieldType '>'
-CppType        <- 'cpptype' Literal
-ConstValue     <- FloatLiteral / IntLiteral / Literal / Identifier / ConstList / ConstMap
+ConstValue     <- 'true' / 'false' / FloatLiteral / IntLiteral / Literal / Identifiers / ConstList / ConstMap
 Annotations    <- '(' Annotation+ ')'
-Annotation     <- Identifier '=' Literal ListSeparator?
+Annotation     <- Identifiers '=' Literal ListSeparator?
 ConstList      <- '[' (ConstValue ListSeparator?)* ']'
 ConstMap       <- '{' (ConstValue ':' ConstValue ListSeparator?)* '}'
+Identifiers    <- Identifier ( '.' Identifier )*
 ListSeparator  <- ',' / ';'
+NewLine        <- '\n'

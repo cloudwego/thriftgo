@@ -232,7 +232,7 @@ func (p *parser) parseHeaders() {
 		case token.Namespace:
 			// Namespace      <- 'namespace' Language Scope Annotations?
 			// Language       <- '*' / Identifier
-			// Scope          <- Identifier
+			// Scope          <- Identifiers
 			p.expect(token.Namespace)
 			p.expect(token.Identifier, token.Asterisk)
 
@@ -253,7 +253,7 @@ func (p *parser) parseHeaders() {
 	}
 }
 
-// Definition <- (Const / Typedef / Enum / Service / Struct / Union / Exception) Annotations? NewLine
+// Definition <- (Const / Typedef / Enum / Struct / Union / Exception / Service) Annotations? NewLine
 func (p *parser) parseDefinitions() {
 	for {
 		switch p.next.Tok {
@@ -263,10 +263,10 @@ func (p *parser) parseDefinitions() {
 			p.parseTypedef()
 		case token.Enum:
 			p.parseEnum()
-		case token.Service:
-			p.parseService()
 		case token.Struct, token.Union, token.Exception:
 			p.parseStruct()
+		case token.Service:
+			p.parseService()
 		default:
 			return
 		}
@@ -365,7 +365,7 @@ func (p *parser) parseEnum() {
 	p.ast.Enums = append(p.ast.Enums, e)
 }
 
-// Service <- 'service' Identifier ( EXTENDS Identifier )? '{' Function* '}'
+// Service <- 'service' Identifier ( 'extends' Identifiers )? '{' Function* '}'
 func (p *parser) parseService() {
 	comment := p.prefixComment()
 	p.expect(token.Service)
@@ -510,7 +510,7 @@ func (p *parser) parseField() *Field {
 	return f
 }
 
-// FieldType      <- (ContainerType / BaseType / Identifier) Annotations?
+// FieldType      <- (BaseType / ContainerType / Identifiers) Annotations?
 // BaseType       <- 'bool' / 'byte' / 'i8' / 'i16' / 'i32' / 'i64' / 'double' / 'string' / 'binary'
 // ContainerType  <- MapType / SetType / ListType
 // MapType        <- 'map' '<' FieldType ',' FieldType '>'
@@ -563,7 +563,7 @@ func (p *parser) parseFieldType() (typ *Type) {
 	}
 }
 
-// ConstValue <- FloatLiteral / IntLiteral / Literal / Identifier / ConstList / ConstMap
+// ConstValue <- FloatLiteral / IntLiteral / Literal / Identifiers / ConstList / ConstMap
 // ConstList  <- '[' (ConstValue ListSeparator?)* ']'
 // ConstMap   <- '{' (ConstValue ':' ConstValue ListSeparator?)* '}'
 func (p *parser) parseConstValue() *ConstValue {
@@ -644,7 +644,7 @@ func (p *parser) parseConstValue() *ConstValue {
 }
 
 // Annotations <- '(' Annotation+ ')'
-// Annotation  <- Identifier '=' Literal ListSeparator?
+// Annotation  <- Identifiers '=' Literal ListSeparator?
 func (p *parser) parseAnnotations() (as Annotations) {
 	p.expect(token.LParenthesis)
 	for p.next.Tok != token.RParenthesis {
