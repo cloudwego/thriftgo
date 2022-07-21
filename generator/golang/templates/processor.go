@@ -17,7 +17,7 @@ package templates
 // Processor .
 var Processor = `
 {{define "Processor"}}
-{{- UseStdLibrary "thrift" "context"}}
+{{- UseStdLibrary "thrift"}}
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
 {{- $ServiceName := .GoName}}
@@ -59,6 +59,7 @@ func New{{$ProcessorName}}(handler {{$ServiceName}}) *{{$ProcessorName}} {
 }
 
 {{- if not .Extends}}
+{{- UseStdLibrary "context"}}
 func (p *{{$ProcessorName}}) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
 	name, _, seqId, err := iprot.ReadMessageBegin()
 	if err != nil {
@@ -87,6 +88,7 @@ type {{$ProcessorName | Unexport}}{{$FuncName}} struct {
 	handler {{$ServiceName}}
 }
 
+{{- UseStdLibrary "context"}}
 func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
 	args := {{$ArgType.GoName}}{}
 	if err = args.Read(iprot); err != nil {

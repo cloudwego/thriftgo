@@ -47,6 +47,13 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
+{{if Features.FrugalTag}}
+// frugalDefault used to access struct default values for frugal
+func (p *{{$TypeName}}) FrugalDefault() *{{$TypeName}} {
+	return New{{$TypeName}}()
+}
+{{end}}{{/* if Features.FrugalTag */}}
+
 {{template "FieldGetOrSet" .}}
 
 {{if eq .Category "union"}}
