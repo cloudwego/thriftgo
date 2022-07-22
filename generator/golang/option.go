@@ -27,9 +27,9 @@ type Features struct {
 	MarshalEnumToText  bool `json_enum_as_text:"Generate MarshalText for enum values"`
 	GenerateSetter     bool `gen_setter:"Generate Set* methods for fields"`
 	GenDatabaseTag     bool `gen_db_tag:"Generate 'db:$field' tag"`
-	GenOmitEmptyTag    bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields. Enabled by default."`
-	TypedefAsTypeAlias bool `use_type_alias:"Generate type alias for typedef instead of type define. Enabled by default."`
-	ValidateSet        bool `validate_set:"Generate codes to validate the uniqueness of set elements. Enabled by default."`
+	GenOmitEmptyTag    bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields."`
+	TypedefAsTypeAlias bool `use_type_alias:"Generate type alias for typedef instead of type define."`
+	ValidateSet        bool `validate_set:"Generate codes to validate the uniqueness of set elements."`
 	ValueTypeForSIC    bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
 	ScanValueForEnum   bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
 	ReorderFields      bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
@@ -142,10 +142,14 @@ var codeUtilsParams = []*param{
 // creates parameters by reflection.
 func (fs Features) params() (ps []*param) {
 	t := reflect.TypeOf(fs)
+	x := reflect.ValueOf(fs)
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		n := strings.SplitN(string(f.Tag), ":", 2)[0]
 		v := f.Tag.Get(n)
+		if !x.Field(i).IsZero() {
+			v += " (Enabled by default)"
+		}
 
 		name, nth := n, i // for closure
 		p := &param{

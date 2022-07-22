@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo Authors
+// Copyright 2022 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,25 @@
 package parser
 
 import (
-	"path/filepath"
-	"strings"
+	"bytes"
+	_ "embed"
+	"testing"
+
+	"github.com/cloudwego/thriftgo/parser/token"
+	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
-func refName(filename string) string {
-	n := strings.Split(filepath.Base(filename), ".")
-	return strings.Join(n[:len(n)-1], ".")
+//go:embed AST.thrift
+var ast []byte
+
+func TestTokenizer(t *testing.T) {
+	src := bytes.NewReader(ast)
+	lex := token.NewTokenizer(src)
+	for {
+		tok := lex.Next()
+		test.Assert(t, tok.Tok != token.LexicalError)
+		if tok.Tok == token.EOF {
+			break
+		}
+	}
 }
