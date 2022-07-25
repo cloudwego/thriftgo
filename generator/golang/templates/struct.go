@@ -48,9 +48,10 @@ func New{{$TypeName}}() *{{$TypeName}} {
 }
 
 {{if Features.FrugalTag}}
-// frugalDefault used to access struct default values for frugal
-func (p *{{$TypeName}}) FrugalDefault() *{{$TypeName}} {
-	return New{{$TypeName}}()
+func (p *{{$TypeName}}) InitDefault() {
+	*p = {{$TypeName}}{
+		{{template "StructLikeDefault" .}}
+	}
 }
 {{end}}{{/* if Features.FrugalTag */}}
 
