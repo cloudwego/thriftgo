@@ -1,0 +1,5 @@
+{{define "Imports"}}
+	{{- range $path, $alias := .}}
+	{{$alias }}"{{$path}}"
+	{{- end}}
+{{end}}

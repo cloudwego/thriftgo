@@ -1,21 +1,3 @@
-// Copyright 2021 CloudWeGo Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-package templates
-
-// StructLike is the code template for struct, union, and exception.
-var StructLike = `
 {{define "StructLike"}}
 {{- $TypeName := .GoName}}
 {{InsertionPoint .Category .Name}}
@@ -106,20 +88,15 @@ func (p *{{$TypeName}}) Error() string {
 {{- end}}
 
 {{- end}}{{/* define "StructLike" */}}
-`
 
-// StructLikeDefault is the code template for structure initialization.
-var StructLikeDefault = `
 {{- define "StructLikeDefault"}}
 {{- range .Fields}}
 	{{- if .IsSetDefault}}
 		{{.GoName}}: {{.DefaultValue}},
 	{{- end}}
 {{- end}}
-{{- end -}}`
+{{- end -}}
 
-// StructLikeRead .
-var StructLikeRead = `
 {{define "StructLikeRead"}}
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
@@ -229,10 +206,7 @@ RequiredFieldNotSetError:
 {{- end}}{{/* if $RequiredFieldNotSetError */}}
 }
 {{- end}}{{/* define "StructLikeRead" */}}
-`
 
-// StructLikeReadField .
-var StructLikeReadField = `
 {{define "StructLikeReadField"}}
 {{- UseStdLibrary "thrift"}}
 {{- $TypeName := .GoName}}
@@ -245,10 +219,7 @@ func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
 }
 {{- end}}{{/* range .Fields */}}
 {{- end}}{{/* define "StructLikeReadField" */}}
-`
 
-// StructLikeWrite .
-var StructLikeWrite = `
 {{define "StructLikeWrite"}}
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
@@ -305,10 +276,7 @@ UnknownFieldsWriteError:
 {{- end}}{{/* if Features.KeepUnknownFields */}}
 }
 {{- end}}{{/* define "StructLikeWrite" */}}
-`
 
-// StructLikeWriteField .
-var StructLikeWriteField = `
 {{define "StructLikeWriteField"}}
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
@@ -339,10 +307,7 @@ WriteFieldEndError:
 }
 {{end}}{{/* range .Fields */}}
 {{- end}}{{/* define "StructLikeWriteField" */}}
-`
 
-// FieldGetOrSet .
-var FieldGetOrSet = `
 {{define "FieldGetOrSet"}}
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
@@ -408,10 +373,7 @@ func (p *{{$TypeName}}) {{$SetterName}}(val {{$FieldTypeName}}) {
 {{- end}}{{/* if Features.GenerateSetter */}}
 
 {{- end}}{{/* define "FieldGetOrSet" */}}
-`
 
-// FieldIsSet .
-var FieldIsSet = `
 {{define "FieldIsSet"}}
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
@@ -438,10 +400,7 @@ func (p *{{$TypeName}}) {{$IsSetName}}() bool {
 {{end}}
 {{- end}}{{/* range .Fields */}}
 {{- end}}{{/* define "FieldIsSet" */}}
-`
 
-// FieldRead .
-var FieldRead = `
 {{define "FieldRead"}}
 	{{- if .Type.Category.IsStructLike}}
 		{{- template "FieldReadStructLike" .}}
@@ -451,20 +410,14 @@ var FieldRead = `
 		{{- template "FieldReadBaseType" .}}
 	{{- end}}
 {{- end}}{{/* define "FieldRead" */}}
-`
 
-// FieldReadStructLike .
-var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
 	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
 	}
 {{- end}}{{/* define "FieldReadStructLike" */}} 
-`
 
-// FieldReadBaseType .
-var FieldReadBaseType = `
 {{define "FieldReadBaseType"}}
 	{{- $DiffType := or .Type.Category.IsEnum .Type.Category.IsBinary}}
 	{{- if .NeedDecl}}
@@ -489,10 +442,7 @@ var FieldReadBaseType = `
 	{{- end}}
 	}
 {{- end}}{{/* define "FieldReadBaseType" */}}
-`
 
-// FieldReadContainer .
-var FieldReadContainer = `
 {{define "FieldReadContainer"}}
 	{{- if eq "Map" .TypeID}}
 	     {{- template "FieldReadMap" .}}
@@ -502,10 +452,7 @@ var FieldReadContainer = `
 	     {{- template "FieldReadSet" .}}
 	{{- end}}
 {{- end}}{{/* define "FieldReadContainer" */}}
-`
 
-// FieldReadMap .
-var FieldReadMap = `
 {{define "FieldReadMap"}}
 	_, _, size, err := iprot.ReadMapBegin()
 	if err != nil {
@@ -531,10 +478,7 @@ var FieldReadMap = `
 		return err
 	}
 {{- end}}{{/* define "FieldReadMap" */}}
-`
 
-// FieldReadSet .
-var FieldReadSet = `
 {{define "FieldReadSet"}}
 	_, size, err := iprot.ReadSetBegin()
 	if err != nil {
@@ -556,10 +500,7 @@ var FieldReadSet = `
 		return err
 	}
 {{- end}}{{/* define "FieldReadSet" */}}
-`
 
-// FieldReadList .
-var FieldReadList = `
 {{define "FieldReadList"}}
 	_, size, err := iprot.ReadListBegin()
 	if err != nil {
@@ -581,10 +522,7 @@ var FieldReadList = `
 		return err
 	}
 {{- end}}{{/* define "FieldReadList" */}}
-`
 
-// FieldWrite .
-var FieldWrite = `
 {{define "FieldWrite"}}
 	{{- if .Type.Category.IsStructLike}}
 		{{- template "FieldWriteStructLike" .}}
@@ -594,19 +532,13 @@ var FieldWrite = `
 		{{- template "FieldWriteBaseType" .}}
 	{{- end}}
 {{- end}}{{/* define "FieldWrite" */}}
-`
 
-// FieldWriteStructLike .
-var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err
 	}
 {{- end}}{{/* define "FieldWriteStructLike" */}}
-`
 
-// FieldWriteBaseType .
-var FieldWriteBaseType = `
 {{define "FieldWriteBaseType"}}
 {{- $Value := .Target}}
 {{- if .IsPointer}}{{$Value = printf "*%s" $Value}}{{end}}
@@ -616,10 +548,7 @@ var FieldWriteBaseType = `
 		return err
 	}
 {{- end}}{{/* define "FieldWriteBaseType" */}}
-`
 
-// FieldWriteContainer .
-var FieldWriteContainer = `
 {{define "FieldWriteContainer"}}
 	{{- if eq "Map" .TypeID}}
 		{{- template "FieldWriteMap" .}}
@@ -629,10 +558,7 @@ var FieldWriteContainer = `
 		{{- template "FieldWriteSet" .}}
 	{{- end}}
 {{- end}}{{/* define "FieldWriteContainer" */}}
-`
 
-// FieldWriteMap .
-var FieldWriteMap = `
 {{define "FieldWriteMap"}}
 	if err := oprot.WriteMapBegin(thrift.
 		{{- .KeyCtx.Type | GetTypeIDConstant -}}
@@ -650,10 +576,7 @@ var FieldWriteMap = `
 		return err
 	}
 {{- end}}{{/* define "FieldWriteMap" */}}
-`
 
-// FieldWriteSet .
-var FieldWriteSet = `
 {{define "FieldWriteSet"}}
 		if err := oprot.WriteSetBegin(thrift.
 		{{- .ValCtx.Type | GetTypeIDConstant -}}
@@ -687,10 +610,7 @@ var FieldWriteSet = `
 			return err
 		}
 {{- end}}{{/* define "FieldWriteSet" */}}
-`
 
-// FieldWriteList .
-var FieldWriteList = `
 {{define "FieldWriteList"}}
 		if err := oprot.WriteListBegin(thrift.
 		{{- .ValCtx.Type | GetTypeIDConstant -}}
@@ -705,4 +625,3 @@ var FieldWriteList = `
 			return err
 		}
 {{- end}}{{/* define "FieldWriteList" */}}
-`
