@@ -100,7 +100,11 @@ func (r *FrugalResolver) getContainerTypeName(g *Scope, t *parser.Type) (name st
 		if err != nil {
 			return "", fmt.Errorf("resolve value type of '%s' failed: %w", t, err)
 		}
-		name = "list<" + v + ">"
+		if t.Name == "list" {
+			name = "list<" + v + ">"
+		} else {
+			name = "set<" + v + ">"
+		}
 	}
 
 	return name, nil
