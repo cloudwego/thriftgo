@@ -62,9 +62,6 @@ func (r *FrugalResolver) getTypeName(g *Scope, t *parser.Type) (name string, err
 	if isContainerTypes[t.Name] {
 		return r.getContainerTypeName(g, t)
 	}
-	if t.Category.IsEnum() {
-		return "i64", nil
-	}
 	g, ut, name := getUnderlay(g, t)
 
 	if name == "" {
