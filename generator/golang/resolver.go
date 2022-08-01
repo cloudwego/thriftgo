@@ -22,6 +22,10 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 )
 
+func errTypeMissMatch(name string, ft *parser.Type, v *parser.ConstValue) error {
+	return fmt.Errorf("type error: '%s' was declared as type %s, but got default value of type %s", name, ft, v)
+}
+
 // Resolver resolves names for types, names and initialization value for thrift AST
 // nodes in a scope (the root scope).
 type Resolver struct {
@@ -337,7 +341,7 @@ func (r *Resolver) onBool(g *Scope, name string, t *parser.Type, v *parser.Const
 		}
 		return "", fmt.Errorf("undefined value: %q", s)
 	}
-	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
+	return "", errTypeMissMatch(name, t, v)
 }
 
 func (r *Resolver) onInt(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
@@ -360,7 +364,7 @@ func (r *Resolver) onInt(g *Scope, name string, t *parser.Type, v *parser.ConstV
 		}
 		return "", fmt.Errorf("undefined value: %q", s)
 	}
-	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
+	return "", errTypeMissMatch(name, t, v)
 }
 
 func (r *Resolver) onDouble(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
@@ -384,7 +388,7 @@ func (r *Resolver) onDouble(g *Scope, name string, t *parser.Type, v *parser.Con
 		}
 		return "", fmt.Errorf("undefined value: %q", s)
 	}
-	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
+	return "", errTypeMissMatch(name, t, v)
 }
 
 func (r *Resolver) onStrBin(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (res string, err error) {
@@ -409,7 +413,7 @@ func (r *Resolver) onStrBin(g *Scope, name string, t *parser.Type, v *parser.Con
 		return "", fmt.Errorf("undefined value: %q", s)
 	default:
 	}
-	return "", fmt.Errorf("type error: '%s' was declared as type %s", name, t)
+	return "", errTypeMissMatch(name, t, v)
 }
 
 func (r *Resolver) onEnum(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
