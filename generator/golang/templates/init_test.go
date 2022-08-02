@@ -15,7 +15,6 @@
 package templates_test
 
 import (
-	"fmt"
 	"log"
 	"testing"
 	"text/template"
@@ -25,24 +24,10 @@ import (
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
 )
 
-// forceSingleDefinition panics if the given template contains multiple definition.
-// It is used to keep maintainability of templates.
-// The result is the name defined in the given template.
-func forceSingleDefinition(pkg, text string, funcMap template.FuncMap) string {
-	name := "force-single-definition"
+func validate(pkg, text string, funcMap template.FuncMap) {
+	name := "template-validation"
 	tpl := template.New(name).Funcs(funcMap)
-	tpl = template.Must(tpl.Parse(text))
-	if tpls := tpl.Templates(); len(tpls) != 2 {
-		err := fmt.Errorf(
-			"templates must have only one definition: pkg[%q] `\n----%s----\n`",
-			pkg, text)
-		panic(err)
-	} else {
-		if tpls[0].Name() == name {
-			return tpls[1].Name()
-		}
-		return tpls[0].Name()
-	}
+	template.Must(tpl.Parse(text))
 }
 
 var logFunc backend.LogFunc
@@ -59,18 +44,18 @@ func init() {
 	}
 }
 
-func TestDefinitionNumber(t *testing.T) {
+func TestTemplateValidation(t *testing.T) {
 	utils := golang.NewCodeUtils(logFunc)
 	funcs := utils.BuildFuncMap()
 	for _, tpl := range templates.Templates() {
 		if tpl != templates.File {
-			forceSingleDefinition("", tpl, funcs)
+			validate("", tpl, funcs)
 		}
 	}
 	for pkg, tpls := range templates.Alternative() {
 		for _, tpl := range tpls {
 			if tpl != templates.File {
-				forceSingleDefinition(pkg, tpl, funcs)
+				validate(pkg, tpl, funcs)
 			}
 		}
 	}

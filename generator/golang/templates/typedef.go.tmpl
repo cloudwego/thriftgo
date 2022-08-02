@@ -1,0 +1,16 @@
+{{define "Typedef"}}
+{{- $NewTypeName := .GoName}}
+{{- $OldTypeName := .GoTypeName}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
+{{- if Features.TypedefAsTypeAlias }}
+type {{$NewTypeName}} = {{$OldTypeName}}
+{{- else}}
+type {{$NewTypeName}} {{$OldTypeName}}
+{{- end}}
+
+{{if .Type.Category.IsStructLike}} 
+func New{{$NewTypeName}}() *{{$NewTypeName}} {
+	return {{$OldTypeName.NewFunc}}()
+}
+{{- end}}{{/* if .Type.Category.IsStructLike */}} 
+{{- end}}{{/* define "Typedef" */}}
