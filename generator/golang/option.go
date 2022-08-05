@@ -41,7 +41,8 @@ type Features struct {
 	NilSafe            bool `nil_safe:"Generate nil-safe getters."`
 	FrugalTag          bool `frugal_tag:"Generate 'frugal' tags."`
 	EscapeDoubleInTag  bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
-	GenerateTypeMeta   bool `gen_type_meta:"generate and register type meta for structures."`
+	GenerateTypeMeta   bool `gen_type_meta:"Generate and register type meta for structures."`
+	GenerateJsonTag    bool `gen_json_tag:"Generate struct with 'json' tag"`
 }
 
 var defaultFeatures = Features{
@@ -63,6 +64,7 @@ var defaultFeatures = Features{
 	FrugalTag:          false,
 	EscapeDoubleInTag:  true,
 	GenerateTypeMeta:   false,
+	GenerateJsonTag:    true,
 }
 
 type param struct {
