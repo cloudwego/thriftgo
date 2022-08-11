@@ -59,10 +59,11 @@ func (r *FrugalResolver) getTypeName(g *Scope, t *parser.Type) (name string, err
 	if _, ok := baseTypes[t.Name]; ok {
 		return t.Name, nil
 	}
-	if isContainerTypes[t.Name] {
+	g, ut, name := getUnderlay(g, t)
+	t = ut
+	if isContainerTypes[name] {
 		return r.getContainerTypeName(g, t)
 	}
-	g, ut, name := getUnderlay(g, t)
 
 	if name == "" {
 		return "", fmt.Errorf("getTypeName failed: type[%v] file[%s]", t, g.ast.Filename)
