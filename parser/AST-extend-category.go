@@ -118,3 +118,12 @@ func (p Category) IsContainerType() bool {
 func (p Category) IsStructLike() bool {
 	return p == Category_Struct || p == Category_Union || p == Category_Exception
 }
+
+func (p Category) IsInteger() bool {
+	return p == Category_Byte || p == Category_I16 || p == Category_I32 || p == Category_I64
+}
+
+func (p Category) IsDigital() bool {
+	return p == Category_Byte || p == Category_I16 || p == Category_I32 ||
+		p == Category_I64 || p == Category_Double || p == Category_Enum
+}
