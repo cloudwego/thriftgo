@@ -197,10 +197,6 @@ func (r *Resolver) ResolveConst(g *Scope, name string, t *parser.Type, v *parser
 }
 
 func (r *Resolver) resolveConst(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
-	goType, err := r.getTypeName(g, t)
-	if err != nil {
-		return "", err
-	}
 	switch t.Category {
 	case parser.Category_Bool:
 		return r.onBool(g, name, t, v)
@@ -218,108 +214,15 @@ func (r *Resolver) resolveConst(g *Scope, name string, t *parser.Type, v *parser
 		return r.onEnum(g, name, t, v)
 
 	case parser.Category_Set, parser.Category_List:
-		var ss []string
-		switch v.Type {
-		case parser.ConstType_ConstList:
-			elemName := "element of " + name
-			for _, elem := range v.TypedValue.GetList() {
-				str, err := r.resolveConst(g, elemName, t.ValueType, elem)
-				if err != nil {
-					return "", err
-				}
-				ss = append(ss, str+",")
-			}
-			if len(ss) == 0 {
-				return goType + "{}", nil
-			}
-			return fmt.Sprintf("%s{\n%s\n}", goType, strings.Join(ss, "\n")), nil
-		case parser.ConstType_ConstInt, parser.ConstType_ConstDouble,
-			parser.ConstType_ConstLiteral, parser.ConstType_ConstMap:
-			return goType + "{}", nil
-		}
+		return r.onSetOrList(g, name, t, v)
 
 	case parser.Category_Map:
-		var kvs []string
-		switch v.Type {
-		case parser.ConstType_ConstMap:
-			for _, mcv := range v.TypedValue.Map {
-				keyName := "key of " + name
-				key, err := r.resolveConst(g, keyName, r.bin2str(t.KeyType), mcv.Key)
-				if err != nil {
-					return "", err
-				}
-				valName := "value of " + name
-				val, err := r.resolveConst(g, valName, t.ValueType, mcv.Value)
-				if err != nil {
-					return "", err
-				}
-				kvs = append(kvs, fmt.Sprintf("%s: %s,", key, val))
-			}
-			if len(kvs) == 0 {
-				return goType + "{}", nil
-			}
-			return fmt.Sprintf("%s{\n%s\n}", goType, strings.Join(kvs, "\n")), nil
-
-		case parser.ConstType_ConstInt, parser.ConstType_ConstDouble,
-			parser.ConstType_ConstLiteral, parser.ConstType_ConstList:
-			return goType + "{}", nil
-		}
+		return r.onMap(g, name, t, v)
 
 	case parser.Category_Struct, parser.Category_Union, parser.Category_Exception:
-		if v.Type != parser.ConstType_ConstMap {
-			// constant value of a struct-like must be a map literal
-			break
-		}
-
-		// get the target struct-like with typedef dereferenced
-		file, st, err := r.getStructLike(g, t)
-		if err != nil {
-			return "", err
-		}
-
-		var kvs []string
-		for _, mcv := range v.TypedValue.Map {
-			if mcv.Key.Type != parser.ConstType_ConstLiteral {
-				return "", fmt.Errorf("expect literals as keys in default value of struct type '%s', got '%s'", name, mcv.Key.Type)
-			}
-			n := mcv.Key.TypedValue.GetLiteral()
-
-			f, ok := st.GetField(n)
-			if !ok {
-				return "", fmt.Errorf("field %q not found in %q (%q): %v",
-					n, st.Name, file.ast.Filename, v,
-				)
-			}
-			typ, err := r.getTypeName(file, f.Type)
-			if err != nil {
-				return "", fmt.Errorf("get type name of %q in %q (%q): %w",
-					n, st.Name, file.ast.Filename, err,
-				)
-			}
-
-			key := file.StructLike(st.Name).Field(f.Name).GoName().String()
-			val, err := r.resolveConst(file, st.Name+"."+f.Name, f.Type, mcv.Value)
-			if err != nil {
-				return "", err
-			}
-
-			if NeedRedirect(f) {
-				if f.Type.Category.IsBaseType() {
-					// a trick to create pointers without temporary variables
-					val = fmt.Sprintf("(&struct{x %s}{%s}).x", typ, val)
-				}
-				if !strings.HasPrefix(val, "&") {
-					val = "&" + val
-				}
-			}
-			kvs = append(kvs, fmt.Sprintf("%s: %s,", key, val))
-		}
-		if len(kvs) == 0 {
-			return "&" + goType + "{}", nil
-		}
-		return fmt.Sprintf("&%s{\n%s\n}", goType, strings.Join(kvs, "\n")), nil
+		return r.onStructLike(g, name, t, v)
 	}
-	return "", fmt.Errorf("type error: '%s' was declared as type %s(value[%v] file[%s] Category[%s])", name, t, v, g.ast.Filename, t.Category)
+	return "", fmt.Errorf("type error: '%s' was declared as type %s but got value[%v] of category[%s]", name, t, v, t.Category)
 }
 
 func (r *Resolver) onBool(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
@@ -427,6 +330,140 @@ func (r *Resolver) onEnum(g *Scope, name string, t *parser.Type, v *parser.Const
 		}
 	}
 	return "", fmt.Errorf("expect const value for %q is a int or enum, got %+v", name, v)
+}
+
+func (r *Resolver) onSetOrList(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+	goType, err := r.getTypeName(g, t)
+	if err != nil {
+		return "", err
+	}
+	var ss []string
+	switch v.Type {
+	case parser.ConstType_ConstList:
+		elemName := "element of " + name
+		for _, elem := range v.TypedValue.GetList() {
+			str, err := r.resolveConst(g, elemName, t.ValueType, elem)
+			if err != nil {
+				return "", err
+			}
+			ss = append(ss, str+",")
+		}
+		if len(ss) == 0 {
+			return goType + "{}", nil
+		}
+		return fmt.Sprintf("%s{\n%s\n}", goType, strings.Join(ss, "\n")), nil
+
+	case parser.ConstType_ConstIdentifier:
+		val, ok := r.getIDValue(g, v.Extra)
+		if ok && val != "true" && val != "false" {
+			return val, nil
+		}
+
+	}
+	// fault tolerance
+	return goType + "{}", nil
+}
+
+func (r *Resolver) onMap(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+	goType, err := r.getTypeName(g, t)
+	if err != nil {
+		return "", err
+	}
+	var kvs []string
+	switch v.Type {
+	case parser.ConstType_ConstMap:
+		for _, mcv := range v.TypedValue.Map {
+			keyName := "key of " + name
+			key, err := r.resolveConst(g, keyName, r.bin2str(t.KeyType), mcv.Key)
+			if err != nil {
+				return "", err
+			}
+			valName := "value of " + name
+			val, err := r.resolveConst(g, valName, t.ValueType, mcv.Value)
+			if err != nil {
+				return "", err
+			}
+			kvs = append(kvs, fmt.Sprintf("%s: %s,", key, val))
+		}
+		if len(kvs) == 0 {
+			return goType + "{}", nil
+		}
+		return fmt.Sprintf("%s{\n%s\n}", goType, strings.Join(kvs, "\n")), nil
+
+	case parser.ConstType_ConstIdentifier:
+		val, ok := r.getIDValue(g, v.Extra)
+		if ok && val != "true" && val != "false" {
+			return val, nil
+		}
+	}
+	// fault tolerance
+	return goType + "{}", nil
+}
+
+func (r *Resolver) onStructLike(g *Scope, name string, t *parser.Type, v *parser.ConstValue) (string, error) {
+	goType, err := r.getTypeName(g, t)
+	if err != nil {
+		return "", err
+	}
+	if v.Type == parser.ConstType_ConstIdentifier {
+		val, ok := r.getIDValue(g, v.Extra)
+		if ok && val != "true" && val != "false" {
+			return val, nil
+		}
+	}
+
+	if v.Type != parser.ConstType_ConstMap {
+		// constant value of a struct-like must be a map literal
+		return "", errTypeMissMatch(name, t, v)
+	}
+
+	// get the target struct-like with typedef dereferenced
+	file, st, err := r.getStructLike(g, t)
+	if err != nil {
+		return "", err
+	}
+
+	var kvs []string
+	for _, mcv := range v.TypedValue.Map {
+		if mcv.Key.Type != parser.ConstType_ConstLiteral {
+			return "", fmt.Errorf("expect literals as keys in default value of struct type '%s', got '%s'", name, mcv.Key.Type)
+		}
+		n := mcv.Key.TypedValue.GetLiteral()
+
+		f, ok := st.GetField(n)
+		if !ok {
+			return "", fmt.Errorf("field %q not found in %q (%q): %v",
+				n, st.Name, file.ast.Filename, v,
+			)
+		}
+		typ, err := r.getTypeName(file, f.Type)
+		if err != nil {
+			return "", fmt.Errorf("get type name of %q in %q (%q): %w",
+				n, st.Name, file.ast.Filename, err,
+			)
+		}
+
+		key := file.StructLike(st.Name).Field(f.Name).GoName().String()
+		val, err := r.resolveConst(file, st.Name+"."+f.Name, f.Type, mcv.Value)
+		if err != nil {
+			return "", err
+		}
+
+		if NeedRedirect(f) {
+			if f.Type.Category.IsBaseType() {
+				// a trick to create pointers without temporary variables
+				val = fmt.Sprintf("(&struct{x %s}{%s}).x", typ, val)
+			}
+			if !strings.HasPrefix(val, "&") {
+				val = "&" + val
+			}
+		}
+		kvs = append(kvs, fmt.Sprintf("%s: %s,", key, val))
+	}
+	if len(kvs) == 0 {
+		return "&" + goType + "{}", nil
+	}
+	return fmt.Sprintf("&%s{\n%s\n}", goType, strings.Join(kvs, "\n")), nil
 }
 
 func (r *Resolver) getStructLike(g *Scope, t *parser.Type) (f *Scope, s *parser.StructLike, err error) {
