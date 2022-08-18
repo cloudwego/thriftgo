@@ -201,6 +201,19 @@ func (c *checker) CheckFunctions(t *parser.Thrift) (warns []string, err error) {
 						a.ID, a.Name, svc.Name, f.Name))
 				}
 			}
+			for _, a := range f.Throws {
+				switch a.Requiredness {
+				case parser.FieldType_Required:
+					warns = append(warns, fmt.Sprintf("exception %q in %q.%q: throw field must be optional, ignoring specified requiredness.",
+						a.Name, svc.Name, f.Name))
+					if !c.FixWarnings {
+						continue
+					}
+					fallthrough
+				case parser.FieldType_Default:
+					a.Requiredness = parser.FieldType_Optional
+				}
+			}
 		}
 	}
 	if argOpt != "" {
