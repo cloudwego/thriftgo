@@ -64,6 +64,7 @@ func ParseFile(path string, includeDirs []string, recursive bool) (*Thrift, erro
 	if err != nil {
 		return nil, err
 	}
+	defer src.Close()
 	p := newParser(path, src)
 	return p.parse()
 }
@@ -80,6 +81,7 @@ func parseFileRecursively(file, dir string, includeDirs []string, parsed map[str
 	if err != nil {
 		return nil, err
 	}
+	defer src.Close()
 	p := newParser(path, src)
 	t, err := p.parse()
 	if err != nil {
