@@ -175,7 +175,7 @@ func TestServiceReservedComment(t *testing.T) {
 			test.Assert(t, f.ReservedComments == `// one-line comment
 // one-line comment`)
 		case "method1":
-			test.Assert(t, f.ReservedComments == `# one-line comment
+			test.Assert(t, f.ReservedComments == `// one-line comment
 /* one-line comment */`)
 		case "method2":
 			test.Assert(t, f.ReservedComments == `/* cross-line

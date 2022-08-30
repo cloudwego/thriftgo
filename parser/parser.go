@@ -17,14 +17,25 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
-
-	"github.com/cloudwego/thriftgo/parser/token"
 )
+
+// NOTSET is a value to express 'not set'.
+const NOTSET = -999999
+
+type parser struct {
+	ThriftIDL
+	Thrift
+	IncludeDirs               []string
+	Annotations               *Annotations
+	DefinitionReservedComment string
+}
 
 func exists(path string) bool {
 	fi, err := os.Stat(path)
@@ -35,19 +46,13 @@ func exists(path string) bool {
 }
 
 func search(file, dir string, includeDirs []string) (string, error) {
-	ps := []string{filepath.Join(dir, file)}
+	ps := []string{file, filepath.Join(dir, file)}
 	for _, inc := range includeDirs {
 		ps = append(ps, filepath.Join(inc, file))
 	}
 	for _, p := range ps {
 		if exists(p) {
-			if filepath.IsAbs(p) {
-				return p, nil
-			}
-			if v, err := filepath.Abs(p); err == nil {
-				return v, nil
-			}
-			return p, nil
+			return normalizeFilename(p), nil
 		}
 	}
 	return file, &os.PathError{Op: "search", Path: file, Err: os.ErrNotExist}
@@ -57,38 +62,37 @@ func search(file, dir string, includeDirs []string) (string, error) {
 // If recursive is true, then the include IDLs are parsed recursively as well.
 func ParseFile(path string, includeDirs []string, recursive bool) (*Thrift, error) {
 	if recursive {
-		parsed := make(map[string]*Thrift)
-		return parseFileRecursively(path, "", includeDirs, parsed)
+		thriftMap := make(map[string]*Thrift)
+		dir := filepath.Dir(normalizeFilename(path))
+		return parseFileRecursively(path, dir, includeDirs, thriftMap)
 	}
-	src, err := os.Open(path)
+	bs, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	p := newParser(path, src)
-	return p.parse()
+	return parseString(path, string(bs), includeDirs)
 }
 
-func parseFileRecursively(file, dir string, includeDirs []string, parsed map[string]*Thrift) (*Thrift, error) {
+func parseFileRecursively(file, dir string, includeDirs []string, thriftMap map[string]*Thrift) (*Thrift, error) {
 	path, err := search(file, dir, includeDirs)
 	if err != nil {
 		return nil, err
 	}
-	if t, ok := parsed[path]; ok {
+	if t, ok := thriftMap[path]; ok {
 		return t, nil
 	}
-	src, err := os.Open(path)
+	bs, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	p := newParser(path, src)
-	t, err := p.parse()
+	t, err := parseString(path, string(bs), includeDirs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse %s err: %w", path, err)
 	}
-	parsed[path] = t
+	thriftMap[path] = t
 	dir = filepath.Dir(path)
 	for _, inc := range t.Includes {
-		t, err := parseFileRecursively(inc.Path, dir, includeDirs, parsed)
+		t, err := parseFileRecursively(inc.Path, dir, includeDirs, thriftMap)
 		if err != nil {
 			return nil, err
 		}
@@ -99,597 +103,763 @@ func parseFileRecursively(file, dir string, includeDirs []string, parsed map[str
 
 // ParseString parses the thrift file path and file content then return an AST.
 func ParseString(path, content string) (*Thrift, error) {
-	src := strings.NewReader(content)
-	p := newParser(path, src)
-	return p.parse()
+	return parseString(path, content, nil)
 }
 
-type parser struct {
-	lexer *token.Tokenizer
-	ast   *Thrift
-	last  token.Token // the last token read
-	next  token.Token // the next token to be read
-	pAnno *Annotations
-
-	comments []string
-	comspans []token.Span
-
-	// TODO: remove this by designing the grammar
-	newlineNumberBeforeNext int
-}
-
-func newParser(filename string, src io.Reader) *parser {
-	return &parser{
-		lexer: token.NewTokenizer(src),
-		ast: &Thrift{
-			Filename: filename,
-		},
+func parseString(path, content string, includeDirs []string) (*Thrift, error) {
+	p := &parser{
+		IncludeDirs: includeDirs,
 	}
+	p.Filename = path
+	p.Buffer = content
+	p.Init()
+	if err := p.ThriftIDL.Parse(); err != nil {
+		return nil, err
+	}
+	if err := p.parse(); err != nil {
+		return nil, err
+	}
+	return &p.Thrift, nil
 }
 
-func meet(actual, expected token.Tok, more []token.Tok) bool {
-	if actual == expected {
-		return true
+func (p *parser) parse() (err error) {
+	root := p.AST()
+	if root == nil || root.pegRule != ruleDocument {
+		return errors.New("not document")
 	}
-	for _, t := range more {
-		if t == actual {
-			return true
+	// Header* Definition* !.
+	for n := root.up; n != nil; n = n.next {
+		switch n.pegRule {
+		case ruleSkip, ruleSkipLine:
+			continue
+		case ruleHeader:
+			if err := p.parseHeader(n); err != nil {
+				return err
+			}
+		case ruleDefinition:
+			if err := p.parseDefinition(n); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown rule: " + rul3s[n.pegRule])
 		}
 	}
-	return false
+	return nil
 }
 
-func (p *parser) expect(t token.Tok, more ...token.Tok) {
-	move := func() token.Token {
-		t := p.lexer.Next()
-		return t
-	}
-
-	if t == token.NewLine {
-		if p.newlineNumberBeforeNext > 0 {
-			p.newlineNumberBeforeNext--
-			return
+func (p *parser) pegText(node *node32) string {
+	for n := node; n != nil; n = n.next {
+		if s := p.pegText(n.up); s != "" {
+			return s
 		}
-		if p.next.Tok == token.EOF {
-			return
+		if n.pegRule != rulePegText {
+			continue
 		}
-	}
 
-	if !meet(p.next.Tok, t, more) {
-		panic(p.syntaxError(t, more))
-	}
+		quote := p.buffer[n.begin-1]
+		runes := make([]rune, 0, n.end-n.begin)
+		for i := n.begin; i < n.end-1; i++ {
+			r := p.buffer[i]
 
-	p.last = p.next
-	p.newlineNumberBeforeNext = 0
-	for {
-		p.next = move()
-		switch p.next.Tok {
-		case token.LexicalError:
-			panic(p.lexicalError())
-		case token.EOF:
-			return
-		case token.BlockComment, token.LineComment, token.UnixComment:
-			if p.last.Span.End != 0 {
-				ln1 := p.lexer.LineSpan(p.last.Span).End
-				ln2 := p.lexer.LineSpan(p.next.Span).Beg
-				if ln1 == ln2 {
-					// discard non-prefix comments
+			// unescape \' for single quoted, \" for double quoted
+			if r == '\\' {
+				switch p.buffer[i+1] {
+				case '\\':
+					i++
+					runes = append(runes, r)
+				case quote:
 					continue
 				}
 			}
-			p.comments = append(p.comments, p.next.AsString())
-			p.comspans = append(p.comspans, p.lexer.LineSpan(p.next.Span))
-		case token.Whitespaces:
-		case token.NewLine:
-			p.newlineNumberBeforeNext++
-		default:
+			runes = append(runes, r)
+		}
+		runes = append(runes, p.buffer[n.end-1])
+		return string(runes)
+	}
+	return ""
+}
+
+func (p *parser) parseHeader(node *node32) (err error) {
+	node, err = checkrule(node, ruleHeader)
+	if err != nil {
+		return err
+	}
+	// Skip (Include / CppInclude / Namespace) SkipLine
+	if node.pegRule == ruleSkip {
+		node = node.next
+	}
+	switch node.pegRule {
+	case ruleInclude:
+		if err := p.parseInclude(node); err != nil {
+			return err
+		}
+	case ruleNamespace:
+		if err := p.parseNamespace(node); err != nil {
+			return err
+		}
+	case ruleCppInclude:
+		if err := p.parseCppInclude(node); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
+	}
+	return nil
+}
+
+func (p *parser) parseInclude(node *node32) (err error) {
+	node, err = checkrule(node, ruleInclude)
+	if err != nil {
+		return err
+	}
+	filename := p.pegText(node)
+	if filename == "" {
+		return
+	}
+	for _, inc := range p.Includes {
+		if inc.Path == filename {
 			return
 		}
 	}
+	p.Includes = append(p.Includes, &Include{Path: filename})
+	return nil
 }
 
-func (p *parser) parse() (ast *Thrift, err error) {
-	defer func() {
-		if x := recover(); x != nil {
-			switch v := x.(type) {
-			case error:
-				err = v
-			default:
-				err = fmt.Errorf("panic: %+v", v)
+func (p *parser) parseCppInclude(node *node32) (err error) {
+	node, err = checkrule(node, ruleCppInclude)
+	if err != nil {
+		return err
+	}
+	p.CppIncludes = append(p.CppIncludes, p.pegText(node))
+	return nil
+}
+
+func (p *parser) parseNamespace(node *node32) (err error) {
+	ns := Namespace{}
+	node, err = checkrule(node, ruleNamespace)
+	if err != nil {
+		return err
+	}
+	node = node.next // ignore "namespace"
+	ns.Language = p.pegText(node.up)
+	node = node.next
+	ns.Name = p.pegText(node.up)
+	node = node.next
+	if node != nil && node.pegRule == ruleAnnotations { // ANNOTATIONS
+		ns.Annotations, err = p.parseAnnotations(node)
+		if err != nil {
+			return err
+		}
+	}
+	p.Namespaces = append(p.Namespaces, &ns)
+	return nil
+}
+
+func (p *parser) parseDefinition(node *node32) (err error) {
+	node, err = checkrule(node, ruleDefinition)
+	if err != nil {
+		return err
+	}
+	p.DefinitionReservedComment = ""
+	// ReservedComments Skip (Const / Typedef / Enum / Struct / Union / Service / Exception) Annotations? SkipLine
+	if node.pegRule == ruleReservedComments {
+		reservedComments, err := p.parseReservedComments(node)
+		if err != nil {
+			return err
+		}
+		p.DefinitionReservedComment = reservedComments
+		node = node.next
+	}
+	// skip Skip
+	if node.pegRule == ruleSkip {
+		node = node.next
+	}
+	switch node.pegRule {
+	case ruleConst:
+		if err := p.parseConst(node); err != nil {
+			return err
+		}
+	case ruleTypedef:
+		if err := p.parseTypedef(node); err != nil {
+			return err
+		}
+	case ruleEnum:
+		if err := p.parseEnum(node); err != nil {
+			return err
+		}
+	case ruleUnion:
+		if err := p.parseUnion(node); err != nil {
+			return err
+		}
+	case ruleStruct:
+		if err := p.parseStruct(node); err != nil {
+			return err
+		}
+	case ruleException:
+		if err := p.parseException(node); err != nil {
+			return err
+		}
+	case ruleService:
+		if err := p.parseService(node); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
+	}
+	node = node.next
+	if node != nil && node.pegRule == ruleAnnotations {
+		ann, err := p.parseAnnotations(node)
+		if err != nil {
+			return err
+		}
+		*p.Annotations = ann
+	}
+	return nil
+}
+
+func (p *parser) parseConst(node *node32) (err error) {
+	node, err = checkrule(node, ruleConst)
+	if err != nil {
+		return err
+	}
+	// CONST FieldType Identifier EQUAL ConstValue ListSeparator?
+	node = node.next // ignore CONST
+	ft, err := p.parseFieldType(node)
+	if err != nil {
+		return err
+	}
+	node = node.next
+	name := p.pegText(node)
+	node = node.next.next // ignore EQUAL
+	value, err := p.parseConstValue(node)
+	if err != nil {
+		return err
+	}
+	c := &Constant{Name: name, Type: ft, Value: value}
+	c.ReservedComments = p.DefinitionReservedComment
+	p.Constants = append(p.Constants, c)
+	p.Annotations = &c.Annotations
+	return nil
+}
+
+func (p *parser) parseFieldType(node *node32) (typ *Type, err error) {
+	node, err = checkrule(node, ruleFieldType)
+	if err != nil {
+		return nil, err
+	}
+	// ContainerType / BaseType / Identifier
+	switch node.pegRule {
+	case ruleContainerType:
+		typ, err = p.parseContainerType(node)
+		if err != nil {
+			return typ, err
+		}
+	case ruleIdentifier, ruleBaseType:
+		typ = &Type{Name: p.pegText(node)}
+	default:
+		return typ, fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
+	}
+	node = node.next
+	if node != nil && node.pegRule == ruleAnnotations {
+		typ.Annotations, err = p.parseAnnotations(node)
+		if err != nil {
+			return typ, err
+		}
+	}
+	return typ, nil
+}
+
+func (p *parser) parseContainerType(node *node32) (typ *Type, err error) {
+	node, err = checkrule(node, ruleContainerType)
+	if err != nil {
+		return &Type{}, err
+	}
+	// MapType / SetType / ListType
+	switch node.pegRule {
+	case ruleMapType: // MAP CppType? LPOINT FieldType COMMA FieldType RPOINT
+		node = node.up.next // ignore MAP LPOINT
+		var cppType string
+		if node.pegRule == ruleCppType {
+			cppType = p.pegText(node.up.next) // ignore CPPTYPE
+			node = node.next
+		}
+		node = node.next // ignore LPOINT
+		kt, err := p.parseFieldType(node)
+		if err != nil {
+			return kt, err
+		}
+		node = node.next.next // ignore COMMA
+		vt, err := p.parseFieldType(node)
+		if err != nil {
+			return vt, err
+		}
+		return &Type{Name: "map", KeyType: kt, ValueType: vt, CppType: cppType}, nil
+	case ruleSetType: // SET CppType? LPOINT FieldType RPOINT
+		node = node.up.next // ignore SET
+		var cppType string
+		if node.pegRule == ruleCppType {
+			cppType = p.pegText(node.up.next) // ignore CPPTYPE
+			node = node.next
+		}
+		node = node.next // ignore LPOINT
+		vt, err := p.parseFieldType(node)
+		if err != nil {
+			return vt, err
+		}
+		return &Type{Name: "set", ValueType: vt, CppType: cppType}, nil
+	case ruleListType: // LIST LPOINT FieldType RPOINT CppType?
+		node = node.up.next.next // ignore LIST LPOINT
+		vt, err := p.parseFieldType(node)
+		if err != nil {
+			return vt, err
+		}
+		node = node.next.next // ignore RPOINT
+		var cppType string
+		if node != nil && node.pegRule == ruleCppType {
+			cppType = p.pegText(node.up.next) // ignore CPPTYPE
+		}
+		return &Type{Name: "list", ValueType: vt, CppType: cppType}, nil
+	default:
+		return &Type{}, fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
+	}
+}
+
+func (p *parser) parseConstValue(node *node32) (cv *ConstValue, err error) {
+	node, err = checkrule(node, ruleConstValue)
+	if err != nil {
+		return nil, err
+	}
+	// DoubleConstant / IntConstant / Literal / Identifier / ConstList / ConstMap
+	switch node.pegRule {
+	case ruleDoubleConstant:
+		double, _ := strconv.ParseFloat(p.pegText(node), 64)
+		return &ConstValue{Type: ConstType_ConstDouble, TypedValue: &ConstTypedValue{Double: &double}}, nil
+	case ruleIntConstant:
+		i, err := strconv.ParseInt(p.pegText(node), 0, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parseConstValue failed at '%s': %w", p.pegText(node), err)
+		}
+		return &ConstValue{Type: ConstType_ConstInt, TypedValue: &ConstTypedValue{Int: &i}}, nil
+	case ruleLiteral:
+		literal := p.pegText(node)
+		return &ConstValue{Type: ConstType_ConstLiteral, TypedValue: &ConstTypedValue{Literal: &literal}}, nil
+	case ruleIdentifier:
+		identifier := p.pegText(node)
+		return &ConstValue{Type: ConstType_ConstIdentifier, TypedValue: &ConstTypedValue{Identifier: &identifier}}, nil
+	case ruleConstList:
+		// LBRK (ConstValue ListSeparator?)* RBRK
+		ret := []*ConstValue{} // important: can't not be nil
+		for n := node.up; n != nil; n = n.next {
+			if n.pegRule == ruleConstValue {
+				val, err := p.parseConstValue(n)
+				if err != nil {
+					return nil, err
+				}
+				ret = append(ret, val)
 			}
 		}
-	}()
-	p.expect(p.next.Tok) // read the first token
-	p.parserDocument()
-	return p.ast, nil
-}
-
-// Document <- Header* Definition* !.
-func (p *parser) parserDocument() {
-	p.parseHeaders()
-	p.parseDefinitions()
-	p.expect(token.EOF)
-}
-
-// Header <- (Include / CppInclude / Namespace) Newline
-func (p *parser) parseHeaders() {
-	for {
-		switch p.next.Tok {
-		case token.Include:
-			// Include    <- 'include' Literal
-			p.expect(token.Include)
-			p.expect(token.StringLiteral)
-			p.ast.Includes = append(p.ast.Includes, &Include{
-				Path: p.last.Unquote(),
-			})
-
-		case token.CppInclude:
-			// CppInclude <- 'cppinclude' Literal
-			p.expect(token.CppInclude)
-			p.expect(token.StringLiteral)
-			p.ast.CppIncludes = append(p.ast.CppIncludes, p.last.AsString())
-
-		case token.Namespace:
-			// Namespace      <- 'namespace' Language Scope Annotations?
-			// Language       <- '*' / Identifier
-			// Scope          <- Identifiers
-			p.expect(token.Namespace)
-			p.expect(token.Identifier, token.Asterisk)
-
-			ns := &Namespace{}
-			ns.Language = p.last.AsString()
-
-			p.expect(token.Identifier)
-			ns.Name = p.last.AsString()
-
-			if p.next.Tok == token.LParenthesis {
-				ns.Annotations = p.parseAnnotations()
+		return &ConstValue{Type: ConstType_ConstList, TypedValue: &ConstTypedValue{List: ret}}, nil
+	case ruleConstMap:
+		node = node.up
+		// LWING (ConstValue COLON ConstValue ListSeparator?)* RWING
+		ret := []*MapConstValue{} // important: can't not be nil
+		for n := node.next; n != nil; n = n.next {
+			if n.pegRule != ruleConstValue {
+				continue
 			}
-			p.ast.Namespaces = append(p.ast.Namespaces, ns)
-
-		default:
-			return
-		}
-	}
-}
-
-// Definition <- (Const / Typedef / Enum / Struct / Union / Exception / Service) Annotations? NewLine
-func (p *parser) parseDefinitions() {
-	for {
-		switch p.next.Tok {
-		case token.Const:
-			p.parseConst()
-		case token.Typedef:
-			p.parseTypedef()
-		case token.Enum:
-			p.parseEnum()
-		case token.Struct, token.Union, token.Exception:
-			p.parseStruct()
-		case token.Service:
-			p.parseService()
-		default:
-			return
-		}
-		if p.next.Tok == token.LParenthesis {
-			if p.pAnno != nil {
-				*p.pAnno = p.parseAnnotations()
+			k, err := p.parseConstValue(n)
+			if err != nil {
+				return nil, err
 			}
+			n = n.next.next // ignore COLON
+			v, err := p.parseConstValue(n)
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, &MapConstValue{Key: k, Value: v})
 		}
-		if p.next.Tok == token.Semicolon {
-			p.expect(token.Semicolon)
-		}
-		p.expect(token.NewLine)
+		return &ConstValue{Type: ConstType_ConstMap, TypedValue: &ConstTypedValue{Map: ret}}, nil
+	default:
+		return nil, fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
 	}
 }
 
-// Const <- 'const' FieldType Identifier '=' ConstValue
-func (p *parser) parseConst() {
-	comment := p.prefixComment()
-	p.expect(token.Const)
-
-	typ := p.parseFieldType()
-
-	p.expect(token.Identifier)
-	id := p.last.AsString()
-
-	p.expect(token.Equal)
-	cv := p.parseConstValue()
-
-	c := &Constant{
-		Name:             id,
-		Type:             typ,
-		Value:            cv,
-		ReservedComments: comment,
+func (p *parser) parseTypedef(node *node32) (err error) {
+	node, err = checkrule(node, ruleTypedef)
+	if err != nil {
+		return err
 	}
-	p.ast.Constants = append(p.ast.Constants, c)
-	p.pAnno = &c.Annotations
+	// TYPEDEF FieldType Identifier
+	node = node.next // ignore TYPEDEF
+	ft, err := p.parseFieldType(node)
+	if err != nil {
+		return err
+	}
+	var typd Typedef
+	typd.Type = ft
+	node = node.next
+	typd.Alias = p.pegText(node)
+	typd.ReservedComments = p.DefinitionReservedComment
+	p.Typedefs = append(p.Typedefs, &typd)
+	p.Annotations = &typd.Annotations
+	return nil
 }
 
-// Typedef <- 'typedef' FieldType Identifier
-func (p *parser) parseTypedef() {
-	comment := p.prefixComment()
-	p.expect(token.Typedef)
-
-	typ := p.parseFieldType()
-
-	p.expect(token.Identifier)
-	id := p.last.AsString()
-
-	td := &Typedef{
-		Type:             typ,
-		Alias:            id,
-		ReservedComments: comment,
+func (p *parser) parseEnum(node *node32) (err error) {
+	node, err = checkrule(node, ruleEnum)
+	if err != nil {
+		return err
 	}
-	p.ast.Typedefs = append(p.ast.Typedefs, td)
-	p.pAnno = &td.Annotations
-}
-
-// Enum <- 'enum' Identifier '{' (Identifier ('=' IntLiteral )? Annotations? ListSeparator? NewLine)* '}'
-func (p *parser) parseEnum() {
-	comment := p.prefixComment()
-	p.expect(token.Enum)
-	p.expect(token.Identifier)
-	e := &Enum{
-		Name:             p.last.AsString(),
-		ReservedComments: comment,
-	}
-	p.expect(token.LBrace)
-	for p.next.Tok == token.Identifier {
-		comment := p.prefixComment()
-		p.expect(token.Identifier)
-		ev := &EnumValue{
-			Name:             p.last.AsString(),
-			ReservedComments: comment,
+	// ENUM Identifier LWING ( ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator?)* RWING
+	node = node.next // ignore ENUM
+	name := p.pegText(node)
+	var values []*EnumValue
+	for n := node.next.next; n != nil; n = n.next {
+		valueComments := ""
+		if n.pegRule == ruleReservedComments {
+			valueComments, err = p.parseReservedComments(n)
+			if err != nil {
+				return err
+			}
+			n = n.next
 		}
-
-		if p.next.Tok == token.Equal {
-			p.expect(token.Equal)
-			p.expect(token.IntLiteral)
-			ev.Value = p.last.AsInt()
-		} else {
-			if len(e.Values) == 0 {
-				ev.Value = 0
+		if n.pegRule == ruleIdentifier {
+			var v EnumValue
+			v.ReservedComments = valueComments
+			v.Name = p.pegText(n)
+			if n.next.pegRule == ruleEQUAL {
+				n = n.next.next
+				v.Value, _ = strconv.ParseInt(p.pegText(n), 0, 64)
 			} else {
-				ev.Value = e.Values[len(e.Values)-1].Value + 1
+				if len(values) == 0 {
+					v.Value = 0
+				} else {
+					v.Value = values[len(values)-1].Value + 1
+				}
+			}
+
+			if n.next.pegRule == ruleAnnotations {
+				v.Annotations, err = p.parseAnnotations(n.next)
+				if err != nil {
+					return err
+				}
+			}
+			values = append(values, &v)
+		}
+	}
+	e := &Enum{Name: name, Values: values}
+	e.ReservedComments = p.DefinitionReservedComment
+	p.Enums = append(p.Enums, e)
+	p.Annotations = &e.Annotations
+	return nil
+}
+
+func (p *parser) parseUnion(node *node32) (err error) {
+	node, err = checkrule(node, ruleUnion)
+	if err != nil {
+		return err
+	}
+	// UNION Identifier LWING Field* RWING
+	node = node.next // ignore UNION
+	name := p.pegText(node)
+	node = node.next
+	var fields []*Field
+	for n := node.next; n != nil; n = n.next {
+		switch n.pegRule {
+		case ruleField:
+			field, err := p.parseField(n)
+			if err != nil {
+				return err
+			}
+			if field.ID == NOTSET {
+				if len(fields) > 0 {
+					field.ID = fields[len(fields)-1].ID + 1
+				} else {
+					field.ID = 1
+				}
+			}
+			fields = append(fields, field)
+		}
+	}
+	u := &StructLike{Category: "union", Name: name, Fields: fields}
+	u.ReservedComments = p.DefinitionReservedComment
+	p.Unions = append(p.Unions, u)
+	p.Annotations = &u.Annotations
+	return nil
+}
+
+func (p *parser) parseStruct(node *node32) (err error) {
+	node, err = checkrule(node, ruleStruct)
+	if err != nil {
+		return err
+	}
+	// STRUCT Identifier LWING Field* RWING
+	node = node.next // ignore STRUCT
+	name := p.pegText(node)
+	node = node.next
+	var fields []*Field
+	for n := node.next; n != nil; n = n.next {
+		switch n.pegRule {
+		case ruleField:
+			field, err := p.parseField(n)
+			if err != nil {
+				return err
+			}
+			if field.ID == NOTSET {
+				if len(fields) > 0 {
+					field.ID = fields[len(fields)-1].ID + 1
+				} else {
+					field.ID = 1
+				}
+			}
+			fields = append(fields, field)
+		}
+	}
+	s := &StructLike{Category: "struct", Name: name, Fields: fields}
+	s.ReservedComments = p.DefinitionReservedComment
+	p.Structs = append(p.Structs, s)
+	p.Annotations = &s.Annotations
+	return nil
+}
+
+func (p *parser) parseException(node *node32) (err error) {
+	node, err = checkrule(node, ruleException)
+	if err != nil {
+		return err
+	}
+	// EXCEPTION Identifier LWING Field* RWING
+	node = node.next // ignore EXCEPTION
+	name := p.pegText(node)
+	var fields []*Field
+	for n := node.next; n != nil; n = n.next {
+		if n.pegRule == ruleField {
+			field, err := p.parseField(n)
+			if err != nil {
+				return err
+			}
+			if field.ID == NOTSET {
+				if len(fields) > 0 {
+					field.ID = fields[len(fields)-1].ID + 1
+				} else {
+					field.ID = 1
+				}
+			}
+			fields = append(fields, field)
+		}
+	}
+	e := &StructLike{Category: "exception", Name: name, Fields: fields}
+	e.ReservedComments = p.DefinitionReservedComment
+	p.Exceptions = append(p.Exceptions, e)
+	p.Annotations = &e.Annotations
+	return nil
+}
+
+func (p *parser) parseField(node *node32) (field *Field, err error) {
+	node, err = checkrule(node, ruleField)
+	if err != nil {
+		return nil, err
+	}
+	// ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
+	var f Field
+	f.ID = NOTSET
+	for ; node != nil; node = node.next {
+		switch node.pegRule {
+		case ruleSkip, ruleSkipLine:
+			continue
+		case ruleReservedComments:
+			reservedComments, err := p.parseReservedComments(node)
+			if err != nil {
+				return nil, err
+			}
+			f.ReservedComments = reservedComments
+		case ruleFieldId:
+			i, _ := strconv.Atoi(p.pegText(node))
+			f.ID = int32(i)
+		case ruleFieldReq:
+			require := p.pegText(node)
+			f.Requiredness = FieldType_Default
+			if require == "required" {
+				f.Requiredness = FieldType_Required
+			} else if require == "optional" {
+				f.Requiredness = FieldType_Optional
+			}
+		case ruleFieldType:
+			f.Type, err = p.parseFieldType(node)
+			if err != nil {
+				return nil, err
+			}
+		case ruleIdentifier:
+			f.Name = p.pegText(node)
+		case ruleEQUAL:
+			node = node.next // ignore EQUAL
+			f.Default, err = p.parseConstValue(node)
+			if err != nil {
+				return nil, err
+			}
+		case ruleAnnotations:
+			f.Annotations, err = p.parseAnnotations(node)
+			if err != nil {
+				return nil, err
 			}
 		}
-
-		if p.next.Tok == token.LParenthesis {
-			ev.Annotations = p.parseAnnotations()
-		}
-		p.consumeListSeparator()
-		e.Values = append(e.Values, ev)
 	}
-	p.expect(token.RBrace)
-	p.pAnno = &e.Annotations
-	p.ast.Enums = append(p.ast.Enums, e)
+	return &f, nil
 }
 
-// Service <- 'service' Identifier ( 'extends' Identifiers )? '{' Function* '}'
-func (p *parser) parseService() {
-	comment := p.prefixComment()
-	p.expect(token.Service)
-	p.expect(token.Identifier)
-	svc := &Service{
-		Name:             p.last.AsString(),
-		ReservedComments: comment,
+func (p *parser) parseAnnotations(node *node32) ([]*Annotation, error) {
+	// LPAR Annotation+ RPAR
+	var err error
+	var ret Annotations
+	node, err = checkrule(node, ruleAnnotations)
+	if err != nil {
+		return nil, err
 	}
-	if p.next.Tok == token.Extends {
-		p.expect(token.Extends)
-		p.expect(token.Identifier)
-		svc.Extends = p.last.AsString()
+	for node = node.next; node != nil; node = node.next {
+		if node.pegRule == ruleAnnotation {
+			k, v, err := p.parseAnnotation(node)
+			if err != nil {
+				return nil, err
+			}
+			ret.Append(k, v)
+		}
 	}
-
-	p.expect(token.LBrace)
-	for p.next.Tok != token.RBrace {
-		fn := p.parseFunction()
-		svc.Functions = append(svc.Functions, fn)
-	}
-	p.expect(token.RBrace)
-
-	p.pAnno = &svc.Annotations
-	p.ast.Services = append(p.ast.Services, svc)
+	return ret, nil
 }
 
-// Function <- 'oneway'? FunctionType Identifier '(' Field* ')' Throws? Annotations? ListSeparator? NewLine
-func (p *parser) parseFunction() *Function {
-	comment := p.prefixComment()
-	fn := &Function{
-		ReservedComments: comment,
-	}
-	if p.next.Tok == token.Oneway {
-		p.expect(token.Oneway)
-		fn.Oneway = true
-	}
-	// FunctionType <- 'void' / FieldType
-	if p.next.Tok == token.Void {
-		p.expect(token.Void)
-		fn.Void = true
-		fn.FunctionType = &Type{Name: "void"}
-	} else {
-		fn.FunctionType = p.parseFieldType()
-	}
-	p.expect(token.Identifier)
-	fn.Name = p.last.AsString()
-
-	// Arguments
-	p.expect(token.LParenthesis)
-	for p.next.Tok != token.RParenthesis {
-		arg := p.parseField()
-		fn.Arguments = append(fn.Arguments, arg)
-	}
-	p.expect(token.RParenthesis)
-
-	// Throws
-	if p.next.Tok == token.Throws {
-		p.expect(token.Throws)
-		p.expect(token.LParenthesis)
-		for p.next.Tok != token.RParenthesis {
-			ex := p.parseField()
-			fn.Throws = append(fn.Throws, ex)
-		}
-		p.expect(token.RParenthesis)
+func (p *parser) parseAnnotation(node *node32) (k, v string, err error) {
+	// Identifier EQUAL Literal ListSeparator?
+	node, err = checkrule(node, ruleAnnotation)
+	if err != nil {
+		return "", "", err
 	}
 
-	if p.next.Tok == token.LParenthesis {
-		fn.Annotations = p.parseAnnotations()
-	}
-	p.consumeListSeparator()
-	return fn
+	k = p.pegText(node) // Identifier
+	node = node.next.next
+	v = p.pegText(node) // Literal
+	return k, v, nil
 }
 
-// Struct    <- 'struct' Identifier '{' Field* '}'
-// Union     <- 'union' Identifier '{' Field* '}'
-// Exception <- 'exception' Identifier '{' Field* '}'
-func (p *parser) parseStruct() {
-	comment := p.prefixComment()
-	s := &StructLike{
-		ReservedComments: comment,
+func (p *parser) parseService(node *node32) (err error) {
+	node, err = checkrule(node, ruleService)
+	if err != nil {
+		return err
 	}
-	p.expect(token.Struct, token.Union, token.Exception)
-	s.Category = p.last.AsString()
-
-	p.expect(token.Identifier)
-	s.Name = p.last.AsString()
-
-	p.expect(token.LBrace)
-	for p.next.Tok != token.RBrace {
-		f := p.parseField()
-		s.Fields = append(s.Fields, f)
+	// SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
+	var s Service
+	node = node.next // ignore SERVICE
+	s.Name = p.pegText(node)
+	node = node.next
+	if node.pegRule == ruleEXTENDS {
+		s.Extends = p.pegText(node)
+		node = node.next
 	}
-	p.expect(token.RBrace)
-	p.pAnno = &s.Annotations
-	switch s.Category {
-	case "struct":
-		p.ast.Structs = append(p.ast.Structs, s)
-	case "union":
-		p.ast.Unions = append(p.ast.Unions, s)
-	case "exception":
-		p.ast.Exceptions = append(p.ast.Exceptions, s)
-	default:
-		panic("?")
+	for node = node.next; node != nil; node = node.next {
+		if node.pegRule == ruleFunction {
+			fu, err := p.parseFunction(node)
+			if err != nil {
+				return err
+			}
+			s.Functions = append(s.Functions, fu)
+		}
 	}
+	s.ReservedComments = p.DefinitionReservedComment
+	p.Services = append(p.Services, &s)
+	p.Annotations = &s.Annotations
+	return nil
 }
 
-// Field <- FieldId? FieldReq? FieldType Identifier ('=' ConstValue)? Annotations? ListSeparator? NewLine
-func (p *parser) parseField() *Field {
-	comment := p.prefixComment()
-	f := &Field{
-		ReservedComments: comment,
+func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
+	node, err = checkrule(node, ruleFunction)
+	if err != nil {
+		return nil, err
 	}
-
-	// FieldId  <- IntLiteral ':'
-	if p.next.Tok == token.IntLiteral {
-		p.expect(token.IntLiteral)
-		f.ID = int32(p.last.AsInt())
-		p.expect(token.Colon)
-	}
-
-	// FieldReq <- 'required' / 'optional'
-	if p.next.Tok == token.Required || p.next.Tok == token.Optional {
-		p.expect(token.Required, token.Optional)
-		if p.last.Tok == token.Required {
-			f.Requiredness = FieldType_Required
-		} else {
-			f.Requiredness = FieldType_Optional
+	// ReservedComments ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator?
+	var f Function
+	for ; node != nil; node = node.next {
+		switch node.pegRule {
+		case ruleReservedComments:
+			reservedComments, err := p.parseReservedComments(node)
+			if err != nil {
+				return nil, err
+			}
+			f.ReservedComments = reservedComments
+		case ruleONEWAY:
+			f.Oneway = true
+		case ruleFunctionType:
+			n := node.up
+			if n.pegRule == ruleFieldType {
+				f.FunctionType, err = p.parseFieldType(n)
+				if err != nil {
+					return nil, err
+				}
+			} else if n.pegRule == ruleVOID {
+				f.Void = true
+				f.FunctionType = &Type{Name: "void"}
+			}
+		case ruleIdentifier:
+			f.Name = p.pegText(node)
+		case ruleField:
+			field, err := p.parseField(node)
+			if err != nil {
+				return nil, err
+			}
+			f.Arguments = addField(f.Arguments, field)
+		case ruleThrows:
+			f.Throws, err = p.parseThrows(node)
+			if err != nil {
+				return nil, err
+			}
+		case ruleAnnotations:
+			f.Annotations, err = p.parseAnnotations(node)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	f.Type = p.parseFieldType()
-
-	p.expect(token.Identifier)
-	f.Name = p.last.AsString()
-
-	if p.next.Tok == token.Equal {
-		p.expect(token.Equal)
-		f.Default = p.parseConstValue()
-	}
-	if p.next.Tok == token.LParenthesis {
-		f.Annotations = p.parseAnnotations()
-	}
-	p.consumeListSeparator()
-	return f
+	return &f, nil
 }
 
-// FieldType      <- (BaseType / ContainerType / Identifiers) Annotations?
-// BaseType       <- 'bool' / 'byte' / 'i8' / 'i16' / 'i32' / 'i64' / 'double' / 'string' / 'binary'
-// ContainerType  <- MapType / SetType / ListType
-// MapType        <- 'map' '<' FieldType ',' FieldType '>'
-// SetType        <- 'set' '<' FieldType '>'
-// ListType       <- 'list' '<' FieldType '>'
-func (p *parser) parseFieldType() (typ *Type) {
-	p.expect(token.Identifier,
-		token.Bool, token.Byte,
-		token.I8, token.I16, token.I32, token.I64,
-		token.Double, token.String, token.Binary,
-		token.Map, token.Set, token.List)
-
-	defer func() {
-		if typ != nil && p.next.Tok == token.LParenthesis {
-			typ.Annotations = p.parseAnnotations()
-		}
-	}()
-	switch p.last.Tok {
-	case token.Identifier,
-		token.Bool, token.Byte,
-		token.I8, token.I16, token.I32, token.I64,
-		token.Double, token.String, token.Binary:
-		return &Type{Name: p.last.AsString()}
-
-	case token.Map:
-		typ = &Type{Name: p.last.AsString()}
-		p.expect(token.LChevron)
-		typ.KeyType = p.parseFieldType()
-		p.expect(token.Comma)
-		typ.ValueType = p.parseFieldType()
-		p.expect(token.RChevron)
-		return typ
-
-	case token.Set:
-		typ = &Type{Name: p.last.AsString()}
-		p.expect(token.LChevron)
-		typ.ValueType = p.parseFieldType()
-		p.expect(token.RChevron)
-		return typ
-
-	case token.List:
-		typ = &Type{Name: p.last.AsString()}
-		p.expect(token.LChevron)
-		typ.ValueType = p.parseFieldType()
-		p.expect(token.RChevron)
-		return typ
-
-	default:
-		panic("?")
+func (p *parser) parseThrows(node *node32) (fs []*Field, err error) {
+	node, err = checkrule(node, ruleThrows)
+	if err != nil {
+		return nil, err
 	}
-}
-
-// ConstValue <- FloatLiteral / IntLiteral / Literal / Identifiers / ConstList / ConstMap
-// ConstList  <- '[' (ConstValue ListSeparator?)* ']'
-// ConstMap   <- '{' (ConstValue ':' ConstValue ListSeparator?)* '}'
-func (p *parser) parseConstValue() *ConstValue {
-	p.expect(token.FloatLiteral, token.IntLiteral, token.StringLiteral, token.Identifier, token.LBracket, token.LBrace)
-
-	switch p.last.Tok {
-	case token.FloatLiteral:
-		d := p.last.AsFloat()
-		return &ConstValue{
-			Type: ConstType_ConstDouble,
-			TypedValue: &ConstTypedValue{
-				Double: &d,
-			},
+	// THROWS LPAR Field* RPAR
+	node = node.next // ignore THROWS
+	var fields []*Field
+	for ; node != nil; node = node.next {
+		if node.pegRule == ruleField {
+			field, err := p.parseField(node)
+			if err != nil {
+				return nil, err
+			}
+			field.Requiredness = FieldType_Optional
+			fields = addField(fields, field)
 		}
-
-	case token.IntLiteral:
-		i := p.last.AsInt()
-		return &ConstValue{
-			Type: ConstType_ConstInt,
-			TypedValue: &ConstTypedValue{
-				Int: &i,
-			},
-		}
-
-	case token.StringLiteral:
-		s := p.last.Unquote()
-		return &ConstValue{
-			Type: ConstType_ConstLiteral,
-			TypedValue: &ConstTypedValue{
-				Literal: &s,
-			},
-		}
-
-	case token.Identifier:
-		id := p.last.AsString()
-		return &ConstValue{
-			Type: ConstType_ConstIdentifier,
-			TypedValue: &ConstTypedValue{
-				Identifier: &id,
-			},
-		}
-
-	case token.LBracket:
-		cvs := []*ConstValue{} // important: can't not be nil
-		for p.next.Tok != token.RBracket {
-			cv := p.parseConstValue()
-			p.consumeListSeparator()
-			cvs = append(cvs, cv)
-		}
-		p.expect(token.RBracket)
-		return &ConstValue{
-			Type: ConstType_ConstList,
-			TypedValue: &ConstTypedValue{
-				List: cvs,
-			},
-		}
-
-	case token.LBrace:
-		mcvs := []*MapConstValue{} // important: can't not be nil
-		for p.next.Tok != token.RBrace {
-			k := p.parseConstValue()
-			p.expect(token.Colon)
-			v := p.parseConstValue()
-			p.consumeListSeparator()
-			mcvs = append(mcvs, &MapConstValue{Key: k, Value: v})
-		}
-		p.expect(token.RBrace)
-		return &ConstValue{
-			Type: ConstType_ConstMap,
-			TypedValue: &ConstTypedValue{
-				Map: mcvs,
-			},
-		}
-
-	default:
-		panic("?")
 	}
+	return fields, nil
 }
 
-// Annotations <- '(' Annotation+ ')'
-// Annotation  <- Identifiers '=' Literal ListSeparator?
-func (p *parser) parseAnnotations() (as Annotations) {
-	p.expect(token.LParenthesis)
-	for p.next.Tok != token.RParenthesis {
-		p.expect(token.Identifier)
-		key := p.last.AsString()
-		p.expect(token.Equal)
-		p.expect(token.StringLiteral)
-		val := p.last.Unquote()
-		as.Append(key, val)
-		p.consumeListSeparator()
+func (p *parser) parseReservedComments(node *node32) (ReservedComments string, err error) {
+	node, err = checkrule(node, ruleReservedComments)
+	if err != nil {
+		return "", err
 	}
-	p.expect(token.RParenthesis)
-	return
-}
-
-// ListSeparator  <- ',' / ';'
-func (p *parser) consumeListSeparator() {
-	if p.next.Tok == token.Comma || p.next.Tok == token.Semicolon {
-		p.expect(token.Comma, token.Semicolon)
+	// Skip
+	node = node.up
+	// (Space / Comment)*
+	var comments []string
+	for ; node != nil; node = node.next {
+		if node.pegRule == ruleComment {
+			comment := strings.TrimRight(string(p.buffer[int(node.up.begin):int(node.up.end)]), "\r\n")
+			if strings.HasPrefix(comment, "#") {
+				comment = strings.TrimPrefix(comment, "#")
+				comment = "//" + comment
+			}
+			if comment != "" {
+				comments = append(comments, comment)
+			}
+		}
 	}
-}
-
-func (p *parser) prefixComment() (res string) {
-	line := p.lexer.Pos2Pos(p.next.Span.Beg).Line
-	i := len(p.comspans) - 1
-	for i >= 0 && p.comspans[i].End >= line-1 {
-		// adjoining comments
-		line = p.comspans[i].Beg
-		i--
-	}
-	res = strings.Join(p.comments[i+1:], "\n")
-	p.comments = p.comments[:i+1]
-	p.comspans = p.comspans[:i+1]
-	return
-}
-
-func (p *parser) syntaxError(t token.Tok, more []token.Tok) error {
-	pos := p.lexer.Pos2Pos(p.next.Span.Beg)
-	expected := append([]token.Tok{t}, more...)
-	return fmt.Errorf("%q:%d:%d expect %+v, got %s",
-		p.ast.Filename, pos.Line, pos.Offset, expected, &p.next)
-}
-
-func (p *parser) lexicalError() error {
-	pos := p.lexer.Pos2Pos(p.next.Span.Beg)
-	return fmt.Errorf("%q:%d:%d unknown token: %q",
-		p.ast.Filename, pos.Line, pos.Offset, string(p.next.Data))
+	return strings.Join(comments, "\n"), nil
 }
