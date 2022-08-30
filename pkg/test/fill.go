@@ -16,6 +16,7 @@ package test
 
 import (
 	"fmt"
+	"go/token"
 	"reflect"
 	"strings"
 )
@@ -105,7 +106,9 @@ func randomFill(x reflect.Value, env environment, depth int, required bool) {
 		env.marked[rt] = true
 		var exported []int
 		for i := 0; i < rt.NumField(); i++ {
-			if rt.Field(i).IsExported() {
+			// We can't use this API because it is introduced in go1.17 and we must be compatible with lower version of golang
+			// if rt.Field(i).IsExported() {
+			if token.IsExported(rt.Field(i).Name) {
 				exported = append(exported, i)
 			}
 		}

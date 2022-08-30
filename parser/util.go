@@ -15,11 +15,47 @@
 package parser
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
+func normalizeFilename(fn string) string {
+	abs, err := filepath.Abs(fn)
+	if err != nil {
+		return fn
+	}
+	base, err := os.Getwd()
+	if err != nil {
+		return abs
+	}
+	ref, err := filepath.Rel(base, abs)
+	if err != nil {
+		return abs
+	}
+	return ref
+}
+
 func refName(filename string) string {
 	n := strings.Split(filepath.Base(filename), ".")
 	return strings.Join(n[:len(n)-1], ".")
+}
+
+func addField(fields []*Field, field *Field) []*Field {
+	if field.ID == NOTSET {
+		if len(fields) > 0 {
+			field.ID = fields[len(fields)-1].ID + 1
+		} else {
+			field.ID = 1
+		}
+	}
+	return append(fields, field)
+}
+
+func checkrule(node *node32, rule pegRule) (*node32, error) {
+	if node.pegRule != rule {
+		return nil, fmt.Errorf("mismatch rule: " + rul3s[node.pegRule])
+	}
+	return node.up, nil
 }
