@@ -42,7 +42,8 @@ type Features struct {
 	FrugalTag          bool `frugal_tag:"Generate 'frugal' tags."`
 	EscapeDoubleInTag  bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
 	GenerateTypeMeta   bool `gen_type_meta:"Generate and register type meta for structures."`
-	GenerateJsonTag    bool `gen_json_tag:"Generate struct with 'json' tag"`
+	GenerateJSONTag    bool `gen_json_tag:"Generate struct with 'json' tag"`
+	SnakeTyleJSONTag   bool `snake_style_json_tag:"Generate snake style json tag"`
 }
 
 var defaultFeatures = Features{
@@ -64,7 +65,8 @@ var defaultFeatures = Features{
 	FrugalTag:          false,
 	EscapeDoubleInTag:  true,
 	GenerateTypeMeta:   false,
-	GenerateJsonTag:    true,
+	GenerateJSONTag:    true,
+	SnakeTyleJSONTag:   false,
 }
 
 type param struct {

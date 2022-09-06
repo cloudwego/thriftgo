@@ -249,11 +249,15 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 			tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))
 		}
 
-		if cu.Features().GenerateJsonTag {
+		if cu.Features().GenerateJSONTag {
+			id := f.Name
+			if cu.Features().SnakeTyleJSONTag {
+				id = snakify(id)
+			}
 			if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
-				tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, f.Name))
+				tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
 			} else {
-				tags = append(tags, fmt.Sprintf(`json:"%s"`, f.Name))
+				tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
 			}
 		}
 	}
@@ -364,4 +368,15 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		},
 	}
 	return m
+}
+
+var (
+	snakeRE1 = regexp.MustCompile(`([^_])([A-Z][a-z]+)`)
+	snakeRE2 = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+)
+
+func snakify(id string) string {
+	id = snakeRE1.ReplaceAllString(id, `${1}_${2}`)
+	id = snakeRE2.ReplaceAllString(id, `${1}_${2}`)
+	return strings.ToLower(id)
 }
