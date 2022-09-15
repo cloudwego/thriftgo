@@ -182,7 +182,9 @@ func (r *Resolver) getIDValue(g *Scope, extra *parser.ConstValueExtra) (v string
 		}
 		return r.getIDValue(g, extra)
 	}
-	if v != "" && g != r.root {
+	rootPkg := r.util.GetPackageName(r.root.ast)
+	constPkg := r.util.GetPackageName(g.ast)
+	if v != "" && rootPkg != constPkg {
 		pkg := r.root.includeIDL(r.util, g.ast)
 		v = pkg + "." + v
 	}
