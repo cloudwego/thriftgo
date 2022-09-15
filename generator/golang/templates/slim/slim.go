@@ -108,6 +108,15 @@ func (p *{{$TypeName}}) Error() string {
 	Processor = `
 {{define "Processor"}}
 {{InsertionPoint "slim.Processor"}}
+{{$throws := ServiceThrows .}}
+{{- if $throws}}
+// exceptions of methods in {{.GoName}}.
+var (
+{{- range $throws}}
+_ error = ({{.GoTypeName}})(nil)
+{{- end}}{{/* range $throws */}}
+)
+{{- end}}{{/* if $throws */}}
 {{- end}}{{/* define "Processor" */}}
-	`
+`
 )
