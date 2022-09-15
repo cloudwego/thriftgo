@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -365,6 +366,22 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 				return fmt.Sprintf("<%s>", err.Error())
 			}
 			return prettifyBytesLiteral(fmt.Sprintf("%#v", bs))
+		},
+		"ServiceThrows": func(svc *Service) []*Field {
+			fm := make(map[string]*Field)
+			for _, f := range svc.Functions() {
+				for _, e := range f.Throws() {
+					fm[string(e.GoTypeName())] = e
+				}
+			}
+			ret := make([]*Field, 0, len(fm))
+			for _, e := range fm {
+				ret = append(ret, e)
+			}
+			sort.Slice(ret, func(i, j int) bool {
+				return ret[i].GoTypeName().String() < ret[j].GoTypeName().String()
+			})
+			return ret
 		},
 	}
 	return m
