@@ -250,15 +250,25 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 			tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))
 		}
 
-		if cu.Features().GenerateJSONTag {
-			id := f.Name
-			if cu.Features().SnakeTyleJSONTag {
-				id = snakify(id)
+		var existsApiBodyAnno bool
+		for _, anno := range f.Annotations {
+			if anno.Key == "api.body" {
+				existsApiBodyAnno = true
+				break
 			}
-			if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
-				tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
-			} else {
-				tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
+		}
+
+		if !existsApiBodyAnno {
+			if cu.Features().GenerateJSONTag {
+				id := f.Name
+				if cu.Features().SnakeTyleJSONTag {
+					id = snakify(id)
+				}
+				if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
+					tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
+				} else {
+					tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
+				}
 			}
 		}
 	}
