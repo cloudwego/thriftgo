@@ -74,7 +74,7 @@ func (r *FrugalResolver) getTypeName(g *Scope, t *parser.Type) (name string, err
 	}
 
 	if g.namespace != r.root.namespace && ut.Category.IsStructLike() {
-		pkg := r.root.includeIDL(r.util, g.ast)
+		pkg, _ := r.util.Import(g.ast)
 		name = pkg + "." + name
 	}
 	return
