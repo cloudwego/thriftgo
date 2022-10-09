@@ -65,9 +65,13 @@ func ParseCompactArguments(str string) (*Desc, error) {
 		return nil, errors.New("ParseArguments: empty string")
 	}
 	desc := new(Desc)
+	// to escape :,
+	str = strings.ReplaceAll(str, "\\:", "$$$")
 	args := strings.SplitN(str, ":", 2)
+	args[0] = strings.ReplaceAll(args[0], "$$$", ":")
 	desc.Name = args[0]
 	if len(args) > 1 {
+		args[1] = strings.ReplaceAll(args[1], "$$$", ":")
 		for _, a := range strings.Split(args[1], ",") {
 			var opt Option
 			kv := strings.SplitN(a, "=", 2)
