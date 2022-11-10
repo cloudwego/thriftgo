@@ -25,7 +25,7 @@ import (
 )
 
 // MaxExecutionTime is a timeout for executing external plugins.
-var MaxExecutionTime = time.Minute
+var MaxExecutionTime time.Duration
 
 // InsertionPointFormat is the format for insertion points.
 const InsertionPointFormat = "@@thriftgo_insertion_point(%s)"
@@ -57,7 +57,9 @@ func Pack(opts []Option) (ss []string) {
 
 // ParseCompactArguments parses a compact form option into arguments.
 // A compact form option is like:
-//   name:key1=val1,key2,key3=val3
+//
+//	name:key1=val1,key2,key3=val3
+//
 // This function barely checks the validity of the string, so the user should
 // always provide a valid input.
 func ParseCompactArguments(str string) (*Desc, error) {
@@ -141,8 +143,13 @@ func (e *external) Execute(req *Request) (res *Response) {
 		return BuildErrorResponse(err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), MaxExecutionTime)
-	defer cancel()
+	ctx := context.Background()
+
+	if MaxExecutionTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, MaxExecutionTime)
+		defer cancel()
+	}
 
 	stdin := bytes.NewReader(data)
 	var stdout, stderr bytes.Buffer

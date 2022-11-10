@@ -80,6 +80,7 @@ func main() {
 		AST:        ast,
 	}
 
+	plugin.MaxExecutionTime = a.PluginTimeLimit
 	plugins, err := a.UsedPlugins()
 	check(err)
 

@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/backend"
@@ -42,16 +43,17 @@ func (ss *StringSlice) Set(value string) error {
 
 // Arguments contains command line arguments for thriftgo.
 type Arguments struct {
-	AskVersion   bool
-	Recursive    bool
-	Verbose      bool
-	Quiet        bool
-	CheckKeyword bool
-	OutputPath   string
-	Includes     StringSlice
-	Plugins      StringSlice
-	Langs        StringSlice
-	IDL          string
+	AskVersion      bool
+	Recursive       bool
+	Verbose         bool
+	Quiet           bool
+	CheckKeyword    bool
+	OutputPath      string
+	Includes        StringSlice
+	Plugins         StringSlice
+	Langs           StringSlice
+	IDL             string
+	PluginTimeLimit time.Duration
 }
 
 // Output returns an output path for generated codes for the target language.
@@ -146,6 +148,8 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 
 	f.BoolVar(&a.CheckKeyword, "check-keywords", true, "")
 
+	f.DurationVar(&a.PluginTimeLimit, "plugin-time-limit", time.Minute, "")
+
 	f.Usage = help
 	return f
 }
@@ -188,7 +192,8 @@ Options:
                       "false", "true" and "" (empty is treated as "true").
   -p, --plugin STR    Specify an external plugin to invoke.
                       STR has the form plugin[=path][:key1=val1[,key2[,key3=val3]]].
-  --check-keywords    Check if any identifer using a keyword in common languages. 
+  --check-keywords    Check if any identifier using a keyword in common languages. 
+  --plugin-time-limit Set the execution time limit for plugins. Naturally 0 means no limit.
 
 Available generators (and options):
 `)
