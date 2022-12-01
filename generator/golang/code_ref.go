@@ -15,28 +15,42 @@
 package golang
 
 import (
+	"bufio"
 	"os"
+	"strings"
 
 	"github.com/cloudwego/thriftgo/generator/golang/templates/ref"
-	"github.com/spf13/viper"
 )
 
 var refMap = map[string]string{}
 
 func init() {
-	wd, err := os.Getwd()
+	fp, err := os.Open("idl-ref.yml")
 	if err != nil {
-		panic(err)
+		fp, err = os.Open("idl-ref.yaml")
+		if err != nil {
+			return
+		}
 	}
-	config := viper.New()
-	config.SetConfigName("idl-ref")
-	config.AddConfigPath(wd)
-	config.SetConfigType("yml")
-	err = config.ReadInConfig()
-	if err != nil {
-		return
+	buf := bufio.NewScanner(fp)
+	isFirst := true
+	for {
+		if !buf.Scan() {
+			break
+		}
+		line := strings.TrimSpace(buf.Text())
+		if isFirst {
+			if line != "ref:" {
+				break
+			}
+			isFirst = false
+			continue
+		}
+		if strings.Count(line, ":") == 1 {
+			arr := strings.Split(line, ":")
+			refMap[strings.TrimSpace(arr[0])] = strings.TrimSpace(arr[1])
+		}
 	}
-	refMap = config.GetStringMapString("ref")
 }
 
 func DoRef(path string) (bool, string) {
