@@ -106,11 +106,21 @@ type Scope struct {
 	exceptions  []*StructLike
 	services    []*Service
 	synthesized []*StructLike
+	refPath     string
+	refPackage  string
 }
 
 // AST returns the thrift AST associated with the scope.
 func (s *Scope) AST() *parser.Thrift {
 	return s.ast
+}
+
+func (s *Scope) RefPath() string {
+	return s.refPath
+}
+
+func (s *Scope) RefPackage() string {
+	return s.refPackage
 }
 
 // Namespace returns the global namespace of the current scope.

@@ -30,11 +30,12 @@ import (
 // GoBackend generates go codes.
 // The zero value of GoBackend is ready for use.
 type GoBackend struct {
-	err error
-	tpl *template.Template
-	req *plugin.Request
-	res *plugin.Response
-	log backend.LogFunc
+	err    error
+	tpl    *template.Template
+	refTpl *template.Template
+	req    *plugin.Request
+	res    *plugin.Response
+	log    backend.LogFunc
 
 	utils *CodeUtils
 	funcs template.FuncMap
@@ -115,6 +116,13 @@ func (g *GoBackend) prepareTemplates() {
 		all = template.Must(all.Parse(tpl))
 	}
 	g.tpl = all
+
+	refAll := template.New(name).Funcs(g.funcs)
+	refTpls := TemplatesRef()
+	for _, refTpl := range refTpls {
+		refAll = template.Must(refAll.Parse(refTpl))
+	}
+	g.refTpl = refAll
 }
 
 func (g *GoBackend) fillRequisitions() {
@@ -161,7 +169,16 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	g.utils.SetRootScope(scope)
 
 	path := filepath.Join(g.req.OutputPath, g.utils.GetFilePath(ast))
-	err = g.tpl.ExecuteTemplate(&buf, g.tpl.Name(), scope)
+	executeTpl := g.tpl
+	// check ref
+	doRef, refPath := DoRef(ast.Filename)
+	if doRef {
+		executeTpl = g.refTpl
+		scope.refPath = refPath
+		arr := strings.Split(refPath, "/")
+		scope.refPackage = arr[len(arr)-1]
+	}
+	err = executeTpl.ExecuteTemplate(&buf, g.tpl.Name(), scope)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ast.Filename, err)
 	}
@@ -176,7 +193,7 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	if err != nil {
 		return err
 	}
-	err = g.tpl.ExecuteTemplate(&buf, "Imports", imports)
+	err = executeTpl.ExecuteTemplate(&buf, "Imports", imports)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ast.Filename, err)
 	}
