@@ -27,11 +27,12 @@ var refMap = map[string]string{}
 func init() {
 	fp, err := os.Open("idl-ref.yml")
 	if err != nil {
-		fp, err = os.Open("idl-ref.yaml")
-		if err != nil {
-			return
-		}
+		return
 	}
+	readFile(fp)
+}
+
+func readFile(fp *os.File) {
 	buf := bufio.NewScanner(fp)
 	isFirst := true
 	for {
@@ -39,6 +40,9 @@ func init() {
 			break
 		}
 		line := strings.TrimSpace(buf.Text())
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
 		if isFirst {
 			if line != "ref:" {
 				break
@@ -48,9 +52,13 @@ func init() {
 		}
 		if strings.Count(line, ":") == 1 {
 			arr := strings.Split(line, ":")
-			refMap[strings.TrimSpace(arr[0])] = strings.TrimSpace(arr[1])
+			refMap[trimInput(arr[0])] = trimInput(arr[1])
 		}
 	}
+}
+
+func trimInput(input string) string {
+	return strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(input, `'`, ""), `"`, ""))
 }
 
 func DoRef(path string) (bool, string) {
