@@ -169,6 +169,32 @@ func (cu *CodeUtils) GetFilePath(t *parser.Thrift) string {
 	return full
 }
 
+func (cu *CodeUtils) GetFilename(t *parser.Thrift) string {
+	ref, _, _ := cu.ParseNamespace(t)
+	full := ref + ".go"
+	if strings.HasSuffix(full, "_test.go") {
+		full = strings.ReplaceAll(full, "_test.go", "_test_.go")
+	}
+	return full
+}
+
+// CombineOutputPath read the output and path variables and render them into the final path
+func (cu *CodeUtils) CombineOutputPath(outputPath string, t *parser.Thrift) string {
+	hasVarNamespace := strings.Contains(outputPath, "{namespace}")
+	hasVarNamespaceSlash := strings.Contains(outputPath, "{namespaceSlash}")
+	if hasVarNamespace || hasVarNamespaceSlash {
+		_, _, ns := cu.ParseNamespace(t)
+		if hasVarNamespace {
+			outputPath = strings.ReplaceAll(outputPath, "{namespace}", ns)
+		} else if hasVarNamespaceSlash {
+			outputPath = strings.ReplaceAll(outputPath, "{namespaceSlash}", strings.ReplaceAll(ns, "/", "_"))
+		}
+		return outputPath
+	}
+	_, _, pth := cu.ParseNamespace(t)
+	return filepath.Join(outputPath, pth)
+}
+
 // GetPackageName returns a go package name for the given thrift AST.
 func (cu *CodeUtils) GetPackageName(ast *parser.Thrift) string {
 	namespace := ast.GetNamespaceOrReferenceName("go")

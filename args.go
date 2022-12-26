@@ -181,7 +181,8 @@ Options:
   --version           Print the compiler version and exit.
   -h, --help          Print help message and exit.
   -i, --include dir   Add a search path for includes.
-  -o, --out dir	      Set the output location for generated files. (default: ./gen-*)
+  -o, --out dir	      Set the output location for generated files. Default path is ./gen-*, the code will be genereated at ./gen-*/xxxnamespace.
+					  If you don't want the path ends with namespace, you can use {namespace} or {namespaceSlash}, such as /gen-*/{namespace}/data
   -r, --recurse       Generate codes for includes recursively.
   -v, --verbose       Output detail logs.
   -q, --quiet         Suppress all warnings and informatic logs.

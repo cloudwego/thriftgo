@@ -86,16 +86,22 @@ func BuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 		return nil, fmt.Errorf("process '%s' failed: %w", ast.Filename, err)
 	}
 	cu.scopeCache[ast] = scope
+	pth := cu.CombineOutputPath(cu.packagePrefix, ast)
+	scope.importPath = pth
+	parts := strings.Split(scope.importPath, "/")
+	scope.importPackage = strings.ToLower(parts[len(parts)-1])
 	return scope, nil
 }
 
 // Scope contains the type symbols defined in a thrift IDL and wraps them to provide
 // access to resolved names in go code.
 type Scope struct {
-	ast       *parser.Thrift
-	globals   namespace.Namespace
-	imports   *importManager
-	namespace string
+	ast           *parser.Thrift
+	globals       namespace.Namespace
+	imports       *importManager
+	namespace     string
+	importPath    string
+	importPackage string
 
 	includes    []*Include
 	constants   []*Constant
@@ -113,6 +119,10 @@ type Scope struct {
 // AST returns the thrift AST associated with the scope.
 func (s *Scope) AST() *parser.Thrift {
 	return s.ast
+}
+
+func (s *Scope) FilePackage() string {
+	return s.importPackage
 }
 
 func (s *Scope) RefPath() string {
