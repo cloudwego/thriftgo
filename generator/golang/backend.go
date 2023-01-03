@@ -90,7 +90,6 @@ func (g *GoBackend) prepareUtilities() {
 	}
 
 	g.utils = NewCodeUtils(g.log)
-
 	g.err = g.utils.HandleOptions(g.req.GeneratorParameters)
 	if g.err != nil {
 		return
@@ -167,8 +166,8 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 		return err
 	}
 	g.utils.SetRootScope(scope)
-
-	path := filepath.Join(g.req.OutputPath, g.utils.GetFilePath(ast))
+	path := g.utils.CombineOutputPath(g.req.OutputPath, ast)
+	filename := filepath.Join(path, g.utils.GetFilename(ast))
 	executeTpl := g.tpl
 	// check ref
 	doRef, refPath := DoRef(ast.Filename)
@@ -185,7 +184,7 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 
 	g.res.Contents = append(g.res.Contents, &plugin.Generated{
 		Content: buf.String(),
-		Name:    &path,
+		Name:    &filename,
 	})
 
 	buf.Reset()
