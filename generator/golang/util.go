@@ -181,13 +181,13 @@ func (cu *CodeUtils) GetFilename(t *parser.Thrift) string {
 // CombineOutputPath read the output and path variables and render them into the final path
 func (cu *CodeUtils) CombineOutputPath(outputPath string, t *parser.Thrift) string {
 	hasVarNamespace := strings.Contains(outputPath, "{namespace}")
-	hasVarNamespaceSlash := strings.Contains(outputPath, "{namespaceSlash}")
-	if hasVarNamespace || hasVarNamespaceSlash {
+	hasVarNamespaceUnderscore := strings.Contains(outputPath, "{namespaceUnderscore}")
+	if hasVarNamespace || hasVarNamespaceUnderscore {
 		_, _, ns := cu.ParseNamespace(t)
 		if hasVarNamespace {
 			outputPath = strings.ReplaceAll(outputPath, "{namespace}", ns)
-		} else if hasVarNamespaceSlash {
-			outputPath = strings.ReplaceAll(outputPath, "{namespaceSlash}", strings.ReplaceAll(ns, "/", "_"))
+		} else if hasVarNamespaceUnderscore {
+			outputPath = strings.ReplaceAll(outputPath, "{namespaceUnderscore}", strings.ReplaceAll(ns, "/", "_"))
 		}
 		return outputPath
 	}
