@@ -33,3 +33,23 @@ func TestSnakify(t *testing.T) {
 		}
 	}
 }
+
+func TestLowerCamelCase(t *testing.T) {
+	cases := []struct{ original, expected string }{
+		{"a", "a"},
+		{"A", "a"},
+		{"AB", "ab"},
+		{"HTTPRequest", "httpRequest"},
+		{"HTTP1Method", "http1Method"},
+		{"GetUserIP", "getUserIp"},
+		{"GetAPI", "getApi"},
+		{"Get_API", "getApi"},
+	}
+	for _, c := range cases {
+		res := lowerCamelCase(c.original)
+		if res != c.expected {
+			t.Logf("lowerCamelCase(%q) => %q. Expected: %q", c.original, res, c.expected)
+			t.Fail()
+		}
+	}
+}
