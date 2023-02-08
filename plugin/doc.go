@@ -31,7 +31,9 @@
 // An **insertion point** is a position in a file that a code segment will be inserted
 // before. Sequential segments being inserted to a same point will keep their order.
 // The representation of an insertion point in a file is a string with a special format:
-//     "@@thriftgo_insertion_point(NAME)"
+//
+//	"@@thriftgo_insertion_point(NAME)"
+//
 // Where NAME is the name of the insertion point that the `InsertionPoint` of a `Generated`
 // could use.
 //

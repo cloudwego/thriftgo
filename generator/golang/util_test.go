@@ -14,7 +14,9 @@
 
 package golang
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSnakify(t *testing.T) {
 	cases := []struct{ original, expected string }{

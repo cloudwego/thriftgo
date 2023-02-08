@@ -16,12 +16,13 @@ package golang
 
 import (
 	"fmt"
-	"golang.org/x/text/language"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"text/template"
+
+	"golang.org/x/text/language"
 
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/common"
