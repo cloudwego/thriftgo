@@ -22,6 +22,8 @@ import (
 	"strings"
 	"text/template"
 
+	"golang.org/x/text/language"
+
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/common"
 	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
@@ -30,6 +32,8 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
+
+	"golang.org/x/text/cases"
 )
 
 // Default libraries.
@@ -281,6 +285,10 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 			if cu.Features().SnakeTyleJSONTag {
 				id = snakify(id)
 			}
+			if cu.Features().LowerCamelCaseJSONTag {
+				id = lowerCamelCase(id)
+			}
+
 			if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
 				tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
 			} else {
@@ -422,4 +430,17 @@ func snakify(id string) string {
 	id = snakeRE1.ReplaceAllString(id, `${1}_${2}`)
 	id = snakeRE2.ReplaceAllString(id, `${1}_${2}`)
 	return strings.ToLower(id)
+}
+
+func lowerCamelCase(id string) string {
+	id = snakify(id)
+	words := strings.Split(id, "_")
+	c := cases.Title(language.English)
+
+	for i, w := range words {
+		if i > 0 && len(w) > 0 {
+			words[i] = c.String(w)
+		}
+	}
+	return strings.Join(words, "")
 }
