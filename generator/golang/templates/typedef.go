@@ -28,7 +28,7 @@ type {{$NewTypeName}} {{$OldTypeName}}
 
 {{if .Type.Category.IsStructLike}} 
 func New{{$NewTypeName}}() *{{$NewTypeName}} {
-	return {{$OldTypeName.NewFunc}}()
+	return (*{{$NewTypeName}})({{$OldTypeName.NewFunc}}())
 }
 {{- end}}{{/* if .Type.Category.IsStructLike */}} 
 {{- end}}{{/* define "Typedef" */}}
