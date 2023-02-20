@@ -45,6 +45,7 @@ type Features struct {
 	GenerateJSONTag       bool `gen_json_tag:"Generate struct with 'json' tag"`
 	SnakeTyleJSONTag      bool `snake_style_json_tag:"Generate snake style json tag"`
 	LowerCamelCaseJSONTag bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
+	EnumAsINT32           bool `enum_as_int_32:"Generate enum type as int32"`
 }
 
 var defaultFeatures = Features{
@@ -69,6 +70,7 @@ var defaultFeatures = Features{
 	GenerateJSONTag:       true,
 	SnakeTyleJSONTag:      false,
 	LowerCamelCaseJSONTag: false,
+	EnumAsINT32:           false,
 }
 
 type param struct {
