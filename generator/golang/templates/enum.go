@@ -20,7 +20,7 @@ var Enum = `
 {{- $EnumType := .GoName}}
 {{InsertionPoint "enum" .Name}}
 {{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
-type {{$EnumType}} int64
+type {{$EnumType}} int{{if Features.EnumAsINT32}}32{{else}}64{{end}}
 
 const (
 	{{- range .Values}}
@@ -72,9 +72,9 @@ func (p *{{$EnumType}}) UnmarshalText(text []byte) error {
 {{- if Features.ScanValueForEnum}}
 {{- UseStdLibrary "sql" "driver"}}
 func (p *{{$EnumType}}) Scan(value interface{}) (err error) {
-	var result sql.NullInt64
+	var result sql.NullInt{{if Features.EnumAsINT32}}32{{else}}64{{end}}
 	err = result.Scan(value)
-	*p = {{$EnumType}}(result.Int64)
+	*p = {{$EnumType}}(result.Int{{if Features.EnumAsINT32}}32{{else}}64{{end}})
 	return
 }
 
@@ -82,7 +82,7 @@ func (p *{{$EnumType}}) Value() (driver.Value, error) {
 	if p == nil {
 		return nil, nil
 	}
-	return int64(*p), nil
+	return int{{if Features.EnumAsINT32}}32{{else}}64{{end}}(*p), nil
 }
 {{- end}}{{/* if .Features.ScanValueForEnum */}}
 {{end}}
