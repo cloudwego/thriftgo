@@ -16,6 +16,7 @@ package golang
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/reflection"
 	"path/filepath"
 	"strings"
 
@@ -124,6 +125,16 @@ func (s *Scope) AST() *parser.Thrift {
 
 func (s *Scope) FilePackage() string {
 	return s.importPackage
+}
+
+func (s *Scope) IDLMeta() string {
+	return reflection.Encode(s.ast)
+}
+
+func (s *Scope) IDLName() string {
+	idlName := strings.TrimSuffix(s.ast.Filename, ".thrift")
+	arr := strings.Split(idlName, string(filepath.Separator))
+	return snakify(arr[len(arr)-1])
 }
 
 func (s *Scope) RefPath() string {
