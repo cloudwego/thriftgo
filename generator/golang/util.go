@@ -444,3 +444,7 @@ func lowerCamelCase(id string) string {
 	}
 	return strings.Join(words, "")
 }
+
+func pathToImport(path string) string {
+	return strings.ReplaceAll(path, string(filepath.Separator), "/")
+}
