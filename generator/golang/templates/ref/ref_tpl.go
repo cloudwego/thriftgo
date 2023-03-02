@@ -76,7 +76,6 @@ var structRef = `
 		{{if SupportIsSet .Field}}
 		{{$DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
 		var {{$DefaultVarName}} = {{$RefPackage}}.{{$DefaultVarName}}
-		{{- if .Default}} = {{.DefaultValue}}{{- end}}
 		{{- end}}	
 	{{- end}}
 `
