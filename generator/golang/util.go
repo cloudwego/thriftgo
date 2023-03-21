@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"text/template"
@@ -196,7 +197,7 @@ func (cu *CodeUtils) CombineOutputPath(outputPath string, t *parser.Thrift) stri
 		return outputPath
 	}
 	_, _, pth := cu.ParseNamespace(t)
-	return filepath.Join(outputPath, pth)
+	return JoinPath(outputPath, pth)
 }
 
 // GetPackageName returns a go package name for the given thrift AST.
@@ -223,7 +224,7 @@ func (cu *CodeUtils) NamespaceToImportPath(ns string) string {
 func (cu *CodeUtils) NamespaceToFullImportPath(ns string) string {
 	pth := cu.NamespaceToImportPath(ns)
 	if cu.packagePrefix != "" {
-		pth = filepath.Join(cu.packagePrefix, pth)
+		pth = JoinPath(cu.packagePrefix, pth)
 	}
 	return pth
 }
@@ -443,4 +444,11 @@ func lowerCamelCase(id string) string {
 		}
 	}
 	return strings.Join(words, "")
+}
+
+func JoinPath(elem ...string) string {
+	if runtime.GOOS == "windows" {
+		return strings.ReplaceAll(filepath.Join(elem...), "\\", "/")
+	}
+	return filepath.Join(elem...)
 }

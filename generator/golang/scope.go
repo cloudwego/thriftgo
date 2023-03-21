@@ -91,7 +91,7 @@ func BuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	cu.scopeCache[ast] = scope
 	pth := cu.CombineOutputPath(cu.packagePrefix, ast)
 	scope.importPath = pth
-	parts := strings.Split(scope.importPath, string(filepath.Separator))
+	parts := strings.Split(scope.importPath, "/")
 	scope.importPackage = strings.ToLower(parts[len(parts)-1])
 	return scope, nil
 }

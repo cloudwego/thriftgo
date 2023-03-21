@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -59,11 +58,10 @@ func Encode(p *parser.Thrift) string {
 	// alias prefix -> path
 	includeMap := map[string]string{}
 	for _, inc := range p.Includes {
-		arr := strings.Split(strings.TrimSuffix(inc.Path, ".thrift"), string(filepath.Separator))
+		arr := strings.Split(strings.TrimSuffix(inc.Path, ".thrift"), "/")
 		alias := arr[len(arr)-1]
 		includeMap[alias] = inc.Path
 	}
-
 	f := &FileDescriptor{
 		Filename:   p.Filename,
 		IncludeMap: includeMap,

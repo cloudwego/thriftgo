@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -64,12 +65,25 @@ func (a *Arguments) Output(lang string) string {
 	return "./gen-" + lang
 }
 
+const WINDOWS_REPLACER = "#$$#"
+
 // UsedPlugins returns a list of plugin.Desc for plugins.
 func (a *Arguments) UsedPlugins() (descs []*plugin.Desc, err error) {
 	for _, str := range a.Plugins {
+		if runtime.GOOS == "windows" {
+			// windows should replace :\ because thriftgo will separates args by ":"
+			str = strings.ReplaceAll(str, ":\\", WINDOWS_REPLACER)
+		}
 		desc, err := plugin.ParseCompactArguments(str)
 		if err != nil {
 			return nil, err
+		}
+		if runtime.GOOS == "windows" {
+			desc.Name = strings.ReplaceAll(desc.Name, WINDOWS_REPLACER, ":\\")
+			for i, o := range desc.Options {
+				desc.Options[i].Name = strings.ReplaceAll(o.Name, WINDOWS_REPLACER, ":\\")
+				desc.Options[i].Desc = strings.ReplaceAll(o.Desc, WINDOWS_REPLACER, ":\\")
+			}
 		}
 		descs = append(descs, desc)
 	}
