@@ -174,7 +174,7 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	if doRef {
 		executeTpl = g.refTpl
 		scope.refPath = refPath
-		arr := strings.Split(refPath, string(filepath.Separator))
+		arr := strings.Split(refPath, "/")
 		scope.refPackage = arr[len(arr)-1]
 	}
 	err = executeTpl.ExecuteTemplate(&buf, g.tpl.Name(), scope)
