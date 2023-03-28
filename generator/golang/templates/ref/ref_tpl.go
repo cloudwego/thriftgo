@@ -43,9 +43,62 @@ import (
 ` + structRef + `
 {{- end}}
 
-
+{{- range .Services}}
+` + processorRef + `
+{{- end}}
 
 {{- InsertionPoint "eof"}}
+`
+
+var processorRef = `
+
+{{- $BasePrefix := ServicePrefix .Base}}
+{{- $BaseService := ServiceName .Base}}
+{{- $ServiceName := .GoName}}
+
+type {{$ServiceName}} = {{$RefPackage}}.{{$ServiceName}}
+
+
+{{- $ClientName := printf "%s%s" $ServiceName "Client"}}
+type {{$ClientName}} = {{$RefPackage}}.{{$ClientName}}
+
+var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}Factory
+
+var New{{$ClientName}}Protocol = {{$RefPackage}}.New{{$ClientName}}Protocol
+
+var New{{$ClientName}} = {{$RefPackage}}.New{{$ClientName}}
+
+{{- $ProcessorName := printf "%s%s" $ServiceName "Processor"}}
+type {{$ProcessorName}} = {{$RefPackage}}.{{$ProcessorName}}
+
+var New{{$ProcessorName}} = {{$RefPackage}}.New{{$ProcessorName}}
+
+{{- range .Functions}}
+{{$ArgsType := .ArgType.GoName}}
+type {{$ArgsType}} = {{$RefPackage}}.{{$ArgsType}}
+var New{{$ArgsType}} = {{$RefPackage}}.New{{$ArgsType}}
+	{{- range .ArgType.Fields}}
+		{{- $FieldName := .GoName}}
+		{{if SupportIsSet .Field}}
+		{{$DefaultVarName := printf "%s_%s_%s" $ArgsType $FieldName "DEFAULT"}}
+		var {{$DefaultVarName}} = {{$RefPackage}}.{{$DefaultVarName}}
+		{{- end}}	
+	{{- end}}
+{{- if not .Oneway}}
+{{$ResType := .ResType.GoName}}
+type {{$ResType}} = {{$RefPackage}}.{{$ResType}}
+var New{{$ResType}} = {{$RefPackage}}.New{{$ResType}}
+	{{- range .ResType.Fields}}
+		{{- $FieldName := .GoName}}
+		{{if SupportIsSet .Field}}
+		{{$DefaultVarName := printf "%s_%s_%s" $ResType $FieldName "DEFAULT"}}
+		var {{$DefaultVarName}} = {{$RefPackage}}.{{$DefaultVarName}}
+		{{- end}}	
+	{{- end}}
+{{- end}}
+
+{{- end}}{{/* range .Functions */}}
+
 `
 
 var constRef = `{{- $Consts := .Constants.GoConstants}}
