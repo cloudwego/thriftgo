@@ -62,20 +62,11 @@ func TestGotagsContains(t *testing.T) {
 		tagPrefix string
 		ret       bool
 	}{
-		{
-			[]string{}, "json", false,
-		},
-		{
-			[]string{`thrift:"name"`}, "json", false,
-		},
-		{
-			[]string{`json:"name"`}, "json", true,
-		},
-		{
-			[]string{`thrift:"name" json:"name"`}, "json", true,
-		},
+		{[]string{}, "json", false},
+		{[]string{`thrift:"name"`}, "json", false},
+		{[]string{`json:"name"`}, "json", true},
+		{[]string{`thrift:"name" json:"name"`}, "json", true},
 	}
-
 	for _, c := range cases {
 		ret := gotagsContains(c.gotags, c.tagPrefix)
 		if ret != c.ret {
