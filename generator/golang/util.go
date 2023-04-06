@@ -265,7 +265,8 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 
 	tags = append(tags, extend...)
 
-	if gotags := f.Annotations.Get("go.tag"); len(gotags) > 0 {
+	gotags := f.Annotations.Get("go.tag")
+	if len(gotags) > 0 {
 		tag := gotags[0]
 		if cu.Features().EscapeDoubleInTag {
 			tag = escape.ReplaceAllStringFunc(tag, func(m string) string {
@@ -276,27 +277,28 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 			})
 		}
 		tags = append(tags, tag)
-	} else {
-		if cu.Features().GenDatabaseTag {
-			tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))
+	}
+
+	if cu.Features().GenDatabaseTag && !gotagsContains(gotags, "db") {
+		tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))
+	}
+
+	if cu.Features().GenerateJSONTag && !gotagsContains(gotags, "json") {
+		id := f.Name
+		if cu.Features().SnakeTyleJSONTag {
+			id = snakify(id)
+		}
+		if cu.Features().LowerCamelCaseJSONTag {
+			id = lowerCamelCase(id)
 		}
 
-		if cu.Features().GenerateJSONTag {
-			id := f.Name
-			if cu.Features().SnakeTyleJSONTag {
-				id = snakify(id)
-			}
-			if cu.Features().LowerCamelCaseJSONTag {
-				id = lowerCamelCase(id)
-			}
-
-			if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
-				tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
-			} else {
-				tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
-			}
+		if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
+			tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
+		} else {
+			tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
 		}
 	}
+
 	str := fmt.Sprintf("`%s%s`", strings.Join(tags, " "), insertPoint)
 	return str, nil
 }
@@ -444,6 +446,25 @@ func lowerCamelCase(id string) string {
 		}
 	}
 	return strings.Join(words, "")
+}
+
+func gotagsContains(gotags []string, tagPrefix string) bool {
+	for _, gotag := range gotags {
+		if gotagContains(gotag, tagPrefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func gotagContains(gotag string, tagPrefix string) bool {
+	tags := strings.Split(gotag, " ")
+	for _, tag := range tags {
+		if strings.HasPrefix(tag, tagPrefix+":") {
+			return true
+		}
+	}
+	return false
 }
 
 func JoinPath(elem ...string) string {

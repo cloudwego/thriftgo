@@ -55,3 +55,40 @@ func TestLowerCamelCase(t *testing.T) {
 		}
 	}
 }
+
+func TestGotagsContains(t *testing.T) {
+	cases := []struct {
+		gotags    []string
+		tagPrefix string
+		ret       bool
+	}{
+		{
+			[]string{},
+			"json",
+			false,
+		},
+		{
+			[]string{`thrift:"name"`},
+			"json",
+			false,
+		},
+		{
+			[]string{`json:"name"`},
+			"json",
+			true,
+		},
+		{
+			[]string{`thrift:"name" json:"name"`},
+			"json",
+			true,
+		},
+	}
+
+	for _, c := range cases {
+		ret := gotagsContains(c.gotags, c.tagPrefix)
+		if ret != c.ret {
+			t.Logf("gotagsContains(%q, %q) => %v. Expected: %v", c.gotags, c.tagPrefix, ret, c.ret)
+			t.Fail()
+		}
+	}
+}
