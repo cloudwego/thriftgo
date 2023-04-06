@@ -63,24 +63,16 @@ func TestGotagsContains(t *testing.T) {
 		ret       bool
 	}{
 		{
-			[]string{},
-			"json",
-			false,
+			[]string{}, "json", false,
 		},
 		{
-			[]string{`thrift:"name"`},
-			"json",
-			false,
+			[]string{`thrift:"name"`}, "json", false,
 		},
 		{
-			[]string{`json:"name"`},
-			"json",
-			true,
+			[]string{`json:"name"`}, "json", true,
 		},
 		{
-			[]string{`thrift:"name" json:"name"`},
-			"json",
-			true,
+			[]string{`thrift:"name" json:"name"`}, "json", true,
 		},
 	}
 
