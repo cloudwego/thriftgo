@@ -265,7 +265,8 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 
 	tags = append(tags, extend...)
 
-	if gotags := f.Annotations.Get("go.tag"); len(gotags) > 0 {
+	gotags := f.Annotations.Get("go.tag")
+	if len(gotags) > 0 {
 		tag := gotags[0]
 		if cu.Features().EscapeDoubleInTag {
 			tag = escape.ReplaceAllStringFunc(tag, func(m string) string {
@@ -280,23 +281,24 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 		if cu.Features().GenDatabaseTag {
 			tags = append(tags, fmt.Sprintf(`db:"%s"`, f.Name))
 		}
+	}
 
-		if cu.Features().GenerateJSONTag {
-			id := f.Name
-			if cu.Features().SnakeTyleJSONTag {
-				id = snakify(id)
-			}
-			if cu.Features().LowerCamelCaseJSONTag {
-				id = lowerCamelCase(id)
-			}
+	if len(gotags) == 0 && cu.Features().GenerateJSONTag || cu.Features().AlwaysGenerateJSONTag {
+		id := f.Name
+		if cu.Features().SnakeTyleJSONTag {
+			id = snakify(id)
+		}
+		if cu.Features().LowerCamelCaseJSONTag {
+			id = lowerCamelCase(id)
+		}
 
-			if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
-				tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
-			} else {
-				tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
-			}
+		if f.Requiredness.IsOptional() && cu.Features().GenOmitEmptyTag {
+			tags = append(tags, fmt.Sprintf(`json:"%s,omitempty"`, id))
+		} else {
+			tags = append(tags, fmt.Sprintf(`json:"%s"`, id))
 		}
 	}
+
 	str := fmt.Sprintf("`%s%s`", strings.Join(tags, " "), insertPoint)
 	return str, nil
 }
