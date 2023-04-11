@@ -43,6 +43,7 @@ type Features struct {
 	EscapeDoubleInTag      bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
 	GenerateTypeMeta       bool `gen_type_meta:"Generate and register type meta for structures."`
 	GenerateJSONTag        bool `gen_json_tag:"Generate struct with 'json' tag"`
+	AlwaysGenerateJSONTag  bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
 	SnakeTyleJSONTag       bool `snake_style_json_tag:"Generate snake style json tag"`
 	LowerCamelCaseJSONTag  bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
 	GenerateReflectionInfo bool `generate_reflection_info:"Generate reflection info json"`
@@ -69,6 +70,7 @@ var defaultFeatures = Features{
 	EscapeDoubleInTag:      true,
 	GenerateTypeMeta:       false,
 	GenerateJSONTag:        true,
+	AlwaysGenerateJSONTag:  false,
 	SnakeTyleJSONTag:       false,
 	LowerCamelCaseJSONTag:  false,
 	GenerateReflectionInfo: false,
