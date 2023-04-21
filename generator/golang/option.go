@@ -48,6 +48,7 @@ type Features struct {
 	LowerCamelCaseJSONTag  bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
 	GenerateReflectionInfo bool `generate_reflection_info:"Generate reflection info json"`
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
+	CheckOptionGrammar     bool `check_option_grammar:"Check thrift option grammar"`
 }
 
 var defaultFeatures = Features{
@@ -75,6 +76,7 @@ var defaultFeatures = Features{
 	LowerCamelCaseJSONTag:  false,
 	GenerateReflectionInfo: false,
 	EnumAsINT32:            false,
+	CheckOptionGrammar:     false,
 }
 
 type param struct {
