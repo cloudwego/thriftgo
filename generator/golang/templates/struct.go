@@ -98,7 +98,13 @@ func (p *{{$TypeName}}) String() string {
 		return "<nil>"
 	}
 	{{- UseStdLibrary "fmt"}}
+	{{if Features.JsonStringer}}
+	{{$Fields := .Fields}}
+  	fmtStr := "{ {{- range $index,$field := .Fields}}\"{{.GoName}}\":%+v{{if NotLast $index (len $Fields)}},{{- end}}{{- end}}}"
+	return fmt.Sprintf(fmtStr {{- range .Fields}},p.{{.GoName}}{{- end}})
+	{{else}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
+	{{end}}
 }
 
 {{- if eq .Category "exception"}}

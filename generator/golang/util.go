@@ -355,6 +355,7 @@ func (cu *CodeUtils) RootScope() *Scope {
 // BuildFuncMap builds a function map for templates.
 func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 	m := map[string]interface{}{
+		"NotLast":        notlast,
 		"ToUpper":        strings.ToUpper,
 		"ToLower":        strings.ToLower,
 		"InsertionPoint": plugin.InsertionPoint,
@@ -444,6 +445,10 @@ func lowerCamelCase(id string) string {
 		}
 	}
 	return strings.Join(words, "")
+}
+
+func notlast(index, len int) bool {
+	return index != (len - 1)
 }
 
 func JoinPath(elem ...string) string {
