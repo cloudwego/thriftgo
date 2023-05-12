@@ -39,10 +39,11 @@ import (
 
 // Default libraries.
 const (
-	DefaultThriftLib  = "github.com/apache/thrift/lib/go/thrift"
-	DefaultUnknownLib = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
-	DefaultMetaLib    = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
-	defaultTemplate   = "default"
+	DefaultThriftLib    = "github.com/apache/thrift/lib/go/thrift"
+	DefaultUnknownLib   = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
+	DefaultMetaLib      = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
+	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
+	defaultTemplate     = "default"
 )
 
 var escape = regexp.MustCompile(`\\.`)

@@ -102,7 +102,7 @@ func prettifyBytesLiteral(s string) string {
 		rs = append(rs, r)
 		if r == ',' {
 			cnt++
-			if cnt == 8 {
+			if cnt == 16 {
 				rs = append(rs, '\n')
 				cnt = 0
 			}

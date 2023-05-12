@@ -62,5 +62,50 @@ import (
 		thriftreflection.RegisterIDL(file_{{.IDLName}}_rawDesc)
 	}
 {{end}}
+
+{{- if Features.WithReflection}}
+{{- UseStdLibrary "thrift_reflection"}}
+{{$IDLName := .IDLName}}
+{{- range .Structs}}
+func (p *{{.GoName}}) Descriptor() *thrift_reflection.StructDescriptor{
+	return File_idl_{{$IDLName}}_thrift.GetStructDescriptor("{{.GoName}}")
+}
+{{- end}}
+{{- range .Enums}}
+func (p *{{.GoName}}) Descriptor() *thrift_reflection.EnumDescriptor{
+	return File_idl_{{$IDLName}}_thrift.GetEnumDescriptor("{{.GoName}}")
+}
+{{- end}}
+{{- range .Typedefs}}
+func (p *{{.GoName}}) Descriptor() *thrift_reflection.TypedefDescriptor{
+	return File_idl_{{$IDLName}}_thrift.GetTypedefDescriptor("{{.GoName}}")
+}
+{{- end}}
+{{- range .Unions}}
+func (p *{{.GoName}}) Descriptor() *thrift_reflection.StructDescriptor{
+	return File_idl_{{$IDLName}}_thrift.GetUnionDescriptor("{{.GoName}}")
+}
+{{- end}}
+{{- range .Exceptions}}
+func (p *{{.GoName}}) Descriptor() *thrift_reflection.StructDescriptor{
+	return File_idl_{{$IDLName}}_thrift.GetExceptionDescriptor("{{.GoName}}")
+}
+{{- end}}
+
+
+var File_idl_{{$IDLName}}_thrift *thrift_reflection.FileDescriptor
+var file_idl_{{$IDLName}}_rawDesc = {{.MarshalDescriptor}}
+
+func init() { file_idl_demo_proto_init() }
+
+func file_idl_demo_proto_init(){
+	if File_idl_{{$IDLName}}_thrift != nil {
+		return
+	}
+	// todo error handler
+	File_idl_{{$IDLName}}_thrift = thrift_reflection.RegisterIDL(file_idl_{{$IDLName}}_rawDesc)
+	// todo
+}
+{{end}}
 {{- InsertionPoint "eof"}}
 `

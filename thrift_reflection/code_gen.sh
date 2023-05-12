@@ -1,0 +1,1 @@
+thriftgo -g go:gen_type_meta -o . descriptor.thrift

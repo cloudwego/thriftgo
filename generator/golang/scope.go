@@ -16,6 +16,7 @@ package golang
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 	"path/filepath"
 	"strings"
 
@@ -130,6 +131,17 @@ func (s *Scope) FilePackage() string {
 
 func (s *Scope) IDLMeta() string {
 	return reflection.Encode(s.ast)
+}
+
+func (s *Scope) MarshalDescriptor() string {
+	fd := thrift_reflection.GetFileDescriptorFromAst(s.ast)
+
+	bytes, err := thrift_reflection.MarshalAst(fd)
+	if err != nil {
+		return fmt.Sprintf("<%s>", err.Error())
+	}
+	return prettifyBytesLiteral(fmt.Sprintf("%#v", bytes))
+
 }
 
 func (s *Scope) IDLName() string {
