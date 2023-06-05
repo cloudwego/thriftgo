@@ -188,6 +188,57 @@ func TestServiceReservedComment(t *testing.T) {
 	}
 }
 
+const testReservedEndLineComments = `
+struct my_struct {
+	// header comment for 1
+	1:required string field1
+	// header comment for 2
+	2:required string field2 // tail-reserved comment for 2
+	3:required string field3 // tail-reserved comment for 3
+	4:required string field4, // tail-reserved comment for 4
+	5:required string field5(at="annotation") // tail-reserved comment for 5
+	// header comment for 6
+	6:required string field6
+	// header comment for 7
+	7:required string field7 // tail-reserved comment for 7
+	8:required string field8 # tail-reserved comment for 8
+	9:required string field9 /* tail-reserved comment for 9
+		and for another line
+	*/
+}
+`
+
+func TestFieldReservedEndLineComment(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testReservedEndLineComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range ast.Structs[0].Fields {
+		switch f.Name {
+		case "field1":
+			test.Assert(t, f.ReservedComments == `// header comment for 1`)
+		case "field2":
+			test.Assert(t, f.ReservedComments == `// header comment for 2`)
+		case "field3":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 3`)
+		case "field4":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 4`)
+		case "field5":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 5`)
+		case "field6":
+			test.Assert(t, f.ReservedComments == `// header comment for 6`)
+		case "field7":
+			test.Assert(t, f.ReservedComments == `// header comment for 7`)
+		case "field8":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 8`)
+		case "field9":
+			test.Assert(t, f.ReservedComments == `/* tail-reserved comment for 9
+		and for another line
+	*/`)
+		}
+	}
+}
+
 const testSpaceSkip = `
 namespace
 *

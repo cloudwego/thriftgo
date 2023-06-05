@@ -659,7 +659,7 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator?
+	// ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? ReservedEndLineComments
 	var f Field
 	f.ID = NOTSET
 	for ; node != nil; node = node.next {
@@ -672,6 +672,15 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 				return nil, err
 			}
 			f.ReservedComments = reservedComments
+		case ruleReservedEndLineComments:
+			// endline comment's priority is lower than the header comment
+			reservedComments, err := p.parseReservedEndLineComments(node)
+			if err != nil {
+				return nil, err
+			}
+			if f.ReservedComments == "" {
+				f.ReservedComments = reservedComments
+			}
 		case ruleFieldId:
 			i, _ := strconv.Atoi(p.pegText(node))
 			f.ID = int32(i)
@@ -842,6 +851,30 @@ func (p *parser) parseThrows(node *node32) (fs []*Field, err error) {
 
 func (p *parser) parseReservedComments(node *node32) (ReservedComments string, err error) {
 	node, err = checkrule(node, ruleReservedComments)
+	if err != nil {
+		return "", err
+	}
+	// Skip
+	node = node.up
+	// (Space / Comment)*
+	var comments []string
+	for ; node != nil; node = node.next {
+		if node.pegRule == ruleComment {
+			comment := strings.TrimRight(string(p.buffer[int(node.up.begin):int(node.up.end)]), "\r\n")
+			if strings.HasPrefix(comment, "#") {
+				comment = strings.TrimPrefix(comment, "#")
+				comment = "//" + comment
+			}
+			if comment != "" {
+				comments = append(comments, comment)
+			}
+		}
+	}
+	return strings.Join(comments, "\n"), nil
+}
+
+func (p *parser) parseReservedEndLineComments(node *node32) (ReservedComments string, err error) {
+	node, err = checkrule(node, ruleReservedEndLineComments)
 	if err != nil {
 		return "", err
 	}
