@@ -35,7 +35,7 @@ Union <- UNION Identifier LWING Field* RWING
 
 Exception <- EXCEPTION Identifier LWING Field* RWING
 
-Field <- ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? SkipLine
+Field <- ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? ReservedEndLineComments SkipLine
 
 FieldId <- Skip IntConstant COLON Indent*
 
@@ -95,9 +95,10 @@ LetterOrDigit <- [a-z] / [A-Z] / [0-9] / [_$]
 Digit <- [0-9]
 
 ReservedComments <- Skip
+ReservedEndLineComments <- SkipLine
 
 Skip <- (Space / Comment)*
-SkipLine <- (Indent / Comment)* CarriageReturnLineFeed?
+SkipLine <- (Indent / Comment)*
 
 Space <- (Indent / CarriageReturnLineFeed)+
 Indent <- [ \t\v]
