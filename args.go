@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/backend"
+	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/plugin"
 )
 
@@ -99,7 +101,10 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 		if err != nil {
 			return nil, err
 		}
-
+		err = a.checkOptions(desc.Options)
+		if err != nil {
+			return nil, err
+		}
 		spec := &generator.LangSpec{
 			Language: desc.Name,
 			Options:  desc.Options,
@@ -107,6 +112,18 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 		specs = append(specs, spec)
 	}
 	return
+}
+
+func (a *Arguments) checkOptions(opt []plugin.Option) error {
+	params := plugin.Pack(opt)
+	cu := golang.NewCodeUtils(backend.DummyLogFunc())
+	cu.HandleOptions(params)
+	if cu.Features().EnableNestedStruct {
+		if cu.Template() != "slim" {
+			return errors.New("EnableNestedStruct is only available under the \"slim\" template, example: -go:template=slim,enable_nested_struct")
+		}
+	}
+	return nil
 }
 
 // MakeLogFunc creates logging functions according to command line flags.

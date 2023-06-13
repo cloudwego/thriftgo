@@ -127,6 +127,12 @@ func (s *Scope) identify(cu *CodeUtils, raw string) string {
 	if err != nil {
 		panic(err)
 	}
+	// Because EnableNestedStruct generates nested struct, the variable name is empty when the raw name is "_".
+	if cu.Features().EnableNestedStruct {
+		if raw == "_" {
+			name = ""
+		}
+	}
 	if !strings.HasPrefix(raw, prefix) && cu.Features().CompatibleNames {
 		if strings.HasPrefix(name, "New") || strings.HasSuffix(name, "Args") || strings.HasSuffix(name, "Result") {
 			name += "_"
@@ -321,6 +327,10 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	// reserve method names
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
+		if fn == "" {
+			// Since the variable name is empty, the type name needs to be used when retrieving the value.
+			fn = s.identify(cu, f.Type.Name)
+		}
 		st.scope.Add("Get"+fn, _p("get:"+f.Name))
 		if cu.Features().GenerateSetter {
 			st.scope.Add("Set"+fn, _p("set:"+f.Name))
@@ -340,6 +350,10 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
 		fn = st.scope.Add(fn, f.Name)
+		isNested := false
+		if fn == "" {
+			isNested = true
+		}
 		id := id2str(f.ID)
 		st.fields = append(st.fields, &Field{
 			Field:     f,
@@ -350,6 +364,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 			setter:    Name(st.scope.Get(_p("set:" + f.Name))),
 			isset:     Name(st.scope.Get(_p("isset:" + f.Name))),
 			deepEqual: Name(st.scope.Get(_p("deepequal:" + id))),
+			isNested:  isNested,
 		})
 	}
 
@@ -401,6 +416,10 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	for f := range ff {
 		v := f.Field
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
+		// Since the variable name is empty, the type name needs to be used when retrieving the value.
+		if cu.Features().EnableNestedStruct && f.GetName() == "_" {
+			f.name = Name(f.typeName.Deref().String())
+		}
 		f.frugalTypeName = ensureType(frugalResolver.ResolveFrugalTypeName(v.Type))
 		f.defaultTypeName = ensureType(resolver.GetDefaultValueTypeName(v))
 		if f.IsSetDefault() {

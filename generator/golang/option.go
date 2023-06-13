@@ -61,6 +61,7 @@ type Features struct {
 	WithFieldMask         bool `with_field_mask:"Support field-mask for generated code."`
 	FieldMaskHalfway      bool `field_mask_halfway:"Support set field-mask on not-root struct."`
 	FieldMaskZeroRequired bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
+	EnableNestedStruct     bool `enable_nested_struct:"Generate nested struct when fiele name is \"_\", valid only in 'slim template'"`
 }
 
 var defaultFeatures = Features{
@@ -95,6 +96,7 @@ var defaultFeatures = Features{
 	WithFieldMask:          false,
 	FieldMaskHalfway:       false,
 	FieldMaskZeroRequired:  false,
+	EnableNestedStruct:     false,
 }
 
 type param struct {
