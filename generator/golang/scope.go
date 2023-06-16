@@ -135,7 +135,9 @@ func (s *Scope) IDLMeta() string {
 func (s *Scope) IDLName() string {
 	idlName := strings.TrimSuffix(s.ast.Filename, ".thrift")
 	arr := strings.Split(idlName, string(filepath.Separator))
-	return snakify(arr[len(arr)-1])
+	idlName = snakify(arr[len(arr)-1])
+	idlName = strings.ReplaceAll(idlName, ".", "_")
+	return idlName
 }
 
 func (s *Scope) RefPath() string {
