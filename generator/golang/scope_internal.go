@@ -330,6 +330,10 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 		if fn == "" {
 			// Since the variable name is empty, the type name needs to be used when retrieving the value.
 			fn = s.identify(cu, f.Type.Name)
+			if strings.Contains(fn, ".") {
+				fns := strings.Split(fn, ".")
+				fn = fns[len(fns)-1]
+			}
 		}
 		st.scope.Add("Get"+fn, _p("get:"+f.Name))
 		if cu.Features().GenerateSetter {
@@ -418,7 +422,12 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
 		// Since the variable name is empty, the type name needs to be used when retrieving the value.
 		if cu.Features().EnableNestedStruct && f.GetName() == "_" {
-			f.name = Name(f.typeName.Deref().String())
+			name := f.typeName.Deref().String()
+			if strings.Contains(name, ".") {
+				names := strings.Split(name, ".")
+				name = names[len(names)-1]
+			}
+			f.name = Name(name)
 		}
 		f.frugalTypeName = ensureType(frugalResolver.ResolveFrugalTypeName(v.Type))
 		f.defaultTypeName = ensureType(resolver.GetDefaultValueTypeName(v))
