@@ -360,6 +360,7 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"ToLower":        strings.ToLower,
 		"InsertionPoint": plugin.InsertionPoint,
 		"Unexport":       common.Unexport,
+		"HasPrefix":      strings.HasPrefix,
 
 		"Debug":          cu.Debug,
 		"Features":       cu.Features,

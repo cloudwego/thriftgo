@@ -86,6 +86,7 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 		"thrift":  DefaultThriftLib,
 		"unknown": DefaultUnknownLib,
 		"meta":    DefaultMetaLib,
+		"json":    "encoding/json",
 	}
 	for pkg, path := range std {
 		ns.Add(pkg, path)

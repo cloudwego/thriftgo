@@ -83,6 +83,7 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 
 {{template "FieldIsSet" .}}
 
+{{template "StructLikeWriteField" .}}
 func (p *{{$TypeName}}) String() string {
 	if p == nil {
 		return "<nil>"
@@ -90,8 +91,20 @@ func (p *{{$TypeName}}) String() string {
 	{{- UseStdLibrary "fmt"}}
 	{{if Features.JsonStringer}}
 	{{$Fields := .Fields}}
-  	fmtStr := "{ {{- range $index,$field := .Fields}}\"{{.GoName}}\":%+v{{if NotLast $index (len $Fields)}},{{- end}}{{- end}}}"
-	return fmt.Sprintf(fmtStr {{- range .Fields}},p.{{.GoName}}{{- end}})
+  	fmtStr := "{ 
+	{{- range $index,$field := .Fields -}}\"{{.GoName}}\":
+	{{- if or (eq $field.GoTypeName "string") (eq $field.GoTypeName "*string") -}}
+	%q
+	{{- else -}}
+	%+v 
+	{{- end -}}
+	{{- if NotLast $index (len $Fields) -}},{{- end -}}
+	{{- end -}}}"
+	return fmt.Sprintf(fmtStr {{- range .Fields}}, {{- if or (HasPrefix .GoTypeName.String "map[") (HasPrefix .GoTypeName.String "[]") -}}func() string {
+			{{- UseStdLibrary "json"}}
+			b, _ := json.Marshal(p.Get{{.GoName}}())
+			return string(b)
+		}(){{- else -}}p.Get{{.GoName}}(){{- end -}}{{- end}})
 	{{else}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
 	{{end}}

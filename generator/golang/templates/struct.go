@@ -92,7 +92,6 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{template "StructLikeWrite" .}}
 
 {{template "StructLikeWriteField" .}}
-
 func (p *{{$TypeName}}) String() string {
 	if p == nil {
 		return "<nil>"
@@ -102,16 +101,18 @@ func (p *{{$TypeName}}) String() string {
 	{{$Fields := .Fields}}
   	fmtStr := "{ 
 	{{- range $index,$field := .Fields -}}\"{{.GoName}}\":
-	{{- if eq $field.GoTypeName "string" -}}
-	%+q
-	{{- else if eq $field.GoTypeName "*string" -}}
-	%+q
+	{{- if or (eq $field.GoTypeName "string") (eq $field.GoTypeName "*string") -}}
+	%q
 	{{- else -}}
 	%+v 
 	{{- end -}}
 	{{- if NotLast $index (len $Fields) -}},{{- end -}}
 	{{- end -}}}"
-	return fmt.Sprintf(fmtStr {{- range .Fields}},p.Get{{.GoName}}(){{- end}})
+	return fmt.Sprintf(fmtStr {{- range .Fields}}, {{- if or (HasPrefix .GoTypeName.String "map[") (HasPrefix .GoTypeName.String "[]") -}}func() string {
+			{{- UseStdLibrary "json"}}
+			b, _ := json.Marshal(p.Get{{.GoName}}())
+			return string(b)
+		}(){{- else -}}p.Get{{.GoName}}(){{- end -}}{{- end}})
 	{{else}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
 	{{end}}
