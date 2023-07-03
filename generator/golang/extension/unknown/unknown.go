@@ -46,248 +46,414 @@ func SetNestingDepthLimit(d int) {
 	maxNestingDepth = d
 }
 
-// Field is used to store unrecognized field when deserializing data.
-type Field struct {
-	Name    string
-	ID      int16
-	Type    int
-	KeyType int
-	ValType int
-	Value   interface{}
-}
+// Fields stores all undeserialized unknown fields.
+type Fields []byte
 
-// Fields is a list of Field.
-type Fields []*Field
-
-// Append reads an unrecognized field and append it to the current slice.
+// Append reads an object of a generalized type from xprot and serializes the object into Fields for compatibility
+// with the thrift interface, and the performance is greatly discounted for this reason.
+//
+// Deprecated: Use the FastCodec api provided by Kitex for serialization/deserialization to improve performance.
 func (fs *Fields) Append(xprot TProtocol, name string, fieldType TType, id int16) error {
 	iprot, err := convert(xprot)
 	if err != nil {
 		return err
 	}
-	f, err := read(iprot, name, asInt(fieldType), id, maxNestingDepth)
+	ft := asInt(fieldType)
+	buf := ([]byte)(*fs)[:cap(*fs)]
+	offset := len(*fs)
+	ensureBytesLen(&buf, offset, Binary.FieldBeginLength(name, ft, id))
+	offset += Binary.WriteFieldBegin(buf[offset:], name, ft, id)
+	offset, err = read(&buf, offset, iprot, name, ft, id, maxNestingDepth)
 	if err != nil {
 		return err
 	}
-	*fs = append(*fs, f)
+	*fs = buf[:offset]
 	return nil
 }
 
-// Write writes out the unknown fields.
+// Write reads an object of a generalized type from Fields and srializes the object into xprot for compatibility
+// with the thrift interface, and the performance is greatly discounted for this reason.
+//
+// Deprecated: Use the FastCodec api provided by Kitex for serialization/deserialization to improve performance.
 func (fs *Fields) Write(xprot TProtocol) (err error) {
 	oprot, err := convert(xprot)
 	if err != nil {
 		return err
 	}
-	var i int
-	var f *Field
-	for i, f = range *fs {
-		if err = oprot.WriteFieldBegin(ctx, f.Name, f.Type, f.ID); err != nil {
-			break
+	rbuf := []byte(*fs)
+	var offset int
+	for offset < len(rbuf) {
+		name, fieldType, fieldID, l, err := Binary.ReadFieldBegin(rbuf[offset:])
+		offset += l
+		if err != nil {
+			return fmt.Errorf("read field begin error: %w", err)
 		}
-		if err = write(oprot, f); err != nil {
-			break
+		if err = oprot.WriteFieldBegin(ctx, name, fieldType, fieldID); err != nil {
+			return fmt.Errorf("write field begin error: %w", err)
+		}
+
+		l, err = write(oprot, name, fieldType, fieldID, rbuf[offset:])
+		offset += l
+		if err != nil {
+			return fmt.Errorf("write struct field error: %w", err)
+		}
+
+		l, err = Binary.ReadFieldEnd(rbuf[offset:])
+		offset += l
+		if err != nil {
+			return fmt.Errorf("read field end error: %w", err)
 		}
 		if err = oprot.WriteFieldEnd(ctx); err != nil {
-			break
+			return fmt.Errorf("write field end error: %w", err)
 		}
 	}
 	if err != nil {
-		err = fmt.Errorf("write field error unknown.%d(name:%s type:%d id:%d): %w",
-			i, f.Name, f.Type, f.ID, err)
+		err = fmt.Errorf("write field error unknown: %w", err)
 	}
 	return err
 }
 
-// write writes out the unknown field.
-func write(oprot *protocol, f *Field) (err error) {
-	switch f.Type {
+// write writes fields out the oprot.
+func write(oprot *protocol, name string, fieldType int, id int16, fs []byte) (offset int, err error) {
+	switch fieldType {
 	case TBool:
-		return oprot.WriteBool(ctx, f.Value.(bool))
-	case TByte:
-		return oprot.WriteByte(ctx, f.Value.(int8))
-	case TDouble:
-		return oprot.WriteDouble(ctx, f.Value.(float64))
-	case TI16:
-		return oprot.WriteI16(ctx, f.Value.(int16))
-	case TI32:
-		return oprot.WriteI32(ctx, f.Value.(int32))
-	case TI64:
-		return oprot.WriteI64(ctx, f.Value.(int64))
-	case TString:
-		return oprot.WriteString(ctx, f.Value.(string))
-	case TSet:
-		vs := f.Value.([]*Field)
-		if err = oprot.WriteSetBegin(ctx, f.ValType, len(vs)); err != nil {
-			return fmt.Errorf("write set begin error: %w", err)
+		v, l, err := Binary.ReadBool(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
 		}
-		for _, v := range vs {
-			if err = write(oprot, v); err != nil {
-				return fmt.Errorf("write set elem error: %w", err)
+		if err = oprot.WriteBool(ctx, v); err != nil {
+			return offset, err
+		}
+	case TByte:
+		v, l, err := Binary.ReadByte(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
+		}
+		if err = oprot.WriteByte(ctx, v); err != nil {
+			return offset, err
+		}
+	case TI16:
+		v, l, err := Binary.ReadI16(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
+		}
+		if err = oprot.WriteI16(ctx, v); err != nil {
+			return offset, err
+		}
+	case TI32:
+		v, l, err := Binary.ReadI32(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
+		}
+		if err = oprot.WriteI32(ctx, v); err != nil {
+			return offset, err
+		}
+	case TI64:
+		v, l, err := Binary.ReadI64(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
+		}
+		if err = oprot.WriteI64(ctx, v); err != nil {
+			return offset, err
+		}
+	case TDouble:
+		v, l, err := Binary.ReadDouble(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
+		}
+		if err = oprot.WriteDouble(ctx, v); err != nil {
+			return offset, err
+		}
+	case TString:
+		v, l, err := Binary.ReadString(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, err
+		}
+		if err = oprot.WriteString(ctx, v); err != nil {
+			return offset, err
+		}
+	case TSet:
+		ttype, size, l, err := Binary.ReadSetBegin(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read set begin error: %w", err)
+		}
+		if err = oprot.WriteSetBegin(ctx, ttype, size); err != nil {
+			return offset, fmt.Errorf("write set begin error: %w", err)
+		}
+		for i := 0; i < size; i++ {
+			l, err = write(oprot, "", ttype, int16(i), fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("write set elem error: %w", err)
 			}
+		}
+		l, err = Binary.ReadSetEnd(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read set end error: %w", err)
 		}
 		if err = oprot.WriteSetEnd(ctx); err != nil {
-			return fmt.Errorf("write set end error: %w", err)
+			return offset, fmt.Errorf("write set end error: %w", err)
 		}
 	case TList:
-		vs := f.Value.([]*Field)
-		if err = oprot.WriteListBegin(ctx, f.ValType, len(vs)); err != nil {
-			return fmt.Errorf("write list begin error: %w", err)
+		ttype, size, l, err := Binary.ReadListBegin(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read list begin error: %w", err)
 		}
-		for _, v := range vs {
-			if err = write(oprot, v); err != nil {
-				return fmt.Errorf("write list elem error: %w", err)
+		if err = oprot.WriteListBegin(ctx, ttype, size); err != nil {
+			return offset, err
+		}
+		for i := 0; i < size; i++ {
+			l, err = write(oprot, "", ttype, int16(i), fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("write list elem error: %w", err)
 			}
+		}
+		l, err = Binary.ReadListEnd(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read list end error: %w", err)
 		}
 		if err = oprot.WriteListEnd(ctx); err != nil {
-			return fmt.Errorf("write list end error: %w", err)
+			return offset, fmt.Errorf("write list end error: %w", err)
 		}
 	case TMap:
-		kvs := f.Value.([]*Field)
-		if err = oprot.WriteMapBegin(ctx, f.KeyType, f.ValType, len(kvs)/2); err != nil {
-			return fmt.Errorf("write map begin error: %w", err)
+		kttype, vttype, size, l, err := Binary.ReadMapBegin(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read map begin error: %w", err)
 		}
-		for i := 0; i < len(kvs); i += 2 {
-			if err = write(oprot, kvs[i]); err != nil {
-				return fmt.Errorf("write map key error: %w", err)
+		if err = oprot.WriteMapBegin(ctx, kttype, vttype, size); err != nil {
+			return offset, fmt.Errorf("write map begin error: %w", err)
+		}
+		for i := 0; i < size; i++ {
+			l, err = write(oprot, "", kttype, int16(i), fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("write map key error: %w", err)
 			}
-			if err = write(oprot, kvs[i+1]); err != nil {
-				return fmt.Errorf("write map value error: %w", err)
+			l, err = write(oprot, "", vttype, int16(i), fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("write map value error: %w", err)
 			}
+		}
+		l, err = Binary.ReadMapEnd(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read map end error: %w", err)
 		}
 		if err = oprot.WriteMapEnd(ctx); err != nil {
-			return fmt.Errorf("write map end error: %w", err)
+			return offset, fmt.Errorf("write map end error: %w", err)
 		}
 	case TStruct:
-		fs := Fields(f.Value.([]*Field))
-		if err = oprot.WriteStructBegin(ctx, f.Name); err != nil {
-			return fmt.Errorf("write struct begin error: %w", err)
+		_, l, err := Binary.ReadStructBegin(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read struct begin error: %w", err)
 		}
-		if err = fs.Write(oprot); err != nil {
-			return fmt.Errorf("write struct field error: %w", err)
+		for {
+			name, fieldTypeID, fieldID, l, err := Binary.ReadFieldBegin(fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("read field begin error: %w", err)
+			}
+			if fieldTypeID == TStop {
+				if err = oprot.WriteFieldStop(ctx); err != nil {
+					return offset, fmt.Errorf("write field stop error: %w", err)
+				}
+				break
+			}
+			if err = oprot.WriteFieldBegin(ctx, name, fieldTypeID, fieldID); err != nil {
+				return offset, fmt.Errorf("write field begin error: %w", err)
+			}
+			l, err = write(oprot, name, fieldTypeID, fieldID, fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("write struct field error: %w", err)
+			}
+			l, err = Binary.ReadFieldEnd(fs[offset:])
+			offset += l
+			if err != nil {
+				return offset, fmt.Errorf("read field end error: %w", err)
+			}
+			if err = oprot.WriteFieldEnd(ctx); err != nil {
+				return offset, fmt.Errorf("write field end error: %w", err)
+			}
 		}
-		if err = oprot.WriteFieldStop(ctx); err != nil {
-			return fmt.Errorf("write struct stop error: %w", err)
+		l, err = Binary.ReadStructEnd(fs[offset:])
+		offset += l
+		if err != nil {
+			return offset, fmt.Errorf("read struct end error: %w", err)
 		}
 		if err = oprot.WriteStructEnd(ctx); err != nil {
-			return fmt.Errorf("write struct end error: %w", err)
+			return offset, fmt.Errorf("write struct end error: %w", err)
 		}
 	default:
-		return ErrUnknownType(f.Type)
+		return offset, ErrUnknownType(fieldType)
 	}
-	return
+	return offset, nil
 }
 
 // read reads an unknown field from the given TProtocol.
-func read(iprot *protocol, name string, fieldType int, id int16, maxDepth int) (f *Field, err error) {
+func read(buf *[]byte, offset int, iprot *protocol, name string, fieldType int, id int16, maxDepth int) (noffset int, err error) {
 	if maxDepth <= 0 {
-		return nil, ErrExceedDepthLimit
+		return 0, ErrExceedDepthLimit
 	}
-
-	var size int
-	f = &Field{Name: name, ID: id, Type: asInt(fieldType)}
 	switch fieldType {
 	case TBool:
-		f.Value, err = iprot.ReadBool(ctx)
+		var v bool
+		v, err = iprot.ReadBool(ctx)
+		ensureBytesLen(buf, offset, Binary.BoolLength(v))
+		offset += Binary.WriteBool((*buf)[offset:], v)
 	case TByte:
-		f.Value, err = iprot.ReadByte(ctx)
+		var v int8
+		v, err = iprot.ReadByte(ctx)
+		ensureBytesLen(buf, offset, Binary.ByteLength(v))
+		offset += Binary.WriteByte((*buf)[offset:], v)
 	case TI16:
-		f.Value, err = iprot.ReadI16(ctx)
+		var v int16
+		v, err = iprot.ReadI16(ctx)
+		ensureBytesLen(buf, offset, Binary.I16Length(v))
+		offset += Binary.WriteI16((*buf)[offset:], v)
 	case TI32:
-		f.Value, err = iprot.ReadI32(ctx)
+		var v int32
+		v, err = iprot.ReadI32(ctx)
+		ensureBytesLen(buf, offset, Binary.I32Length(v))
+		offset += Binary.WriteI32((*buf)[offset:], v)
 	case TI64:
-		f.Value, err = iprot.ReadI64(ctx)
+		var v int64
+		v, err = iprot.ReadI64(ctx)
+		ensureBytesLen(buf, offset, Binary.I64Length(v))
+		offset += Binary.WriteI64((*buf)[offset:], v)
 	case TDouble:
-		f.Value, err = iprot.ReadDouble(ctx)
+		var v float64
+		v, err = iprot.ReadDouble(ctx)
+		ensureBytesLen(buf, offset, Binary.DoubleLength(v))
+		offset += Binary.WriteDouble((*buf)[offset:], v)
 	case TString:
-		f.Value, err = iprot.ReadString(ctx)
+		var v string
+		v, err = iprot.ReadString(ctx)
+		ensureBytesLen(buf, offset, Binary.StringLength(v))
+		offset += Binary.WriteString((*buf)[offset:], v)
 	case TSet:
-		f.ValType, size, err = iprot.ReadSetBegin(ctx)
+		var valType int
+		var size int
+		valType, size, err = iprot.ReadSetBegin(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("read set begin error: %w", err)
+			return 0, fmt.Errorf("read set begin error: %w", err)
 		}
-		set := make([]*Field, 0, size)
+		ensureBytesLen(buf, offset, Binary.SetBeginLength(valType, size))
+		offset += Binary.WriteSetBegin((*buf)[offset:], valType, size)
 		for i := 0; i < size; i++ {
-			v, err2 := read(iprot, "", f.ValType, int16(i), maxDepth-1)
-			if err2 != nil {
-				return nil, fmt.Errorf("read set elem error: %w", err)
+			offset, err = read(buf, offset, iprot, "", valType, int16(i), maxDepth-1)
+			if err != nil {
+				return 0, fmt.Errorf("read set elem error: %w", err)
 			}
-			set = append(set, v)
 		}
 		if err = iprot.ReadSetEnd(ctx); err != nil {
-			return nil, fmt.Errorf("read set end error: %w", err)
+			return 0, fmt.Errorf("read set end error: %w", err)
 		}
-		f.Value = set
+		ensureBytesLen(buf, offset, Binary.SetEndLength())
+		offset += Binary.WriteSetEnd((*buf)[offset:])
 	case TList:
-		f.ValType, size, err = iprot.ReadListBegin(ctx)
+		var valType int
+		var size int
+		valType, size, err = iprot.ReadListBegin(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("read list begin error: %w", err)
+			return 0, fmt.Errorf("read list begin error: %w", err)
 		}
-		list := make([]*Field, 0, size)
+		ensureBytesLen(buf, offset, Binary.ListBeginLength(valType, size))
+		offset += Binary.WriteListBegin((*buf)[offset:], valType, size)
 		for i := 0; i < size; i++ {
-			v, err2 := read(iprot, "", f.ValType, int16(i), maxDepth-1)
-			if err2 != nil {
-				return nil, fmt.Errorf("read list elem error: %w", err)
+			offset, err = read(buf, offset, iprot, "", valType, int16(i), maxDepth-1)
+			if err != nil {
+				return 0, fmt.Errorf("read list elem error: %w", err)
 			}
-			list = append(list, v)
 		}
 		if err = iprot.ReadListEnd(ctx); err != nil {
-			return nil, fmt.Errorf("read list end error: %w", err)
+			return 0, fmt.Errorf("read list end error: %w", err)
 		}
-		f.Value = list
+		ensureBytesLen(buf, offset, Binary.ListEndLength())
+		offset += Binary.WriteListEnd((*buf)[offset:])
 	case TMap:
-		f.KeyType, f.ValType, size, err = iprot.ReadMapBegin(ctx)
+		var keyType, valType int
+		var size int
+		keyType, valType, size, err = iprot.ReadMapBegin(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("read map begin error: %w", err)
+			return 0, fmt.Errorf("read map begin error: %w", err)
 		}
-		flatMap := make([]*Field, 0, size*2)
+		ensureBytesLen(buf, offset, Binary.MapBeginLength(keyType, valType, size))
+		offset += Binary.WriteMapBegin((*buf)[offset:], keyType, valType, size)
 		for i := 0; i < size; i++ {
-			k, err2 := read(iprot, "", f.KeyType, int16(i), maxDepth-1)
-			if err2 != nil {
-				return nil, fmt.Errorf("read map key error: %w", err)
+			offset, err = read(buf, offset, iprot, "", keyType, int16(i), maxDepth-1)
+			if err != nil {
+				return 0, fmt.Errorf("read map key error: %w", err)
 			}
-			v, err2 := read(iprot, "", f.ValType, int16(i), maxDepth-1)
-			if err2 != nil {
-				return nil, fmt.Errorf("read map value error: %w", err)
+			offset, err = read(buf, offset, iprot, "", valType, int16(i), maxDepth-1)
+			if err != nil {
+				return 0, fmt.Errorf("read map value error: %w", err)
 			}
-			flatMap = append(flatMap, k, v)
 		}
 		if err = iprot.ReadMapEnd(ctx); err != nil {
-			return nil, fmt.Errorf("read map end error: %w", err)
+			return 0, fmt.Errorf("read map end error: %w", err)
 		}
-		f.Value = flatMap
+		ensureBytesLen(buf, offset, Binary.MapEndLength())
+		offset += Binary.WriteMapEnd((*buf)[offset:])
 	case TStruct:
-		_, err = iprot.ReadStructBegin(ctx)
+		name, err := iprot.ReadStructBegin(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("read struct begin error: %w", err)
+			return 0, fmt.Errorf("read struct begin error: %w", err)
 		}
-		var fields []*Field
+		ensureBytesLen(buf, offset, Binary.StructBeginLength(name))
+		offset += Binary.WriteStructBegin((*buf)[offset:], name)
 		for {
 			name, fieldTypeID, fieldID, err := iprot.ReadFieldBegin(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("read field begin error: %w", err)
+				return 0, fmt.Errorf("read field begin error: %w", err)
 			}
 			if fieldTypeID == TStop {
+				ensureBytesLen(buf, offset, Binary.FieldStopLength())
+				offset += Binary.WriteFieldStop((*buf)[offset:])
 				break
 			}
-			v, err := read(iprot, name, fieldTypeID, fieldID, maxDepth-1)
+			ensureBytesLen(buf, offset, Binary.FieldBeginLength(name, fieldTypeID, fieldID))
+			offset += Binary.WriteFieldBegin((*buf)[offset:], name, fieldTypeID, fieldID)
+			offset, err = read(buf, offset, iprot, name, fieldTypeID, fieldID, maxDepth-1)
 			if err != nil {
-				return nil, fmt.Errorf("read struct field error: %w", err)
+				return 0, fmt.Errorf("read struct field error: %w", err)
 			}
-			if err := iprot.ReadFieldEnd(ctx); err != nil {
-				return nil, fmt.Errorf("read field end error: %w", err)
+			if err = iprot.ReadFieldEnd(ctx); err != nil {
+				return 0, fmt.Errorf("read field end error: %w", err)
 			}
-			fields = append(fields, v)
+			ensureBytesLen(buf, offset, Binary.FieldEndLength())
+			offset += Binary.WriteFieldEnd((*buf)[offset:])
 		}
 		if err = iprot.ReadStructEnd(ctx); err != nil {
-			return nil, fmt.Errorf("read struct end error: %w", err)
+			return 0, fmt.Errorf("read struct end error: %w", err)
 		}
-		f.Value = fields
+		ensureBytesLen(buf, offset, Binary.StructEndLength())
+		offset += Binary.WriteStructEnd((*buf)[offset:])
 	default:
-		return nil, ErrUnknownType(fieldType)
+		return 0, ErrUnknownType(fieldType)
 	}
-	if err != nil {
-		return nil, err
+	return offset, nil
+}
+
+func ensureBytesLen(buf *[]byte, offset, l int) {
+	if len(*buf)-offset < l {
+		nb := make([]byte, (offset+l)*2)
+		copy(nb, (*buf)[:offset])
+		*buf = nb
 	}
-	return
 }
