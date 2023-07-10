@@ -64,11 +64,8 @@ func (fs *Fields) Append(xprot TProtocol, name string, fieldType TType, id int16
 	ensureBytesLen(&buf, offset, Binary.FieldBeginLength(name, ft, id))
 	offset += Binary.WriteFieldBegin(buf[offset:], name, ft, id)
 	offset, err = read(&buf, offset, iprot, name, ft, id, maxNestingDepth)
-	if err != nil {
-		return err
-	}
 	*fs = buf[:offset]
-	return nil
+	return err
 }
 
 // Write reads an object of a generalized type from Fields and srializes the object into xprot for compatibility
@@ -308,7 +305,7 @@ func write(oprot *protocol, name string, fieldType int, id int16, fs []byte) (of
 // read reads an unknown field from the given TProtocol.
 func read(buf *[]byte, offset int, iprot *protocol, name string, fieldType int, id int16, maxDepth int) (noffset int, err error) {
 	if maxDepth <= 0 {
-		return 0, ErrExceedDepthLimit
+		return offset, ErrExceedDepthLimit
 	}
 	switch fieldType {
 	case TBool:
@@ -351,18 +348,18 @@ func read(buf *[]byte, offset int, iprot *protocol, name string, fieldType int, 
 		var size int
 		valType, size, err = iprot.ReadSetBegin(ctx)
 		if err != nil {
-			return 0, fmt.Errorf("read set begin error: %w", err)
+			return offset, fmt.Errorf("read set begin error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.SetBeginLength(valType, size))
 		offset += Binary.WriteSetBegin((*buf)[offset:], valType, size)
 		for i := 0; i < size; i++ {
 			offset, err = read(buf, offset, iprot, "", valType, int16(i), maxDepth-1)
 			if err != nil {
-				return 0, fmt.Errorf("read set elem error: %w", err)
+				return offset, fmt.Errorf("read set elem error: %w", err)
 			}
 		}
 		if err = iprot.ReadSetEnd(ctx); err != nil {
-			return 0, fmt.Errorf("read set end error: %w", err)
+			return offset, fmt.Errorf("read set end error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.SetEndLength())
 		offset += Binary.WriteSetEnd((*buf)[offset:])
@@ -371,18 +368,18 @@ func read(buf *[]byte, offset int, iprot *protocol, name string, fieldType int, 
 		var size int
 		valType, size, err = iprot.ReadListBegin(ctx)
 		if err != nil {
-			return 0, fmt.Errorf("read list begin error: %w", err)
+			return offset, fmt.Errorf("read list begin error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.ListBeginLength(valType, size))
 		offset += Binary.WriteListBegin((*buf)[offset:], valType, size)
 		for i := 0; i < size; i++ {
 			offset, err = read(buf, offset, iprot, "", valType, int16(i), maxDepth-1)
 			if err != nil {
-				return 0, fmt.Errorf("read list elem error: %w", err)
+				return offset, fmt.Errorf("read list elem error: %w", err)
 			}
 		}
 		if err = iprot.ReadListEnd(ctx); err != nil {
-			return 0, fmt.Errorf("read list end error: %w", err)
+			return offset, fmt.Errorf("read list end error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.ListEndLength())
 		offset += Binary.WriteListEnd((*buf)[offset:])
@@ -391,36 +388,36 @@ func read(buf *[]byte, offset int, iprot *protocol, name string, fieldType int, 
 		var size int
 		keyType, valType, size, err = iprot.ReadMapBegin(ctx)
 		if err != nil {
-			return 0, fmt.Errorf("read map begin error: %w", err)
+			return offset, fmt.Errorf("read map begin error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.MapBeginLength(keyType, valType, size))
 		offset += Binary.WriteMapBegin((*buf)[offset:], keyType, valType, size)
 		for i := 0; i < size; i++ {
 			offset, err = read(buf, offset, iprot, "", keyType, int16(i), maxDepth-1)
 			if err != nil {
-				return 0, fmt.Errorf("read map key error: %w", err)
+				return offset, fmt.Errorf("read map key error: %w", err)
 			}
 			offset, err = read(buf, offset, iprot, "", valType, int16(i), maxDepth-1)
 			if err != nil {
-				return 0, fmt.Errorf("read map value error: %w", err)
+				return offset, fmt.Errorf("read map value error: %w", err)
 			}
 		}
 		if err = iprot.ReadMapEnd(ctx); err != nil {
-			return 0, fmt.Errorf("read map end error: %w", err)
+			return offset, fmt.Errorf("read map end error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.MapEndLength())
 		offset += Binary.WriteMapEnd((*buf)[offset:])
 	case TStruct:
 		name, err := iprot.ReadStructBegin(ctx)
 		if err != nil {
-			return 0, fmt.Errorf("read struct begin error: %w", err)
+			return offset, fmt.Errorf("read struct begin error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.StructBeginLength(name))
 		offset += Binary.WriteStructBegin((*buf)[offset:], name)
 		for {
 			name, fieldTypeID, fieldID, err := iprot.ReadFieldBegin(ctx)
 			if err != nil {
-				return 0, fmt.Errorf("read field begin error: %w", err)
+				return offset, fmt.Errorf("read field begin error: %w", err)
 			}
 			if fieldTypeID == TStop {
 				ensureBytesLen(buf, offset, Binary.FieldStopLength())
@@ -431,21 +428,21 @@ func read(buf *[]byte, offset int, iprot *protocol, name string, fieldType int, 
 			offset += Binary.WriteFieldBegin((*buf)[offset:], name, fieldTypeID, fieldID)
 			offset, err = read(buf, offset, iprot, name, fieldTypeID, fieldID, maxDepth-1)
 			if err != nil {
-				return 0, fmt.Errorf("read struct field error: %w", err)
+				return offset, fmt.Errorf("read struct field error: %w", err)
 			}
 			if err = iprot.ReadFieldEnd(ctx); err != nil {
-				return 0, fmt.Errorf("read field end error: %w", err)
+				return offset, fmt.Errorf("read field end error: %w", err)
 			}
 			ensureBytesLen(buf, offset, Binary.FieldEndLength())
 			offset += Binary.WriteFieldEnd((*buf)[offset:])
 		}
 		if err = iprot.ReadStructEnd(ctx); err != nil {
-			return 0, fmt.Errorf("read struct end error: %w", err)
+			return offset, fmt.Errorf("read struct end error: %w", err)
 		}
 		ensureBytesLen(buf, offset, Binary.StructEndLength())
 		offset += Binary.WriteStructEnd((*buf)[offset:])
 	default:
-		return 0, ErrUnknownType(fieldType)
+		return offset, ErrUnknownType(fieldType)
 	}
 	return offset, nil
 }
