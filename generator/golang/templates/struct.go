@@ -405,10 +405,20 @@ func (p *{{$TypeName}}) {{$GetterName}}() (v {{$FieldTypeName}}) {
 {{- $SetterName := .Setter}}
 {{- if .IsResponseFieldOfResult}}
 func (p *{{$TypeName}}) {{$SetterName}}(x interface{}) {
+	{{- if Features.NilSafe}}
+	if p == nil {
+		return
+	}
+	{{- end}}
     p.{{$FieldName}} = x.({{$FieldTypeName}})
 }
 {{- else}}
 func (p *{{$TypeName}}) {{$SetterName}}(val {{$FieldTypeName}}) {
+	{{- if Features.NilSafe}}
+	if p == nil {
+		return
+	}
+	{{- end}}
 	p.{{$FieldName}} = val
 }
 {{- end}}
