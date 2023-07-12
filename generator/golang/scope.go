@@ -83,17 +83,28 @@ func BuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	if scope, ok := cu.scopeCache[ast]; ok {
 		return scope, nil
 	}
+	return doBuildScope(cu, ast)
+}
+
+func doBuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	scope := newScope(ast)
 	err := scope.init(cu)
 	if err != nil {
 		return nil, fmt.Errorf("process '%s' failed: %w", ast.Filename, err)
 	}
 	cu.scopeCache[ast] = scope
-	pth := cu.CombineOutputPath(cu.packagePrefix, ast)
-	scope.importPath = pth
-	parts := strings.Split(scope.importPath, "/")
-	scope.importPackage = strings.ToLower(parts[len(parts)-1])
+	scope.importPath = GetImportPath(cu, ast)
+	scope.importPackage = GetImportPackage(scope.importPath)
 	return scope, nil
+}
+
+func GetImportPath(cu *CodeUtils, ast *parser.Thrift) string {
+	return cu.CombineOutputPath(cu.packagePrefix, ast)
+}
+
+func GetImportPackage(path string) string {
+	parts := strings.Split(path, "/")
+	return strings.ToLower(parts[len(parts)-1])
 }
 
 // Scope contains the type symbols defined in a thrift IDL and wraps them to provide

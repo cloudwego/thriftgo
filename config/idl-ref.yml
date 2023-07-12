@@ -1,0 +1,18 @@
+ref:
+  example.thrift:
+    path: "tf/remote_gen/a"
+    structs:
+      - A
+      - B
+  sample.thrift: "tf/remote_gen/b"
+  ab.ies.example.thrift:
+    path: "tf/remote_gen/a/b/c"
+    structs:
+      - MyStruct
+      - MyAnotherStruct
+      - MyEnum
+    services:
+      - ServiceA
+      - ServiceB
+  cd.ies.example.thrift: "tf/remote_gen/a/b/c"
+debug: true
