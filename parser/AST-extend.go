@@ -267,3 +267,7 @@ func (t *Thrift) GetEnum(name string) (*Enum, bool) {
 	}
 	return nil, false
 }
+
+func (p *Typedef) GetName() (v string) {
+	return p.Alias
+}

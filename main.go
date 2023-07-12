@@ -16,17 +16,16 @@ package main
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
+	"os"
 )
 
 // Version of thriftgo.
-const Version = "0.2.12"
+const Version = "0.2.13"
 
 var (
 	a Arguments

@@ -48,6 +48,7 @@ type Features struct {
 	LowerCamelCaseJSONTag  bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
 	GenerateReflectionInfo bool `generate_reflection_info:"Generate reflection info json"`
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
+	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 }
 
 var defaultFeatures = Features{
