@@ -140,18 +140,6 @@ func GetMethodDescriptorFor{{$ServiceName}}{{.GoName}}() *thrift_reflection.Meth
 {{- end}}
 {{- end}}
 
-
-{{- $Options := .GetOption $IDLPath }}
-{{- if $Options}}
-{{- UseStdLibrary "thrift_option"}}
-var (
-	{{- range $Line := $Options}}
-		{{$Line}}
-	{{- end}}
-)
-{{- end}}
-
-
 {{end}}
 {{- InsertionPoint "eof"}}
 `

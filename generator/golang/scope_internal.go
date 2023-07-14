@@ -16,7 +16,6 @@ package golang
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/option"
 	"strconv"
 	"strings"
 
@@ -48,16 +47,6 @@ func (s *Scope) init(cu *CodeUtils) (err error) {
 			err = x
 		}
 	}()
-
-	if cu.Features().CheckOptionGrammar {
-		for ast := range s.AST().DepthFirstSearch() {
-			er := option.CheckOptionGrammar(ast)
-			if er != nil {
-				return er
-			}
-		}
-	}
-
 	if cu.Features().ReorderFields {
 		for _, x := range s.ast.GetStructLikes() {
 			diff := reorderFields(x)
