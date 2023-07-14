@@ -43,6 +43,7 @@ const (
 	DefaultUnknownLib   = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 	DefaultMetaLib      = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
+	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
 	defaultTemplate     = "default"
 )
 
@@ -358,8 +359,13 @@ func (cu *CodeUtils) RootScope() *Scope {
 // BuildFuncMap builds a function map for templates.
 func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 	m := map[string]interface{}{
-		"ToUpper":        strings.ToUpper,
-		"ToLower":        strings.ToLower,
+		"ToUpper": strings.ToUpper,
+		"ToLower": strings.ToLower,
+		"ToCamel": func(name string) string {
+			name = strings.Replace(name, "_", " ", -1)
+			name = strings.Title(name)
+			return strings.Replace(name, " ", "", -1)
+		},
 		"InsertionPoint": plugin.InsertionPoint,
 		"Unexport":       common.Unexport,
 

@@ -1,0 +1,1 @@
+thriftgo -g go:with_reflection -o . ./reflection_test_idl.thrift

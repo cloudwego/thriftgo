@@ -133,23 +133,20 @@ func (s *Scope) IDLMeta() string {
 	return reflection.Encode(s.ast)
 }
 
-func (s *Scope) MarshalDescriptor() string {
-	fd := thrift_reflection.GetFileDescriptorFromAst(s.ast)
-
-	bytes, err := thrift_reflection.MarshalAst(fd)
-	if err != nil {
-		return fmt.Sprintf("<%s>", err.Error())
-	}
-	return prettifyBytesLiteral(fmt.Sprintf("%#v", bytes))
-
-}
-
 func (s *Scope) IDLName() string {
 	idlName := strings.TrimSuffix(s.ast.Filename, ".thrift")
 	arr := strings.Split(idlName, string(filepath.Separator))
 	idlName = snakify(arr[len(arr)-1])
 	idlName = strings.ReplaceAll(idlName, ".", "_")
 	return idlName
+}
+
+func (s *Scope) MarshalDescriptor() string {
+	bytes, err := thrift_reflection.GetFileDescriptor(s.ast).Marshal()
+	if err != nil {
+		return fmt.Sprintf("[]byte{} // ERROR: Marshal descriptor failed: %s", err.Error())
+	}
+	return prettifyBytesLiteral(fmt.Sprintf("%#v", bytes))
 }
 
 func (s *Scope) RefPath() string {
