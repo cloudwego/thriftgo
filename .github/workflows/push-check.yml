@@ -25,11 +25,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Unit Test
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+
       - name: Lint
         run: |
           go install mvdan.cc/gofumpt@v0.2.0
           test -z "$(gofumpt -l -extra .)" 
-          go vet -stdmethods=false $(go list ./...)
-
-      - name: Unit Test
-        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+          go vet -stdmethods=false $(go list ./...)        
