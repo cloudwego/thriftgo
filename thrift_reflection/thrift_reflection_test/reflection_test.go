@@ -15,14 +15,14 @@
 package thrift_reflection_test_test
 
 import (
-	"github.com/cloudwego/thriftgo/thrift_reflection"
-	"github.com/cloudwego/thriftgo/thrift_reflection/thrift_reflection_test"
 	"reflect"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/thrift_reflection"
+	"github.com/cloudwego/thriftgo/thrift_reflection/thrift_reflection_test"
 )
 
 func TestDescriptor(t *testing.T) {
-
 	// file descriptor
 	fd := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl()
 	assert(t, fd != nil)
@@ -167,7 +167,6 @@ func TestDescriptor(t *testing.T) {
 	assert(t, cv != nil)
 	assert(t, cv.GetValueIdentifier() == "MY_CONST")
 	assert(t, fd.GetConstDescriptor(cv.GetValueIdentifier()) == thrift_reflection_test.GetConstDescriptorForMYCONST())
-
 }
 
 func TestLookup(t *testing.T) {
@@ -208,7 +207,6 @@ func TestLookup(t *testing.T) {
 }
 
 func TestLookupStruct(t *testing.T) {
-
 	m3 := thrift_reflection_test.GetMethodDescriptorForMyServiceM3()
 	structs, err := thrift_reflection.LookupIncludedStructsFromMethod(m3)
 	assert(t, err == nil)
@@ -276,11 +274,9 @@ func TestLookupStruct(t *testing.T) {
 	structs, err = thrift_reflection.LookupIncludedStructsFromStruct(thrift_reflection_test.NewF().GetDescriptor())
 	assert(t, err == nil)
 	assert(t, len(structs) == 1)
-
 }
 
 func TestReflection(t *testing.T) {
-
 	p := thrift_reflection_test.NewPerson()
 	p.Name = "Lee"
 
@@ -297,7 +293,6 @@ func TestReflection(t *testing.T) {
 	err = nameDesc.SetInstanceValue(p, "Yun")
 	assert(t, err == nil)
 	assert(t, p.Name == "Yun")
-
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {

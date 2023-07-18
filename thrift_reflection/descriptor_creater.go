@@ -15,13 +15,13 @@
 package thrift_reflection
 
 import (
+	"strings"
+
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/utils"
-	"strings"
 )
 
 func GetFileDescriptor(ast *parser.Thrift) *FileDescriptor {
-
 	services := []*ServiceDescriptor{}
 
 	for _, s := range ast.Services {
@@ -165,7 +165,6 @@ func getConstValueDescriptor(cv *parser.ConstValue) *ConstValueDescriptor {
 }
 
 func getMethodDescriptor(ast *parser.Thrift, path string, method *parser.Function) *MethodDescriptor {
-
 	args := []*FieldDescriptor{}
 	for _, arg := range method.Arguments {
 		args = append(args, getFieldDescriptor(ast, path, arg))
@@ -190,7 +189,6 @@ func getMethodDescriptor(ast *parser.Thrift, path string, method *parser.Functio
 }
 
 func getServiceDescriptor(ast *parser.Thrift, path string, service *parser.Service) *ServiceDescriptor {
-
 	methods := []*MethodDescriptor{}
 	for _, method := range service.Functions {
 		methods = append(methods, getMethodDescriptor(ast, path, method))
@@ -207,7 +205,6 @@ func getServiceDescriptor(ast *parser.Thrift, path string, service *parser.Servi
 }
 
 func GetTypeDescriptor(path string, typeStruct *parser.Type) *TypeDescriptor {
-
 	if typeStruct == nil {
 		return nil
 	}
@@ -221,7 +218,6 @@ func GetTypeDescriptor(path string, typeStruct *parser.Type) *TypeDescriptor {
 }
 
 func getStructDescriptor(ast *parser.Thrift, path string, structLike *parser.StructLike) *StructDescriptor {
-
 	fields := []*FieldDescriptor{}
 	for _, f := range structLike.GetFields() {
 		fields = append(fields, getFieldDescriptor(ast, path, f))
@@ -248,7 +244,6 @@ func getTypedefDescriptor(ast *parser.Thrift, path string, td *parser.Typedef) *
 }
 
 func getEnumDescriptor(ast *parser.Thrift, path string, enum *parser.Enum) *EnumDescriptor {
-
 	values := []*EnumValueDescriptor{}
 	for _, ev := range enum.Values {
 		values = append(values, &EnumValueDescriptor{

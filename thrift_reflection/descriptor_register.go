@@ -15,12 +15,15 @@
 package thrift_reflection
 
 import (
-	"github.com/cloudwego/thriftgo/parser"
 	"reflect"
+
+	"github.com/cloudwego/thriftgo/parser"
 )
 
-var globalStructType = map[*StructDescriptor]reflect.Type{}
-var globalEnumType = map[*EnumDescriptor]reflect.Type{}
+var (
+	globalStructType = map[*StructDescriptor]reflect.Type{}
+	globalEnumType   = map[*EnumDescriptor]reflect.Type{}
+)
 
 func RegisterStructGoType(s *StructDescriptor, t interface{}) {
 	globalStructType[s] = reflect.TypeOf(t).Elem()

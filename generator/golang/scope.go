@@ -16,9 +16,10 @@ package golang
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/thrift_reflection"
 	"path/filepath"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 
 	"github.com/cloudwego/thriftgo/reflection"
 

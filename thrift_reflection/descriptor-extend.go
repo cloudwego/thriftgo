@@ -17,9 +17,10 @@ package thrift_reflection
 import (
 	"errors"
 	"fmt"
-	"github.com/cloudwego/thriftgo/utils"
 	"reflect"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/utils"
 )
 
 func (f *FileDescriptor) GetIncludeFD(alias string) *FileDescriptor {

@@ -42,7 +42,7 @@ func ParseArr(str string) ([]string, error) {
 
 	var cb, sb, kstart, kend int
 	var key string
-	var dq, sq = true, true
+	dq, sq := true, true
 	result := []string{}
 	for i := 0; i < len(str); i++ {
 		ch := str[i]
@@ -99,7 +99,6 @@ func ParseArr(str string) ([]string, error) {
 
 // ParseKV parses a string such as {a:b,c:d} into a string map
 func ParseKV(str string) (map[string]string, error) {
-
 	for {
 		newstr := strings.ReplaceAll(str, "\t", " ")
 		newstr = strings.ReplaceAll(newstr, "\n", " ")
@@ -121,7 +120,7 @@ func ParseKV(str string) (map[string]string, error) {
 	str = str[1 : len(str)-1]
 
 	var cb, sb, kstart, kend, vstart, vend int
-	var dq, sq = true, true
+	dq, sq := true, true
 	var key, value string
 	result := map[string]string{}
 	for i := 0; i < len(str); i++ {
@@ -186,10 +185,8 @@ func ParseKV(str string) (map[string]string, error) {
 	} else {
 		if dq && sq {
 			return nil, errors.New("{} not match")
-
 		} else {
 			return nil, errors.New("quote not match")
 		}
 	}
-
 }

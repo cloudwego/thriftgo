@@ -17,8 +17,9 @@ package thrift_reflection
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	"io/ioutil"
+
+	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 )
 
 func (fd *FileDescriptor) Marshal() ([]byte, error) {
@@ -32,7 +33,6 @@ func (fd *FileDescriptor) Marshal() ([]byte, error) {
 func Unmarshal(bytes []byte) (*FileDescriptor, error) {
 	bytes, err := doUnzip(bytes)
 	if err != nil {
-
 		return nil, err
 	}
 	fd := NewFileDescriptor()
