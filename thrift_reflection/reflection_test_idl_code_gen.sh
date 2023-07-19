@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-thriftgo -g go:with_reflection -o . ./reflection_test_idl.thrift
+go run ../. -g go:with_reflection -o . ./reflection_test_idl.thrift

@@ -84,58 +84,58 @@ var file_{{$IDLName}}_thrift_go_types = []interface{}{
 	(*{{.GoName}})(nil),	// Enum {{$index}}: {{$FilePackage}}.{{.Name}}
 	{{- end}}
 }
-var file_idl_{{$IDLName}}_thrift *thrift_reflection.FileDescriptor
+var file_{{$IDLName}}_thrift *thrift_reflection.FileDescriptor
 var file_idl_{{$IDLName}}_rawDesc = {{.MarshalDescriptor}}
 
 func init() { 
-	if file_idl_{{$IDLName}}_thrift != nil {
+	if file_{{$IDLName}}_thrift != nil {
 		return
 	}
-	file_idl_{{$IDLName}}_thrift = thrift_reflection.BuildFileDescriptor(file_idl_{{$IDLName}}_rawDesc,file_{{$IDLName}}_thrift_go_types)
+	file_{{$IDLName}}_thrift = thrift_reflection.BuildFileDescriptor(file_idl_{{$IDLName}}_rawDesc,file_{{$IDLName}}_thrift_go_types)
 }
 
 func GetFileDescriptorFor{{ToCamel $IDLName}}() *thrift_reflection.FileDescriptor{
-	return file_idl_{{$IDLName}}_thrift
+	return file_{{$IDLName}}_thrift
 }
 
 {{- range .Structs}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetStructDescriptor("{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetStructDescriptor("{{.Name}}")
 }
 {{- end}}
 {{- range .Enums}}
 func (p {{.GoName}}) GetDescriptor() *thrift_reflection.EnumDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetEnumDescriptor("{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetEnumDescriptor("{{.Name}}")
 }
 {{- end}}
 {{- range .Typedefs}}
 func GetTypeDescriptorFor{{.GoName}}() *thrift_reflection.TypedefDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetTypedefDescriptor("{{.Alias}}")
+	return file_{{$IDLName}}_thrift.GetTypedefDescriptor("{{.Alias}}")
 }
 {{- end}}
 {{- range .Constants.GoConstants}}
 func GetConstDescriptorFor{{.GoName}}() *thrift_reflection.ConstDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetConstDescriptor("{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetConstDescriptor("{{.Name}}")
 }
 {{- end}}
 {{- range .Unions}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetUnionDescriptor("{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetUnionDescriptor("{{.Name}}")
 }
 {{- end}}
 {{- range .Exceptions}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetExceptionDescriptor("{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetExceptionDescriptor("{{.Name}}")
 }
 {{- end}}
 {{- range .Services}}
 {{$ServiceName := .GoName}}
 func GetServiceDescriptorFor{{.GoName}}() *thrift_reflection.ServiceDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetServiceDescriptor("{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetServiceDescriptor("{{.Name}}")
 }
 {{- range .Functions}}
 func GetMethodDescriptorFor{{$ServiceName}}{{.GoName}}() *thrift_reflection.MethodDescriptor{
-	return file_idl_{{$IDLName}}_thrift.GetMethodDescriptor("{{$ServiceName}}","{{.Name}}")
+	return file_{{$IDLName}}_thrift.GetMethodDescriptor("{{$ServiceName}}","{{.Name}}")
 }
 {{- end}}
 {{- end}}

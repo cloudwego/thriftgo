@@ -19,12 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloudwego/thriftgo/thrift_reflection"
-
-	"github.com/cloudwego/thriftgo/reflection"
-
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
+	"github.com/cloudwego/thriftgo/reflection"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 // Name is the type of identifiers converted from a thrift AST to Go code.
