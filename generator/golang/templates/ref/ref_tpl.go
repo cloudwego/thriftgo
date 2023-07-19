@@ -126,9 +126,15 @@ var structRef = `
 	var New{{$TypeName}} = {{$RefPackage}}.New{{$TypeName}}
 	{{- range .Fields}}
 		{{- $FieldName := .GoName}}
+		{{- $DefaultVarTypeName := .DefaultTypeName}}
 		{{if SupportIsSet .Field}}
 		{{$DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
-		var {{$DefaultVarName}} = {{$RefPackage}}.{{$DefaultVarName}}
+		{{- if Features.CodeRefSlim }}
+			
+		
+		{{- else }}
+			var {{$DefaultVarName}} = {{$RefPackage}}.{{$DefaultVarName}}
+		{{- end }}
 		{{- end}}	
 	{{- end}}
 `
@@ -140,11 +146,21 @@ var enumRef = `
 	type {{$TypeName}}= {{$RefPackage}}.{{$TypeName}}
 	var {{$EnumType}}FromString = {{$RefPackage}}.{{$EnumType}}FromString
 	var {{$EnumType}}Ptr = {{$RefPackage}}.{{$EnumType}}Ptr
+	{{- if Features.CodeRefSlim }}
+	const (
+		{{- range .Values}}
+		{{- if and Features.ReserveComments .ReservedComments}}
+		{{.ReservedComments}}{{end}}
+		{{.GoName}} {{$EnumType}} = {{.Value}}
+		{{- end}}
+	)
+	{{- else }}
 	const (
 		{{- range .Values}}
 		{{.GoName}} = {{$RefPackage}}.{{.GoName}}
 		{{- end}}
 	)
+	{{- end }}
 {{- end}}
 `
 
