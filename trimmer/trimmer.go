@@ -35,7 +35,8 @@ func Trim(files []string, includeDir []string, outDir string) error {
 		check(err)
 		check(semantic.ResolveSymbols(ast))
 		trimmer.asts[filename] = ast
-		//TODO: 多文件处理
+		trimmer.markAST(ast)
+		//TODO: 多文件处理/dump成.thrift
 	}
 
 	return nil
@@ -49,7 +50,19 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
 	trimmer.marks = make(map[string]map[interface{}]bool)
-	// TODO: 判断文件合法性
+
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if err != nil || info.IsDir() {
+			println(fmt.Errorf("input file invalid: %s", file))
+		}
+	}
+
+	info, err := os.Stat(outDir)
+	if err != nil || !info.IsDir() {
+		println(fmt.Errorf("output dir invalid: %s", outDir))
+	}
+
 	return trimmer, nil
 }
 
