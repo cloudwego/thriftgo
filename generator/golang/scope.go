@@ -19,10 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloudwego/thriftgo/reflection"
-
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
+	"github.com/cloudwego/thriftgo/reflection"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 // Name is the type of identifiers converted from a thrift AST to Go code.
@@ -138,6 +138,14 @@ func (s *Scope) IDLName() string {
 	idlName = snakify(arr[len(arr)-1])
 	idlName = strings.ReplaceAll(idlName, ".", "_")
 	return idlName
+}
+
+func (s *Scope) MarshalDescriptor() string {
+	bytes, err := thrift_reflection.GetFileDescriptor(s.ast).Marshal()
+	if err != nil {
+		return fmt.Sprintf("[]byte{} // ERROR: Marshal descriptor failed: %s", err.Error())
+	}
+	return prettifyBytesLiteral(fmt.Sprintf("%#v", bytes))
 }
 
 func (s *Scope) RefPath() string {

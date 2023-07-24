@@ -46,7 +46,8 @@ type Features struct {
 	AlwaysGenerateJSONTag  bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
 	SnakeTyleJSONTag       bool `snake_style_json_tag:"Generate snake style json tag"`
 	LowerCamelCaseJSONTag  bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
-	GenerateReflectionInfo bool `generate_reflection_info:"Generate reflection info json"`
+	GenerateReflectionInfo bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
+	WithReflection         bool `with_reflection:"Generate reflection info"`
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
 }
 

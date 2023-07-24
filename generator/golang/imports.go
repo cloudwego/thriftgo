@@ -76,16 +76,17 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 	ns := im.Namespace
 
 	std := map[string]string{
-		"context": "context",
-		"fmt":     "fmt",
-		"driver":  "database/sql/driver",
-		"sql":     "database/sql",
-		"strings": "strings",
-		"bytes":   "bytes",
-		"reflect": "reflect",
-		"thrift":  DefaultThriftLib,
-		"unknown": DefaultUnknownLib,
-		"meta":    DefaultMetaLib,
+		"context":           "context",
+		"fmt":               "fmt",
+		"driver":            "database/sql/driver",
+		"sql":               "database/sql",
+		"strings":           "strings",
+		"bytes":             "bytes",
+		"reflect":           "reflect",
+		"thrift":            DefaultThriftLib,
+		"unknown":           DefaultUnknownLib,
+		"meta":              DefaultMetaLib,
+		"thrift_reflection": ThriftReflectionLib,
 	}
 	for pkg, path := range std {
 		ns.Add(pkg, path)
