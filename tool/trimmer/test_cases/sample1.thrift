@@ -13,6 +13,7 @@ struct Person {
 typedef Gender MyGender
 
 typedef MyGender MyAnotherGender
+typedef i32 a
 
 enum Gender {
     MALE = 0,
@@ -23,7 +24,7 @@ struct Address {
     1: required string street
     2: required string city
     3: optional string state
-    4: required string country
+    4: required a country
 }
 
 struct Company {

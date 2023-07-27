@@ -27,7 +27,7 @@ go mod init trimmer
 
 for i in "${!basic_files[@]}"; do
     echo "Test [$(($i+1))/$basic_total]:   ${basic_files[$i]}"
-    rm -rf gen_go
+    rm -rf gen-go
 
     cd ..
     go run ../../. -g go:trim_idl,package_prefix=trimmer/gen-go -o trimmer_test/gen-go -r ${basic_files[$i]}

@@ -11,6 +11,10 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 }
 
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {
+	if t.marks[filename][svc] {
+		return
+	}
+
 	t.marks[filename][svc] = true
 	if svc.Extends != "" {
 		// handle extension
@@ -39,7 +43,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 
 func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift, filename string) {
 	// plain type
-	if theType.Category <= 8 {
+	if theType.Category <= 8 && theType.IsTypedef == nil {
 		return
 	}
 
@@ -58,6 +62,7 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift, filename st
 	if theType.Reference != nil {
 		// if referenced, redirect to included ast
 		baseAST = ast.Includes[theType.Reference.Index].Reference
+		t.marks[filename][ast.Includes[theType.Reference.Index]] = true
 	}
 	if theType.Category.IsStruct() {
 		for _, str := range baseAST.Structs {
@@ -91,6 +96,9 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift, filename st
 }
 
 func (t *Trimmer) markStructLike(str *parser.StructLike, ast *parser.Thrift, filename string) {
+	if t.marks[filename][str] {
+		return
+	}
 	t.marks[filename][str] = true
 	for _, field := range str.Fields {
 		t.markType(field.Type, ast, filename)
@@ -108,8 +116,10 @@ func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename
 
 	for _, typedef := range ast.Typedefs {
 		if typedef.Alias == theType.Name {
-			t.marks[filename][typedef] = true
-			t.markType(typedef.Type, ast, filename)
+			if !t.marks[filename][typedef] {
+				t.marks[filename][typedef] = true
+				t.markType(typedef.Type, ast, filename)
+			}
 			return
 		}
 	}
