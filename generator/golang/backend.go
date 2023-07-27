@@ -16,6 +16,7 @@ package golang
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"go/format"
 	"path/filepath"
 	"strings"
@@ -78,6 +79,10 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.res = plugin.NewResponse()
 	g.log = log
 	g.prepareUtilities()
+	if g.utils.Features().TrimIDL {
+		trim.TrimAST(req.AST)
+		g.log.Warn("You Are Using IDL Trimmer")
+	}
 	g.prepareTemplates()
 	g.fillRequisitions()
 	g.executeTemplates()

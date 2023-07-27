@@ -1,4 +1,4 @@
-package trimmer
+package trim
 
 import "github.com/cloudwego/thriftgo/parser"
 
