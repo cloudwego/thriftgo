@@ -1,4 +1,4 @@
-package trimmer
+package trim
 
 import (
 	"fmt"
@@ -14,6 +14,18 @@ type Trimmer struct {
 	// mark the parts of the file's ast that is used
 	marks  map[string]map[interface{}]bool
 	outDir string
+}
+
+func TrimAST(ast *parser.Thrift) error {
+	// todo: simplify this trim function. And seems like trimmer struct is unnecessary to handle file input.
+	trimmer1, err := newTrimmer(nil, "")
+	if err != nil {
+		return err
+	}
+	trimmer1.asts[ast.Filename] = ast
+	trimmer1.markAST(ast)
+	trimmer1.traversal(ast, ast.Filename)
+	return nil
 }
 
 // Trim to trim thrift files to remove unused fields
