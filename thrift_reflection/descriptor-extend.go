@@ -249,7 +249,7 @@ func (sd *ServiceDescriptor) GetMethodByName(name string) *MethodDescriptor {
 }
 
 func (ed *EnumDescriptor) GetGoType() reflect.Type {
-	return globalEnumType[ed]
+	return enumDes2goType[ed]
 }
 
 func (td *TypeDescriptor) IsBasic() bool {
@@ -485,7 +485,11 @@ func (td *TypeDescriptor) GetGoType() (reflect.Type, error) {
 }
 
 func (s *StructDescriptor) GetGoType() reflect.Type {
-	return globalStructType[s]
+	return structDes2goType[s]
+}
+
+func (s *TypedefDescriptor) GetGoType() reflect.Type {
+	return typedefDes2goType[s]
 }
 
 func (s *StructDescriptor) GetFieldByName(name string) *FieldDescriptor {

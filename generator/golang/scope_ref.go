@@ -15,27 +15,31 @@
 package golang
 
 import (
+	"strings"
+
 	"github.com/cloudwego/thriftgo/config"
 	"github.com/cloudwego/thriftgo/parser"
-	"strings"
 )
 
 func BuildRefScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, *Scope, error) {
 	thriftRef := config.GetRef(ast.Filename)
 	enableCodeRef := cu.Features().CodeRef || cu.Features().CodeRefSlim
+	scope, err := BuildScope(cu, ast)
+	if err != nil {
+		return nil, nil, err
+	}
 	// no ref
 	if !enableCodeRef || thriftRef == nil {
-		scope, err := BuildScope(cu, ast)
 		return scope, nil, err
 	}
 	// all ref
 	if thriftRef != nil && thriftRef.IsAllFieldsEmpty() {
-		scope, err := BuildScope(cu, ast)
 		scope.setRefImport(thriftRef.Path)
 		return nil, scope, err
 	}
 	// half ref
-	scope, err := doBuildScope(cu, ast)
+	// we will change the fields from scope, we can't use BuildScope() to create scope because that function will put scope into a cache map.
+	localScope, err := doBuildScope(cu, ast)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,15 +50,15 @@ func BuildRefScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, *Scope, error) {
 	refScope.setRefImport(thriftRef.Path)
 	// do not generate service to remote
 	refScope.services = nil
-	//grepService(thriftRef.Services, &scope.services, &refScope.services)
-	grepStructs(thriftRef.Unions, &scope.unions, &refScope.unions)
-	grepStructs(thriftRef.Exceptions, &scope.exceptions, &refScope.exceptions)
-	grepStructs(thriftRef.Structs, &scope.structs, &refScope.structs)
-	grepConstants(thriftRef.Consts, &scope.constants, &refScope.constants)
-	grepTypedefs(thriftRef.Typedefs, &scope.typedefs, &refScope.typedefs)
-	grepEnums(thriftRef.Enums, &scope.enums, &refScope.enums)
+	// grepService(thriftRef.Services, &localScope.services, &refScope.services)
+	grepStructs(thriftRef.Unions, &localScope.unions, &refScope.unions)
+	grepStructs(thriftRef.Exceptions, &localScope.exceptions, &refScope.exceptions)
+	grepStructs(thriftRef.Structs, &localScope.structs, &refScope.structs)
+	grepConstants(thriftRef.Consts, &localScope.constants, &refScope.constants)
+	grepTypedefs(thriftRef.Typedefs, &localScope.typedefs, &refScope.typedefs)
+	grepEnums(thriftRef.Enums, &localScope.enums, &refScope.enums)
 	// todo clean ref scope import
-	return scope, refScope, nil
+	return localScope, refScope, nil
 }
 
 func isContains(sa []string, s string) bool {
@@ -108,6 +112,7 @@ func grepEnums(refNames []string, localArr, refArr *[]*Enum) {
 		}
 	}
 }
+
 func grepConstants(refNames []string, localArr, refArr *[]*Constant) {
 	*refArr = []*Constant{}
 	for i := 0; i < len(*localArr); i++ {
@@ -119,6 +124,7 @@ func grepConstants(refNames []string, localArr, refArr *[]*Constant) {
 		}
 	}
 }
+
 func grepTypedefs(refNames []string, localArr, refArr *[]*Typedef) {
 	*refArr = []*Typedef{}
 	for i := 0; i < len(*localArr); i++ {

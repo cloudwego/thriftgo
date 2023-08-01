@@ -98,7 +98,8 @@ func TestDescriptor(t *testing.T) {
 	assert(t, enumDescFromField == enumDesc)
 
 	// typedef
-	basicTypedefDesc := thrift_reflection_test.GetTypeDescriptorForSpecialString()
+	basicTypedefDesc := thrift_reflection.GetTypedefDescriptorByGoType((*thrift_reflection_test.SpecialString)(nil))
+	assert(t, basicTypedefDesc != nil)
 	assert(t, basicTypedefDesc.GetAlias() == "SpecialString")
 	assert(t, basicTypedefDesc.GetType().IsBasic())
 	assert(t, basicTypedefDesc.GetType().GetName() == "string")
@@ -109,13 +110,15 @@ func TestDescriptor(t *testing.T) {
 	assert(t, err == nil)
 	assert(t, typeDescFromField == basicTypedefDesc)
 
-	structTypedefDesc := thrift_reflection_test.GetTypeDescriptorForSpecialPerson()
+	// structTypedefDesc := thrift_reflection.GetTypedefDescriptorByGoType((*thrift_reflection_test.SpecialPerson)(nil))
+	structTypedefDesc := thrift_reflection.GetTypedefDescriptorByGoType(&thrift_reflection_test.SpecialPerson{})
+	assert(t, structTypedefDesc != nil)
 	assert(t, structTypedefDesc.GetAlias() == "SpecialPerson")
 	assert(t, structTypedefDesc.GetType().IsStruct())
 	assert(t, structTypedefDesc.GetType().GetName() == "Person")
 
 	// const
-	constDesc := thrift_reflection_test.GetConstDescriptorForMYCONST()
+	constDesc := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl().GetConstDescriptor("MY_CONST")
 	assert(t, constDesc != nil)
 	assert(t, constDesc.GetName() == "MY_CONST")
 	constGoType, err := constDesc.GetType().GetGoType()
@@ -149,10 +152,10 @@ func TestDescriptor(t *testing.T) {
 	assert(t, exceptionDescFromField == exDesc)
 
 	// service and method
-	serviceDesc := thrift_reflection_test.GetServiceDescriptorForMyService()
+	serviceDesc := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl().GetServiceDescriptor("MyService")
 	assert(t, serviceDesc.GetName() == "MyService")
-	assert(t, serviceDesc.GetMethods()[0] == thrift_reflection_test.GetMethodDescriptorForMyServiceM1())
-	assert(t, serviceDesc.GetMethods()[1] == thrift_reflection_test.GetMethodDescriptorForMyServiceM2())
+	assert(t, serviceDesc.GetMethods()[0].GetName() == "M1")
+	assert(t, serviceDesc.GetMethods()[1].GetName() == "M2")
 
 	// check struct default value
 	fieldDefaultValue := pd.GetFieldByName("defaultValue")
@@ -166,7 +169,7 @@ func TestDescriptor(t *testing.T) {
 	cv := fieldConstVal.GetDefaultValue()
 	assert(t, cv != nil)
 	assert(t, cv.GetValueIdentifier() == "MY_CONST")
-	assert(t, fd.GetConstDescriptor(cv.GetValueIdentifier()) == thrift_reflection_test.GetConstDescriptorForMYCONST())
+	assert(t, fd.GetConstDescriptor(cv.GetValueIdentifier()) == constDesc)
 }
 
 func TestLookup(t *testing.T) {
@@ -175,7 +178,7 @@ func TestLookup(t *testing.T) {
 	assert(t, pd == thrift_reflection.LookupStruct(pd.GetName(), ""))
 	assert(t, pd == thrift_reflection.LookupStruct(pd.GetName(), pd.GetFilepath()))
 	// lookup const
-	cs := thrift_reflection_test.GetConstDescriptorForMYCONST()
+	cs := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl().GetConstDescriptor("MY_CONST")
 	assert(t, cs == thrift_reflection.LookupConst(cs.GetName(), ""))
 	assert(t, cs == thrift_reflection.LookupConst(cs.GetName(), cs.GetFilepath()))
 	// lookup enum
@@ -183,7 +186,7 @@ func TestLookup(t *testing.T) {
 	assert(t, en == thrift_reflection.LookupEnum(en.GetName(), ""))
 	assert(t, en == thrift_reflection.LookupEnum(en.GetName(), en.GetFilepath()))
 	// lookup typedef
-	td := thrift_reflection_test.GetTypeDescriptorForSpecialString()
+	td := thrift_reflection.GetTypedefDescriptorByGoType(&thrift_reflection_test.SpecialPerson{})
 	assert(t, td == thrift_reflection.LookupTypedef(td.GetAlias(), ""))
 	assert(t, td == thrift_reflection.LookupTypedef(td.GetAlias(), td.GetFilepath()))
 	// lookup union
@@ -195,11 +198,11 @@ func TestLookup(t *testing.T) {
 	assert(t, ex == thrift_reflection.LookupException(ex.GetName(), ""))
 	assert(t, ex == thrift_reflection.LookupException(ex.GetName(), td.GetFilepath()))
 	// lookup service
-	svc := thrift_reflection_test.GetServiceDescriptorForMyService()
+	svc := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl().GetServiceDescriptor("MyService")
 	assert(t, svc == thrift_reflection.LookupService(svc.GetName(), ""))
 	assert(t, svc == thrift_reflection.LookupService(svc.GetName(), svc.GetFilepath()))
 	// lookup method
-	md := thrift_reflection_test.GetMethodDescriptorForMyServiceM1()
+	md := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl().GetMethodDescriptor("MyService", "M1")
 	assert(t, md == thrift_reflection.LookupMethod(md.GetName(), "", ""))
 	assert(t, md == thrift_reflection.LookupMethod(md.GetName(), "", md.GetFilepath()))
 	assert(t, md == thrift_reflection.LookupMethod(md.GetName(), svc.GetName(), ""))
@@ -207,7 +210,7 @@ func TestLookup(t *testing.T) {
 }
 
 func TestLookupStruct(t *testing.T) {
-	m3 := thrift_reflection_test.GetMethodDescriptorForMyServiceM3()
+	m3 := thrift_reflection_test.GetFileDescriptorForReflectionTestIdl().GetMethodDescriptor("MyService", "M3")
 	structs, err := thrift_reflection.LookupIncludedStructsFromMethod(m3)
 	assert(t, err == nil)
 	assert(t, len(structs) == 12)

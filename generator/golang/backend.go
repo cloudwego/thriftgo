@@ -16,11 +16,13 @@ package golang
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/generator/golang/templates/ref"
 	"go/format"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	ref_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/ref"
+	reflection_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/reflection"
 
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
@@ -31,12 +33,14 @@ import (
 // GoBackend generates go codes.
 // The zero value of GoBackend is ready for use.
 type GoBackend struct {
-	err    error
-	tpl    *template.Template
-	refTpl *template.Template
-	req    *plugin.Request
-	res    *plugin.Response
-	log    backend.LogFunc
+	err               error
+	tpl               *template.Template
+	refTpl            *template.Template
+	reflectionTpl     *template.Template
+	reflectionUtilTpl *template.Template
+	req               *plugin.Request
+	res               *plugin.Response
+	log               backend.LogFunc
 
 	utils *CodeUtils
 	funcs template.FuncMap
@@ -105,8 +109,7 @@ func (g *GoBackend) prepareTemplates() {
 		return
 	}
 
-	name := "thrift"
-	all := template.New(name).Funcs(g.funcs)
+	all := template.New("thrift").Funcs(g.funcs)
 	tpls := templates.Templates()
 
 	if name := g.utils.Template(); name != defaultTemplate {
@@ -117,19 +120,9 @@ func (g *GoBackend) prepareTemplates() {
 	}
 	g.tpl = all
 
-	refAll := template.New(name).Funcs(g.funcs)
-	// todo
-	refTpls := TemplatesRef()
-	for _, refTpl := range refTpls {
-		refAll = template.Must(refAll.Parse(refTpl))
-	}
-	g.refTpl = refAll
-}
-
-func TemplatesRef() []string {
-	return []string{
-		ref.FileRef,
-	}
+	g.refTpl = template.Must(template.New("thrift-ref").Funcs(g.funcs).Parse(ref_tpl.File))
+	g.reflectionTpl = template.Must(template.New("thrift-reflection").Funcs(g.funcs).Parse(reflection_tpl.File))
+	g.reflectionUtilTpl = template.Must(template.New("thrift-reflection-util").Funcs(g.funcs).Parse(reflection_tpl.UtilFile))
 }
 
 func (g *GoBackend) fillRequisitions() {
@@ -178,11 +171,31 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	if err != nil {
 		return err
 	}
-	return g.renderByTemplate(refScope, g.refTpl, ToRefFilename(filename))
+	err = g.renderByTemplate(refScope, g.refTpl, ToRefFilename(filename))
+	if err != nil {
+		return err
+	}
+	if g.utils.Features().WithReflection {
+
+		err = g.renderByTemplate(localScope, g.reflectionUtilTpl, strings.TrimSuffix(filename, ".go")+"-reflection-util.go")
+		if err != nil {
+			return err
+		}
+		fullScope, er := BuildScope(g.utils, ast)
+		if er != nil {
+			return er
+		}
+		return g.renderByTemplate(fullScope, g.reflectionTpl, ToReflectionFilename(filename))
+	}
+	return nil
 }
 
 func ToRefFilename(filename string) string {
 	return strings.TrimSuffix(filename, ".go") + "-ref.go"
+}
+
+func ToReflectionFilename(filename string) string {
+	return strings.TrimSuffix(filename, ".go") + "-reflection.go"
 }
 
 func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template, filename string) error {

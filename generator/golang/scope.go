@@ -79,11 +79,17 @@ func (tn TypeName) NewFunc() Name {
 }
 
 // BuildScope creates a scope of the AST with its includes processed recursively.
+// todo check cache
 func BuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	if scope, ok := cu.scopeCache[ast]; ok {
 		return scope, nil
 	}
-	return doBuildScope(cu, ast)
+	scope, err := doBuildScope(cu, ast)
+	if err != nil {
+		return nil, err
+	}
+	cu.scopeCache[ast] = scope
+	return scope, nil
 }
 
 func doBuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
@@ -92,7 +98,6 @@ func doBuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	if err != nil {
 		return nil, fmt.Errorf("process '%s' failed: %w", ast.Filename, err)
 	}
-	cu.scopeCache[ast] = scope
 	scope.importPath = GetImportPath(cu, ast)
 	scope.importPackage = GetImportPackage(scope.importPath)
 	return scope, nil
@@ -148,6 +153,7 @@ func (s *Scope) IDLName() string {
 	arr := strings.Split(idlName, string(filepath.Separator))
 	idlName = snakify(arr[len(arr)-1])
 	idlName = strings.ReplaceAll(idlName, ".", "_")
+	idlName = strings.ReplaceAll(idlName, "-", "_")
 	return idlName
 }
 

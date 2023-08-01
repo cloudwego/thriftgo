@@ -1,11 +1,26 @@
+// Copyright 2023 CloudWeGo Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package config
 
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type RawConfig struct {
@@ -26,29 +41,6 @@ type RefConfig struct {
 	Consts     []string `yaml:"consts,omitempty"`
 	Unions     []string `yaml:"unions,omitempty"`
 	Exceptions []string `yaml:"exceptions,omitempty"`
-	indexes    map[string]int
-}
-
-func (rc *RefConfig) BuildIndexes() {
-	rc.indexes = make(map[string]int)
-	for i, s := range rc.Structs {
-		rc.indexes[s] = i
-	}
-	for i, e := range rc.Enums {
-		rc.indexes[e] = i
-	}
-	for i, t := range rc.Typedefs {
-		rc.indexes[t] = i
-	}
-	for i, c := range rc.Consts {
-		rc.indexes[c] = i
-	}
-	for i, u := range rc.Unions {
-		rc.indexes[u] = i
-	}
-	for i, ex := range rc.Exceptions {
-		rc.indexes[ex] = i
-	}
 }
 
 func (r *RefConfig) String() string {
@@ -102,7 +94,7 @@ func init() {
 }
 
 func initConfig() (*Config, error) {
-	var configPaths = []string{"idl-ref.yml", "idl-ref.yaml"}
+	configPaths := []string{"idl-ref.yml", "idl-ref.yaml"}
 	for _, path := range configPaths {
 		_, err := os.Stat(path)
 		if err == nil {
