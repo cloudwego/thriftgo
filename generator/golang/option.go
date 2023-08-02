@@ -49,6 +49,8 @@ type Features struct {
 	GenerateReflectionInfo bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
 	WithReflection         bool `with_reflection:"Generate reflection info"`
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
+	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
+	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 }
 
 var defaultFeatures = Features{

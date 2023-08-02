@@ -15,22 +15,51 @@
 package thrift_reflection
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/cloudwego/thriftgo/parser"
 )
 
 var (
-	globalStructType = map[*StructDescriptor]reflect.Type{}
-	globalEnumType   = map[*EnumDescriptor]reflect.Type{}
+	structDes2goType  = map[*StructDescriptor]reflect.Type{}
+	enumDes2goType    = map[*EnumDescriptor]reflect.Type{}
+	typedefDes2goType = map[*TypedefDescriptor]reflect.Type{}
+
+	goType2StructDes  = map[reflect.Type]*StructDescriptor{}
+	goType2EnumDes    = map[reflect.Type]*EnumDescriptor{}
+	goType2TypedefDes = map[reflect.Type]*TypedefDescriptor{}
 )
 
-func RegisterStructGoType(s *StructDescriptor, t interface{}) {
-	globalStructType[s] = reflect.TypeOf(t).Elem()
+func getReflect(in interface{}) reflect.Type {
+	return reflect.TypeOf(in).Elem()
 }
 
-func RegisterEnumGoType(s *EnumDescriptor, t interface{}) {
-	globalEnumType[s] = reflect.TypeOf(t).Elem()
+func RegisterStructGoType(s *StructDescriptor, t reflect.Type) {
+	structDes2goType[s] = t
+	goType2StructDes[t] = s
+}
+
+func RegisterEnumGoType(s *EnumDescriptor, t reflect.Type) {
+	enumDes2goType[s] = t
+	goType2EnumDes[t] = s
+}
+
+func RegisterTypedefGoType(s *TypedefDescriptor, t reflect.Type) {
+	typedefDes2goType[s] = t
+	goType2TypedefDes[t] = s
+}
+
+func GetStructDescriptorByGoType(in interface{}) *StructDescriptor {
+	return goType2StructDes[getReflect(in)]
+}
+
+func GetEnumDescriptorByGoType(in interface{}) *EnumDescriptor {
+	return goType2EnumDes[getReflect(in)]
+}
+
+func GetTypedefDescriptorByGoType(in interface{}) *TypedefDescriptor {
+	return goType2TypedefDes[getReflect(in)]
 }
 
 var globalFD = map[string]*FileDescriptor{}
@@ -230,6 +259,7 @@ func lookupIncludedStructsFromStruct(sd *StructDescriptor, structMap map[*Struct
 
 func BuildFileDescriptor(bytes []byte, goTypes []interface{}) *FileDescriptor {
 	fd, err := RegisterIDL(bytes)
+	fmt.Println(fd.Filepath)
 	if err != nil {
 		panic(err)
 	}
@@ -238,10 +268,13 @@ func BuildFileDescriptor(bytes []byte, goTypes []interface{}) *FileDescriptor {
 	structList = append(structList, fd.Unions...)
 	structList = append(structList, fd.Exceptions...)
 	for idx, s := range structList {
-		RegisterStructGoType(s, goTypes[idx])
+		RegisterStructGoType(s, getReflect(goTypes[idx]))
 	}
 	for idx, e := range fd.Enums {
-		RegisterEnumGoType(e, goTypes[len(structList)+idx])
+		RegisterEnumGoType(e, getReflect(goTypes[len(structList)+idx]))
+	}
+	for idx, t := range fd.Typedefs {
+		RegisterTypedefGoType(t, getReflect(goTypes[len(structList)+len(fd.Enums)+idx]))
 	}
 	return fd
 }

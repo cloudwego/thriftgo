@@ -263,6 +263,15 @@ func (s *Scope) buildConstant(cu *CodeUtils, v *parser.Constant) {
 	})
 }
 
+func (s *Scope) setRefImport(refPath string) {
+	if s == nil {
+		return
+	}
+	s.refPath = refPath
+	arr := strings.Split(refPath, "/")
+	s.refPackage = arr[len(arr)-1]
+}
+
 func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ...string) *StructLike {
 	nn := v.Name
 	if len(usedName) != 0 {
@@ -389,7 +398,6 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 		}
 		return c
 	}
-
 	for f := range ff {
 		v := f.Field
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
