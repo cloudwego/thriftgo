@@ -17,6 +17,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -108,7 +109,7 @@ func initConfig() (*Config, error) {
 }
 
 func loadConfig(filename string) (*Config, error) {
-	data, err := os.ReadFile(filename)
+	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

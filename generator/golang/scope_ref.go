@@ -15,11 +15,37 @@
 package golang
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/config"
 	"github.com/cloudwego/thriftgo/parser"
 )
+
+func (s *Scope) GetFirstDescriptor() string {
+	for _, st := range s.ast.Structs {
+		return st.Name
+	}
+	for _, st := range s.ast.Enums {
+		return st.Name
+	}
+	for _, st := range s.ast.Typedefs {
+		return st.Alias
+	}
+	for _, st := range s.ast.Constants {
+		return st.Name
+	}
+	for _, st := range s.ast.Exceptions {
+		return st.Name
+	}
+	for _, st := range s.ast.Unions {
+		return st.Name
+	}
+	for _, st := range s.ast.Services {
+		return st.Name
+	}
+	return ""
+}
 
 func BuildRefScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, *Scope, error) {
 	thriftRef := config.GetRef(ast.Filename)
@@ -37,6 +63,8 @@ func BuildRefScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, *Scope, error) {
 		scope.setRefImport(thriftRef.Path)
 		return nil, scope, err
 	}
+	return nil, nil, errors.New("config not support this feature currently")
+	// todo not support now
 	// half ref
 	// we will change the fields from scope, we can't use BuildScope() to create scope because that function will put scope into a cache map.
 	localScope, err := doBuildScope(cu, ast)

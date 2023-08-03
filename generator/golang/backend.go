@@ -33,14 +33,14 @@ import (
 // GoBackend generates go codes.
 // The zero value of GoBackend is ready for use.
 type GoBackend struct {
-	err               error
-	tpl               *template.Template
-	refTpl            *template.Template
-	reflectionTpl     *template.Template
-	reflectionUtilTpl *template.Template
-	req               *plugin.Request
-	res               *plugin.Response
-	log               backend.LogFunc
+	err              error
+	tpl              *template.Template
+	refTpl           *template.Template
+	reflectionTpl    *template.Template
+	reflectionRefTpl *template.Template
+	req              *plugin.Request
+	res              *plugin.Response
+	log              backend.LogFunc
 
 	utils *CodeUtils
 	funcs template.FuncMap
@@ -122,7 +122,7 @@ func (g *GoBackend) prepareTemplates() {
 
 	g.refTpl = template.Must(template.New("thrift-ref").Funcs(g.funcs).Parse(ref_tpl.File))
 	g.reflectionTpl = template.Must(template.New("thrift-reflection").Funcs(g.funcs).Parse(reflection_tpl.File))
-	g.reflectionUtilTpl = template.Must(template.New("thrift-reflection-util").Funcs(g.funcs).Parse(reflection_tpl.UtilFile))
+	g.reflectionRefTpl = template.Must(template.New("thrift-reflection-util").Funcs(g.funcs).Parse(reflection_tpl.FileRef))
 }
 
 func (g *GoBackend) fillRequisitions() {
@@ -176,16 +176,11 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 		return err
 	}
 	if g.utils.Features().WithReflection {
-
-		err = g.renderByTemplate(localScope, g.reflectionUtilTpl, strings.TrimSuffix(filename, ".go")+"-reflection-util.go")
+		err = g.renderByTemplate(refScope, g.reflectionRefTpl, ToReflectionRefFilename(filename))
 		if err != nil {
 			return err
 		}
-		fullScope, er := BuildScope(g.utils, ast)
-		if er != nil {
-			return er
-		}
-		return g.renderByTemplate(fullScope, g.reflectionTpl, ToReflectionFilename(filename))
+		return g.renderByTemplate(localScope, g.reflectionTpl, ToReflectionFilename(filename))
 	}
 	return nil
 }
@@ -196,6 +191,10 @@ func ToRefFilename(filename string) string {
 
 func ToReflectionFilename(filename string) string {
 	return strings.TrimSuffix(filename, ".go") + "-reflection.go"
+}
+
+func ToReflectionRefFilename(filename string) string {
+	return strings.TrimSuffix(filename, ".go") + "-reflection-ref.go"
 }
 
 func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template, filename string) error {
