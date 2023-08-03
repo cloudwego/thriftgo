@@ -17,8 +17,13 @@
 package thrift_reflection_test
 
 import (
+	"reflect"
+
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
+
+// IDL Name: reflection_test_idl
+// IDL Path: reflection_test_idl.thrift
 
 var file_reflection_test_idl_thrift_go_types = []interface{}{
 	(*IDCard)(nil),        // Struct 0: thrift_reflection_test.IDCard
@@ -122,9 +127,69 @@ func init() {
 	if file_reflection_test_idl_thrift != nil {
 		return
 	}
-	file_reflection_test_idl_thrift = thrift_reflection.BuildFileDescriptor(file_idl_reflection_test_idl_rawDesc, file_reflection_test_idl_thrift_go_types)
+	type x struct{}
+	builder := &thrift_reflection.FileDescriptorBuilder{
+		Bytes:         file_idl_reflection_test_idl_rawDesc,
+		GoTypes:       file_reflection_test_idl_thrift_go_types,
+		GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
+	}
+	file_reflection_test_idl_thrift = thrift_reflection.BuildFileDescriptor(builder)
 }
 
 func GetFileDescriptorForReflectionTestIdl() *thrift_reflection.FileDescriptor {
 	return file_reflection_test_idl_thrift
+}
+func (p *IDCard) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("IDCard")
+}
+func (p *Person) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("Person")
+}
+func (p *A0) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("A0")
+}
+func (p *A1) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("A1")
+}
+func (p *A2) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("A2")
+}
+func (p *A3) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("A3")
+}
+func (p *B) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("B")
+}
+func (p *B1) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("B1")
+}
+func (p *C) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("C")
+}
+func (p *D) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("D")
+}
+func (p *D1) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("D1")
+}
+func (p *D2) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("D2")
+}
+func (p *E) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("E")
+}
+func (p *F) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetStructDescriptor("F")
+}
+func (p Gender) GetDescriptor() *thrift_reflection.EnumDescriptor {
+	return file_reflection_test_idl_thrift.GetEnumDescriptor("Gender")
+}
+func (p Size) GetDescriptor() *thrift_reflection.EnumDescriptor {
+	return file_reflection_test_idl_thrift.GetEnumDescriptor("Size")
+}
+func (p *MyUnion) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetUnionDescriptor("MyUnion")
+}
+func (p *MyException) GetDescriptor() *thrift_reflection.StructDescriptor {
+	return file_reflection_test_idl_thrift.GetExceptionDescriptor("MyException")
 }

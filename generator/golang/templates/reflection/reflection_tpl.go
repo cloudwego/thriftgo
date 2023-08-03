@@ -24,6 +24,8 @@ import (
 	{{InsertionPoint "imports"}}
 	{{define "Imports"}}
 	{{end}}
+	"reflect"
+
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
@@ -54,16 +56,43 @@ var file_{{$IDLName}}_thrift_go_types = []interface{}{
 var file_{{$IDLName}}_thrift *thrift_reflection.FileDescriptor
 var file_idl_{{$IDLName}}_rawDesc = {{.MarshalDescriptor}}
 
-func init() { 
+func init() {
 	if file_{{$IDLName}}_thrift != nil {
 		return
 	}
-	file_{{$IDLName}}_thrift = thrift_reflection.BuildFileDescriptor(file_idl_{{$IDLName}}_rawDesc,file_{{$IDLName}}_thrift_go_types)
+	type x struct{}
+	builder := &thrift_reflection.FileDescriptorBuilder{
+		Bytes: file_idl_{{$IDLName}}_rawDesc,
+		GoTypes:file_{{$IDLName}}_thrift_go_types,
+		GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
+	}
+	file_{{$IDLName}}_thrift = thrift_reflection.BuildFileDescriptor(builder)
 }
 
 func GetFileDescriptorFor{{ToCamel $IDLName}}() *thrift_reflection.FileDescriptor{
 	return file_{{$IDLName}}_thrift
 }
+
+{{- range .Structs}}
+func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
+	return file_{{$IDLName}}_thrift.GetStructDescriptor("{{.Name}}")
+}
+{{- end}}
+{{- range .Enums}}
+func (p {{.GoName}}) GetDescriptor() *thrift_reflection.EnumDescriptor{
+	return file_{{$IDLName}}_thrift.GetEnumDescriptor("{{.Name}}")
+}
+{{- end}}
+{{- range .Unions}}
+func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
+	return file_{{$IDLName}}_thrift.GetUnionDescriptor("{{.Name}}")
+}
+{{- end}}
+{{- range .Exceptions}}
+func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
+	return file_{{$IDLName}}_thrift.GetExceptionDescriptor("{{.Name}}")
+}
+{{- end}}
 
 {{- InsertionPoint "eof"}}
 `
