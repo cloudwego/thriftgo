@@ -15,3 +15,50 @@
 
 set -e
 
+basic_file_dir="test_cases"
+basic_files=($(find "$basic_file_dir" -name "*.thrift" -type f -print))
+basic_total=${#basic_files[@]}
+
+rm -rf trimmer_test
+mkdir trimmer_test
+
+cd trimmer_test
+go mod init trimmer
+
+error_tests=()
+
+for i in "${!basic_files[@]}"; do
+    test_num=$(($i+1))
+    echo "Test [$test_num/$basic_total]:   ${basic_files[$i]}"
+    rm -rf gen-go
+
+    cd ..
+    stdout_file=$(mktemp)
+    stderr_file=$(mktemp)
+    idl_out_file=$(mktemp)
+    if go run . -o "${idl_out_file}" "${basic_files[$i]}"> "$stdout_file" 2> "$stderr_file"; then
+        rm "$stdout_file" "$stderr_file"
+    else
+        error_tests+=("$test_num: ${basic_files[$i]}")
+                echo "Test dump failed! Error output:"
+                cat "$stderr_file"
+    fi
+    if go run ../../. -g go -o trimmer_test/gen-go -r "${basic_files[$i]}" > "$stdout_file" 2> "$stderr_file"; then
+        go mod edit -replace=github.com/apache/thrift=github.com/apache/thrift@v0.13.0
+        go mod tidy
+        go build ./...
+        rm "$stdout_file" "$stderr_file" "$idl_out_file"
+    else
+        error_tests+=("$test_num: ${basic_files[$i]}")
+        echo "Test compile failed! Error output:"
+        cat "$stderr_file"
+    fi
+    cd trimmer_test
+done
+
+if [ ${#error_tests[@]} -eq 0 ]; then
+    echo "All tests passed!"
+else
+    echo "The following tests failed:"
+    printf '%s\n' "${error_tests[@]}"
+fi
