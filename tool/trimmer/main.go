@@ -15,6 +15,11 @@
 package main
 
 import (
+	"fmt"
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/semantic"
+	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
+	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"os"
 
 	"github.com/cloudwego/thriftgo/generator"
@@ -37,7 +42,6 @@ func check(err error) {
 
 func main() {
 	// you can execute "go install" to install this tool and execute "trimmer" or "trimmer -version"
-	// todo finish your own arg parser
 	println("IDL TRIMMER.....")
 	check(a.Parse(os.Args))
 	if a.AskVersion {
@@ -45,7 +49,37 @@ func main() {
 		os.Exit(0)
 	}
 
-	println("todo.....")
-	// read file and trim and do output
+	// parse file to ast
+	ast, err := parser.ParseFile(a.IDL, nil, true)
+	check(err)
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+
+	// trim ast
+	check(trim.TrimAST(ast))
+
+	// dump the trimmed ast to idl
+	idl, err := dump.DumpIDL(ast)
+	check(err)
+	check(writeStringToFile(a.OutputFile, idl))
+
 	os.Exit(0)
+}
+
+func writeStringToFile(filename string, content string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.WriteString(content)
+	if err != nil {
+		return err
+	}
+	return nil
 }

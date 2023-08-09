@@ -1,11 +1,14 @@
 namespace go testtypedef
 
 typedef i64 UserId
+typedef i64 ID
+const i64 default_num = 2
+const ID def = default_num
 
 struct U{
     1:  UserId id
 }
 
-Service S{
+service S{
     U get()
 }

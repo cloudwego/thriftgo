@@ -27,5 +27,9 @@ exception UserException {
   3: string userinfo
 }
 
+exception AnotherException{
+  1: i32 abc
+}
+
 const i32 DEFAULT_CODE = 3000;
 const string trash_string = "trash!"

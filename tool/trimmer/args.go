@@ -17,11 +17,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudwego/thriftgo/plugin"
 	"os"
 	"strings"
-	"time"
-
-	"github.com/cloudwego/thriftgo/plugin"
 )
 
 // StringSlice implements the flag.Value interface on string slices
@@ -40,25 +38,9 @@ func (ss *StringSlice) Set(value string) error {
 
 // Arguments contains command line arguments for thriftgo.
 type Arguments struct {
-	AskVersion      bool
-	Recursive       bool
-	Verbose         bool
-	Quiet           bool
-	CheckKeyword    bool
-	OutputPath      string
-	Includes        StringSlice
-	Plugins         StringSlice
-	Langs           StringSlice
-	IDL             string
-	PluginTimeLimit time.Duration
-}
-
-// Output returns an output path for generated codes for the target language.
-func (a *Arguments) Output(lang string) string {
-	if len(a.OutputPath) > 0 {
-		return a.OutputPath
-	}
-	return "./gen-" + lang
+	AskVersion bool
+	OutputFile string
+	IDL        string
 }
 
 // BuildFlags initializes command line flags.
@@ -67,30 +49,8 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 
 	f.BoolVar(&a.AskVersion, "version", false, "")
 
-	f.BoolVar(&a.Recursive, "r", false, "")
-	f.BoolVar(&a.Recursive, "recurse", false, "")
-
-	f.BoolVar(&a.Verbose, "v", false, "")
-	f.BoolVar(&a.Verbose, "verbose", false, "")
-
-	f.BoolVar(&a.Quiet, "q", false, "")
-	f.BoolVar(&a.Quiet, "quiet", false, "")
-
-	f.StringVar(&a.OutputPath, "o", "", "")
-	f.StringVar(&a.OutputPath, "out", "", "")
-
-	f.Var(&a.Includes, "i", "")
-	f.Var(&a.Includes, "include", "")
-
-	f.Var(&a.Langs, "g", "")
-	f.Var(&a.Langs, "gen", "")
-
-	f.Var(&a.Plugins, "p", "")
-	f.Var(&a.Plugins, "plugin", "")
-
-	f.BoolVar(&a.CheckKeyword, "check-keywords", true, "")
-
-	f.DurationVar(&a.PluginTimeLimit, "plugin-time-limit", time.Minute, "")
+	f.StringVar(&a.OutputFile, "o", "", "")
+	f.StringVar(&a.OutputFile, "out", "", "")
 
 	f.Usage = help
 	return f
@@ -118,27 +78,11 @@ func (a *Arguments) Parse(argv []string) error {
 
 func help() {
 	println("Version:", Version)
-	println(`Usage: thriftgo [options] file
+	println(`Usage: trimmer [options] file
 Options:
   --version           Print the compiler version and exit.
   -h, --help          Print help message and exit.
-  -i, --include dir   Add a search path for includes.
-  -o, --out dir	      Set the output location for generated files. Default path is ./gen-*, the code will be genereated at ./gen-*/xxxnamespace.
-					  If you don't want the path ends with namespace, you can use {namespace} or {namespaceUnderscore}, such as /gen-*/{namespace}/data
-  -r, --recurse       Generate codes for includes recursively.
-  -v, --verbose       Output detail logs.
-  -q, --quiet         Suppress all warnings and informatic logs.
-  -g, --gen STR       Specify the target language.
-                      STR has the form language[:key1=val1[,key2[,key3=val3]]].
-                      Keys and values are options passed to the backend.
-                      Many options will not require values. Boolean options accept
-                      "false", "true" and "" (empty is treated as "true").
-  -p, --plugin STR    Specify an external plugin to invoke.
-                      STR has the form plugin[=path][:key1=val1[,key2[,key3=val3]]].
-  --check-keywords    Check if any identifier using a keyword in common languages. 
-  --plugin-time-limit Set the execution time limit for plugins. Naturally 0 means no limit.
-
-Available generators (and options):
+  -o, --out			  Specify the output IDL file.
 `)
 	// print backend options
 	for _, b := range g.AllBackend() {

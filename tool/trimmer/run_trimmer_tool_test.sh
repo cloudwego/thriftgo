@@ -13,5 +13,5 @@
 # limitations under the License.
 #!/bin/bash
 
+set -e
 
-# todo: 完善工具化场景的测试

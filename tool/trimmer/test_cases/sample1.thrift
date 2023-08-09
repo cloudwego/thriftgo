@@ -1,27 +1,44 @@
 include "sample1b.thrift"
 include "sample1c.thrift"
 
-namespace go sample1a
+namespace go sample1a (a = "b")
+//test
+cpp_include "sample1.thrift"
+const i32 const_abc = 1 (b = "c")
 
+// test2
+
+//test3
 struct Person {
+    // test4
     1: required string name
+// test 5
     2: optional i32 age
+
+    //test 6
+
     3: optional Gender gender
     4: optional MyAnotherGender xx
 }
 
-typedef Gender MyGender
+/*
+test7
+ */
+
+typedef Gender(key="v") MyGender (key = "1", key = "2", key2 = "v2")
 
 typedef MyGender MyAnotherGender
 typedef i32 a
 
+// out enum
 enum Gender {
-    MALE = 0,
-    FEMALE = 1
-}
+    // in enum
+    MALE = 3,
+    FEMALE (key = "1", key = "2", key2 = "v2")
+} (a = "b")
 
 struct Address {
-    1: required string street
+    1: required string(key = "v") street
     2: required string city
     3: optional string state
     4: required a country
@@ -35,9 +52,9 @@ struct Company {
 struct Employee {
     1: required string id
     2: required Person person
-    3: optional Company company
+    3: optional set<Company> company
     4: optional list<string> skills
-    5: optional list<Experience> experience
+    5: optional map<Experience, a> experience
     6: optional sample1b.Department department
 }
 
@@ -50,7 +67,7 @@ struct Experience {
     6: optional list<string> responsibilities
 }
 
-struct Project {
+exception Project {
     1: required string name
     2: optional Company company
     3: optional list<Employee> employees
@@ -64,18 +81,19 @@ struct Simple { // should not appear
 service EmployeeService extends sample1b.GetPerson {
     Employee getEmployee(1: string id)
     void addEmployee(1: Employee employee)
-    void updateEmployee(1: string id, 2: Employee employee)
+    void updateEmployee(1: set<string> id, 2: Employee employee)
 }
 
 service ProjectService {
     Project getProject(1: string id)
-    void addProject(1: Project project)
-    void updateProject(1: string id, 2: Project project)
+    oneway void addProject(1: Project project)
+    void updateProject(1: string id,
+    2: Project project)
 }
 
 service CompanyService {
     Company getCompany(1: string id)
-    void addCompany(1: Company company)
+    void addCompany(1: Company company) throws(1: sample1b.AnotherException exc)
     void updateCompany(1: string id, 2: Company company)
     list<sample1b.Department> getDepartments(1: string company_id)
 }

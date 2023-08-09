@@ -8,6 +8,10 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 	for _, service := range ast.Services {
 		t.markService(service, ast, ast.Filename)
 	}
+
+	for _, constant := range ast.Constants {
+		t.markType(constant.Type, ast, ast.Filename)
+	}
 }
 
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {
