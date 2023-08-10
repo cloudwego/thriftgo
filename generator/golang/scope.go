@@ -21,6 +21,7 @@ import (
 
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
+	"github.com/cloudwego/thriftgo/reflection"
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
@@ -141,6 +142,10 @@ func (s *Scope) AST() *parser.Thrift {
 
 func (s *Scope) FilePackage() string {
 	return s.importPackage
+}
+
+func (s *Scope) IDLMeta() string {
+	return reflection.Encode(s.ast)
 }
 
 func (s *Scope) IDLName() string {
