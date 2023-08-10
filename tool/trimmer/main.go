@@ -21,6 +21,8 @@ import (
 	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
 	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
 )
@@ -66,9 +68,46 @@ func main() {
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
 	check(err)
+
+	file, err := os.Stat(a.OutputFile)
+	if a.OutputFile == "" || err != nil {
+		if a.OutputFile == "" {
+			parts := strings.Split(ast.Filename, ".")
+			parts = parts[:len(parts)-1]
+			a.OutputFile = strings.Join(parts, ".")
+			a.OutputFile = a.OutputFile + "_trimmed.thrift"
+		}
+	} else if file.IsDir() {
+		parts := strings.Split(a.IDL, string(filepath.Separator))
+		realSourceFilename := parts[len(parts)-1]
+		a.OutputFile = a.OutputFile + string(filepath.Separator) + realSourceFilename
+	}
+
+	if a.Recurse {
+		if err != nil || !file.IsDir() {
+			println("-o should be set as a valid dir to enable -r")
+			os.Exit(2)
+		}
+		recurseDump(ast, file.Name())
+	}
 	check(writeStringToFile(a.OutputFile, idl))
 
 	os.Exit(0)
+}
+
+func recurseDump(ast *parser.Thrift, dir string) {
+	if ast == nil {
+		return
+	}
+	for _, includes := range ast.Includes {
+		out, err := dump.DumpIDL(includes.Reference)
+		check(err)
+		parts := strings.Split(includes.Reference.Filename, string(filepath.Separator))
+		realSourceFilename := parts[len(parts)-1]
+		outFile := dir + string(filepath.Separator) + realSourceFilename
+		check(writeStringToFile(outFile, out))
+		recurseDump(includes.Reference, dir)
+	}
 }
 
 func writeStringToFile(filename string, content string) error {

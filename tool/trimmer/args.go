@@ -41,6 +41,7 @@ type Arguments struct {
 	AskVersion bool
 	OutputFile string
 	IDL        string
+	Recurse    bool
 }
 
 // BuildFlags initializes command line flags.
@@ -51,6 +52,9 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 
 	f.StringVar(&a.OutputFile, "o", "", "")
 	f.StringVar(&a.OutputFile, "out", "", "")
+
+	f.BoolVar(&a.Recurse, "r", false, "")
+	f.BoolVar(&a.Recurse, "recurse", false, "")
 
 	f.Usage = help
 	return f
@@ -82,7 +86,8 @@ func help() {
 Options:
   --version           Print the compiler version and exit.
   -h, --help          Print help message and exit.
-  -o, --out			  Specify the output IDL file.
+  -o, --out			  Specify the output IDL file/dir.
+  -r, --recurse		  Also trim the included IDL recursively. -o should be set as a directory.
 `)
 	// print backend options
 	for _, b := range g.AllBackend() {

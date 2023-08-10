@@ -24,7 +24,7 @@ const ConstValueTemplate = `
 {{define "ConstValue"}}
 {{- if .TypedValue.Double}}{{.TypedValue.Double}}{{end}}
 {{- if .TypedValue.Int}}{{.TypedValue.Int}}{{end}}
-{{- if .TypedValue.Literal}}{{.TypedValue.Literal}}{{end}}
+{{- if .TypedValue.Literal}}"{{.TypedValue.Literal}}"{{end}}
 {{- if .TypedValue.Identifier}}{{.TypedValue.Identifier}}{{end}}
 {{- if .TypedValue.List}}{{.TypedValue.List}}{{end}}
 {{- if .TypedValue.Map}}{{.TypedValue.Map}}{{end}}
@@ -42,7 +42,7 @@ const EnumTemplate = `
 {{define "Enum"}}
 {{- if .ReservedComments -}}{{- .ReservedComments -}}{{"\n"}}{{- end -}}
 {{- "enum"}} {{.Name}} {
-	{{range .Values}}
+	{{- range .Values}}
 	{{- if .ReservedComments -}}{{- .ReservedComments -}}{{- end}}
 	{{.Name}} = {{.Value}} {{template "Annotations" .Annotations -}}
 	{{- end}}
