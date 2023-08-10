@@ -50,6 +50,16 @@ func (a *Annotations) Get(key string) []string {
 	return nil
 }
 
+// ILocValueByKey return annotation value by key and index.
+func (a *Annotations) ILocValueByKey(key string, idx int) string {
+	for _, anno := range *a {
+		if anno.Key == key && idx < len(anno.Values) {
+			return anno.Values[idx]
+		}
+	}
+	return ""
+}
+
 // IsDefault tells whether a field type is default.
 func (r FieldType) IsDefault() bool {
 	return r == FieldType_Default
