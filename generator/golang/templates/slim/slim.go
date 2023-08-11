@@ -59,11 +59,13 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
+{{if Features.FrugalTag}}
 func (p *{{$TypeName}}) InitDefault() {
 	*p = {{$TypeName}}{
 		{{template "StructLikeDefault" .}}
 	}
 }
+{{end}}{{/* if Features.FrugalTag */}}
 
 {{template "FieldGetOrSet" .}}
 
