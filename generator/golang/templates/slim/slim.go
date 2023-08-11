@@ -59,6 +59,12 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
+func (p *{{$TypeName}}) InitDefault() {
+	*p = {{$TypeName}}{
+		{{template "StructLikeDefault" .}}
+	}
+}
+
 {{template "FieldGetOrSet" .}}
 
 {{if eq .Category "union"}}
