@@ -7,7 +7,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var list1 []*parser.Include
 	for i := range ast.Includes {
-		if t.marks[filename][ast.Includes[i]] {
+		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants) > 0 {
 			t.traversal(ast.Includes[i].Reference, filename)
 			list1 = append(list1, ast.Includes[i])
 		}
