@@ -22,6 +22,9 @@ import (
 	"strings"
 	"text/template"
 
+	ref_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/ref"
+	reflection_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/reflection"
+
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
 	"github.com/cloudwego/thriftgo/parser"
@@ -31,12 +34,14 @@ import (
 // GoBackend generates go codes.
 // The zero value of GoBackend is ready for use.
 type GoBackend struct {
-	err    error
-	tpl    *template.Template
-	refTpl *template.Template
-	req    *plugin.Request
-	res    *plugin.Response
-	log    backend.LogFunc
+	err              error
+	tpl              *template.Template
+	refTpl           *template.Template
+	reflectionTpl    *template.Template
+	reflectionRefTpl *template.Template
+	req              *plugin.Request
+	res              *plugin.Response
+	log              backend.LogFunc
 
 	utils *CodeUtils
 	funcs template.FuncMap
@@ -109,8 +114,7 @@ func (g *GoBackend) prepareTemplates() {
 		return
 	}
 
-	name := "thrift"
-	all := template.New(name).Funcs(g.funcs)
+	all := template.New("thrift").Funcs(g.funcs)
 	tpls := templates.Templates()
 
 	if name := g.utils.Template(); name != defaultTemplate {
@@ -121,12 +125,9 @@ func (g *GoBackend) prepareTemplates() {
 	}
 	g.tpl = all
 
-	refAll := template.New(name).Funcs(g.funcs)
-	refTpls := TemplatesRef()
-	for _, refTpl := range refTpls {
-		refAll = template.Must(refAll.Parse(refTpl))
-	}
-	g.refTpl = refAll
+	g.refTpl = template.Must(template.New("thrift-ref").Funcs(g.funcs).Parse(ref_tpl.File))
+	g.reflectionTpl = template.Must(template.New("thrift-reflection").Funcs(g.funcs).Parse(reflection_tpl.File))
+	g.reflectionRefTpl = template.Must(template.New("thrift-reflection-util").Funcs(g.funcs).Parse(reflection_tpl.FileRef))
 }
 
 func (g *GoBackend) fillRequisitions() {
@@ -165,33 +166,56 @@ func (g *GoBackend) executeTemplates() {
 }
 
 func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
-	var buf strings.Builder
-	scope, err := BuildScope(g.utils, ast)
+	path := g.utils.CombineOutputPath(g.req.OutputPath, ast)
+	filename := filepath.Join(path, g.utils.GetFilename(ast))
+	localScope, refScope, err := BuildRefScope(g.utils, ast)
 	if err != nil {
 		return err
 	}
-	g.utils.SetRootScope(scope)
-	path := g.utils.CombineOutputPath(g.req.OutputPath, ast)
-	filename := filepath.Join(path, g.utils.GetFilename(ast))
-	executeTpl := g.tpl
-	// check ref
-	doRef, refPath := DoRef(ast.Filename)
-	if doRef {
-		executeTpl = g.refTpl
-		scope.refPath = refPath
-		arr := strings.Split(refPath, "/")
-		scope.refPackage = arr[len(arr)-1]
-	}
-	err = executeTpl.ExecuteTemplate(&buf, g.tpl.Name(), scope)
+	err = g.renderByTemplate(localScope, g.tpl, filename)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ast.Filename, err)
+		return err
 	}
+	err = g.renderByTemplate(refScope, g.refTpl, ToRefFilename(filename))
+	if err != nil {
+		return err
+	}
+	if g.utils.Features().WithReflection {
+		err = g.renderByTemplate(refScope, g.reflectionRefTpl, ToReflectionRefFilename(filename))
+		if err != nil {
+			return err
+		}
+		return g.renderByTemplate(localScope, g.reflectionTpl, ToReflectionFilename(filename))
+	}
+	return nil
+}
 
+func ToRefFilename(filename string) string {
+	return strings.TrimSuffix(filename, ".go") + "-ref.go"
+}
+
+func ToReflectionFilename(filename string) string {
+	return strings.TrimSuffix(filename, ".go") + "-reflection.go"
+}
+
+func ToReflectionRefFilename(filename string) string {
+	return strings.TrimSuffix(filename, ".go") + "-reflection-ref.go"
+}
+
+func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template, filename string) error {
+	if scope == nil {
+		return nil
+	}
+	var buf strings.Builder
+	g.utils.SetRootScope(scope)
+	err := executeTpl.ExecuteTemplate(&buf, executeTpl.Name(), scope)
+	if err != nil {
+		return fmt.Errorf("%s: %w", filename, err)
+	}
 	g.res.Contents = append(g.res.Contents, &plugin.Generated{
 		Content: buf.String(),
 		Name:    &filename,
 	})
-
 	buf.Reset()
 	imports, err := scope.ResolveImports()
 	if err != nil {
@@ -199,9 +223,8 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	}
 	err = executeTpl.ExecuteTemplate(&buf, "Imports", imports)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ast.Filename, err)
+		return fmt.Errorf("%s: %w", filename, err)
 	}
-
 	point := "imports"
 	g.res.Contents = append(g.res.Contents, &plugin.Generated{
 		Content:        buf.String(),
@@ -214,7 +237,6 @@ func (g *GoBackend) buildResponse() *plugin.Response {
 	if g.err != nil {
 		return plugin.BuildErrorResponse(g.err.Error())
 	}
-
 	return g.res
 }
 

@@ -19,10 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloudwego/thriftgo/reflection"
-
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
+	"github.com/cloudwego/thriftgo/reflection"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 // Name is the type of identifiers converted from a thrift AST to Go code.
@@ -79,21 +79,37 @@ func (tn TypeName) NewFunc() Name {
 }
 
 // BuildScope creates a scope of the AST with its includes processed recursively.
+// todo check cache
 func BuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	if scope, ok := cu.scopeCache[ast]; ok {
 		return scope, nil
 	}
+	scope, err := doBuildScope(cu, ast)
+	if err != nil {
+		return nil, err
+	}
+	cu.scopeCache[ast] = scope
+	return scope, nil
+}
+
+func doBuildScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, error) {
 	scope := newScope(ast)
 	err := scope.init(cu)
 	if err != nil {
 		return nil, fmt.Errorf("process '%s' failed: %w", ast.Filename, err)
 	}
-	cu.scopeCache[ast] = scope
-	pth := cu.CombineOutputPath(cu.packagePrefix, ast)
-	scope.importPath = pth
-	parts := strings.Split(scope.importPath, "/")
-	scope.importPackage = strings.ToLower(parts[len(parts)-1])
+	scope.importPath = GetImportPath(cu, ast)
+	scope.importPackage = GetImportPackage(scope.importPath)
 	return scope, nil
+}
+
+func GetImportPath(cu *CodeUtils, ast *parser.Thrift) string {
+	return cu.CombineOutputPath(cu.packagePrefix, ast)
+}
+
+func GetImportPackage(path string) string {
+	parts := strings.Split(path, "/")
+	return strings.ToLower(parts[len(parts)-1])
 }
 
 // Scope contains the type symbols defined in a thrift IDL and wraps them to provide
@@ -137,7 +153,16 @@ func (s *Scope) IDLName() string {
 	arr := strings.Split(idlName, string(filepath.Separator))
 	idlName = snakify(arr[len(arr)-1])
 	idlName = strings.ReplaceAll(idlName, ".", "_")
+	idlName = strings.ReplaceAll(idlName, "-", "_")
 	return idlName
+}
+
+func (s *Scope) MarshalDescriptor() string {
+	bytes, err := thrift_reflection.GetFileDescriptor(s.ast).Marshal()
+	if err != nil {
+		return fmt.Sprintf("[]byte{} // ERROR: Marshal descriptor failed: %s", err.Error())
+	}
+	return prettifyBytesLiteral(fmt.Sprintf("%#v", bytes))
 }
 
 func (s *Scope) RefPath() string {
