@@ -17,14 +17,13 @@ type Trimmer struct {
 }
 
 func TrimAST(ast *parser.Thrift) error {
-	// todo: simplify this trim function. And seems like trimmer struct is unnecessary to handle file input.
-	trimmer1, err := newTrimmer(nil, "")
+	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
 	}
-	trimmer1.asts[ast.Filename] = ast
-	trimmer1.markAST(ast)
-	trimmer1.traversal(ast, ast.Filename)
+	trimmer.asts[ast.Filename] = ast
+	trimmer.markAST(ast)
+	trimmer.traversal(ast, ast.Filename)
 	return nil
 }
 

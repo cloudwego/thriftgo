@@ -18,7 +18,7 @@ func TestTrimmer(t *testing.T) {
 func testCase1(t *testing.T) {
 	trimmer1, err := newTrimmer(nil, "")
 	test.Assert(t, err == nil, err)
-	filename := filepath.Join("..", "test_cases", "tests", "include1.thrift")
+	filename := filepath.Join("..", "test_cases", "sample1.thrift")
 	ast, err := parser.ParseFile(filename, []string{"test_cases"}, true)
 	check(err)
 	if path := parser.CircleDetect(ast); len(path) > 0 {

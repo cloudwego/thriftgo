@@ -17,7 +17,7 @@ const IDLTemplate = `
 
 {{- /* CPP INCLUDES */}}
 {{- if .CppIncludes}}
-{{- range .CppIncludes}}"cpp_include" {{.}}
+{{- range .CppIncludes}}cpp_include "{{.}}"
 {{end -}}
 {{"\n"}}
 {{- end}}

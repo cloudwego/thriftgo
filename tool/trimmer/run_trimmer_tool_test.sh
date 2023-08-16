@@ -26,7 +26,8 @@ cd trimmer_test
 go mod init trimmer
 
 error_tests=()
-
+test_result="test_result.txt"
+rm -f $test_result
 for i in "${!basic_files[@]}"; do
     test_num=$(($i+1))
     echo "Test [$test_num/$basic_total]:   ${basic_files[$i]}"
@@ -35,24 +36,39 @@ for i in "${!basic_files[@]}"; do
     cd ..
     stdout_file=$(mktemp)
     stderr_file=$(mktemp)
-    idl_out_file=$(mktemp)
-    if go run . -o "${idl_out_file}" "${basic_files[$i]}"> "$stdout_file" 2> "$stderr_file"; then
-        rm "$stdout_file" "$stderr_file"
-    else
-        error_tests+=("$test_num: ${basic_files[$i]}")
-                echo "Test dump failed! Error output:"
+    back="trimmer_test/back.thrift"
+    cp "${basic_files[$i]}" "${back}-$i"
+    if go run ../../. -g go -o trimmer_test/gen-go -r "${basic_files[$i]}"> "$(mktemp)" 2> "$(mktemp)"; then
+        rm -rf trimmer_test/gen-go
+        if go run . -o "${basic_files[$i]}" "${basic_files[$i]}"> "$stdout_file" 2> "$stderr_file"; then
+            rm "$stdout_file" "$stderr_file"
+            else
+                error_tests+=("$test_num: ${basic_files[$i]}")
+                echo "Test dump ${basic_files[$i]} failed! Error output:"
                 cat "$stderr_file"
+                echo "Test dump $i ${basic_files[$i]} failed! Error output:" >> "${test_result}"
+                cat "$stderr_file" >> "${test_result}"
+                echo "=======">> "${test_result}"
+        fi
+            if go run ../../. -g go -o trimmer_test/gen-go -r "${basic_files[$i]}" > "$stdout_file" 2> "$stderr_file"; then
+                go mod edit -replace=github.com/apache/thrift=github.com/apache/thrift@v0.13.0
+                go mod tidy
+                go build ./...
+                rm "$stdout_file" "$stderr_file"
+            else
+                error_tests+=("$test_num: ${basic_files[$i]}")
+                echo "Test compile output of ${basic_files[$i]} failed! Error output:"
+                cat "$stderr_file"
+                echo "Test compile output of $i ${basic_files[$i]} failed! Error output:" >> "${test_result}"
+                cat "$stderr_file" >> "${test_result}"
+                echo "=======">> "${test_result}"
+            fi
+        else
+          echo "thrift file incorrect, ignored.."
     fi
-    if go run ../../. -g go -o trimmer_test/gen-go -r "${basic_files[$i]}" > "$stdout_file" 2> "$stderr_file"; then
-        go mod edit -replace=github.com/apache/thrift=github.com/apache/thrift@v0.13.0
-        go mod tidy
-        go build ./...
-        rm "$stdout_file" "$stderr_file" "$idl_out_file"
-    else
-        error_tests+=("$test_num: ${basic_files[$i]}")
-        echo "Test compile failed! Error output:"
-        cat "$stderr_file"
-    fi
+    cp "${basic_files[$i]}" "trimmer_test/$i-out.thrift"
+    cp "${back}-$i" "${basic_files[$i]}"
+    rm -f "${back}-$i"
     cd trimmer_test
 done
 

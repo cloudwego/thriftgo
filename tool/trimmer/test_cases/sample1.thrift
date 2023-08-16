@@ -1,11 +1,13 @@
 include "sample1b.thrift"
 include "sample1c.thrift"
 
-namespace go sample1a (a = "b")
+namespace go sample1a (a = "b\"c\"")
 //test
 cpp_include "sample1.thrift"
 const i32 const_abc = 1 (b = "c")
-
+const list<string> theList = ["a","b"]
+const map<string, i32> theMap = {"a":1, "b":2}
+const map<string, string> anotherMap = {}
 // test2
 
 //test3
@@ -30,7 +32,7 @@ typedef Gender(key="v") MyGender (key = "1", key = "2", key2 = "v2")
 typedef MyGender MyAnotherGender
 typedef i32 a
 
-// out enum
+// out enum"ZZ"
 enum Gender {
     // in enum
     MALE = 3,

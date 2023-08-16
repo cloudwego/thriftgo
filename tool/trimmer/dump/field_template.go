@@ -1,5 +1,10 @@
 package dump
 
+import (
+	"fmt"
+	"strings"
+)
+
 const TypeTemplate = `
 {{define "Type"}}
 {{- if eq .Name "list" -}}
@@ -16,7 +21,7 @@ set<{{- template "Type" .ValueType}}>
 `
 const TypeDefTemplate = `
 {{define "Typedef"}}
-{{- if .ReservedComments -}}{{- .ReservedComments -}}{{"\n"}}{{- end -}}
+{{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
 {{- "typedef"}} {{template "Type" .Type}} {{.Alias}} {{template "Annotations" .Annotations}}
 {{- end -}}
 `
@@ -26,13 +31,31 @@ const ConstValueTemplate = `
 {{- if .TypedValue.Int}}{{.TypedValue.Int}}{{end}}
 {{- if .TypedValue.Literal}}"{{.TypedValue.Literal}}"{{end}}
 {{- if .TypedValue.Identifier}}{{.TypedValue.Identifier}}{{end}}
-{{- if .TypedValue.List}}{{.TypedValue.List}}{{end}}
-{{- if .TypedValue.Map}}{{.TypedValue.Map}}{{end}}
+{{- if .TypedValue.IsSetList}}{{template "ConstList" .TypedValue.List}}{{end}}
+{{- if .TypedValue.IsSetMap}}{{template "ConstMap" .TypedValue.Map}}{{end}}
+{{- end -}}
+`
+const ConstListTemplate = `
+{{define "ConstList"}}
+{{- "[" -}}
+{{- range $index, $element := .}}
+{{- if $index}}, {{end -}}{{- template "ConstValue" $element -}}
+{{- end -}}
+{{- "]" -}}
+{{- end -}}
+`
+const ConstMapTemplate = `
+{{define "ConstMap"}}
+{{- "{" -}}
+{{- range $index, $element := . -}}
+{{- if $index}}, {{end -}}{{- template "ConstValue" .Key -}}:{{- template "ConstValue" .Value -}}
+{{- end -}}
+{{- "}" -}}
 {{- end -}}
 `
 const ConstantTemplate = `
 {{define "Constant"}}
-{{- if .ReservedComments -}}{{- .ReservedComments -}}{{"\n"}}{{- end -}}
+{{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
 {{- "const"}} {{template "Type" .Type}} {{.Name}} {{"= "}}
 {{- template "ConstValue" .Value -}}
 {{- template "Annotations" .Annotations -}}
@@ -40,10 +63,10 @@ const ConstantTemplate = `
 `
 const EnumTemplate = `
 {{define "Enum"}}
-{{- if .ReservedComments -}}{{- .ReservedComments -}}{{"\n"}}{{- end -}}
+{{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
 {{- "enum"}} {{.Name}} {
 	{{- range .Values}}
-	{{- if .ReservedComments -}}{{- .ReservedComments -}}{{- end}}
+	{{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{- end}}
 	{{.Name}} = {{.Value}} {{template "Annotations" .Annotations -}}
 	{{- end}}
 } {{template "Annotations" .Annotations -}}{{"\n"}}
@@ -51,7 +74,7 @@ const EnumTemplate = `
 `
 const FieldTemplate = `
 {{define "Field"}}
-{{- if .ReservedComments}}{{"    "}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{"    "}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{"    "}}{{.ID}}{{":"}}
 {{- if .Requiredness.IsRequired}} required
 {{- else if .Requiredness.IsOptional}} optional{{end}}{{" "}}
@@ -62,7 +85,7 @@ const FieldTemplate = `
 `
 const StructTemplate = `
 {{define "Struct"}}
-{{- if .ReservedComments}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{- "struct"}} {{.Name}} {
 {{- range .Fields}}
 {{template "Field" .}}
@@ -72,7 +95,7 @@ const StructTemplate = `
 `
 const UnionTemplate = `
 {{define "Union"}}
-{{- if .ReservedComments}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{- "union"}} {{.Name}} {
 {{- range .Fields}}
 {{template "Field" .}}
@@ -82,7 +105,7 @@ const UnionTemplate = `
 `
 const ExceptionTemplate = `
 {{define "Exception"}}
-{{- if .ReservedComments}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{- "exception"}} {{.Name}} {
 {{- range .Fields}}
 {{template "Field" .}}
@@ -92,7 +115,7 @@ const ExceptionTemplate = `
 `
 const ServiceTemplate = `
 {{define "Service"}}
-{{- if .ReservedComments}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{- "service"}} {{.Name}}{{if .Extends}} extends {{.Extends}}{{end}} {
 {{- range .Functions}}
 {{template "Function" .}}
@@ -102,15 +125,15 @@ const ServiceTemplate = `
 `
 const FunctionTemplate = `
 {{define "Function"}}
-{{- if .ReservedComments}}{{"    "}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{"    "}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{"    "}}{{if .Oneway}}oneway {{end}}{{template "Type" .FunctionType}} {{.Name}}(
-{{- range .Arguments}}
-{{- template "SingleLineField" .}}{{", "}}
+{{- range $index, $element := .Arguments}}
+{{- if $index}}, {{end -}}{{- template "SingleLineField" .}}
 {{- end}})
 {{- if .Throws}}
 {{- "throws" }} (
-{{- range .Throws}}
-{{- template "SingleLineField" .}}{{", "}}
+{{- range $index, $element := .Throws}}
+{{- if $index}},{{end -}}{{- template "SingleLineField" .}}
 {{- end}})
 {{- end}}
 {{- end -}}
@@ -119,7 +142,7 @@ const FunctionTemplate = `
 // SingleLineFieldTemplate for args and throws of functions
 const SingleLineFieldTemplate = `
 {{define "SingleLineField"}}
-{{- if .ReservedComments}}{{"    "}}{{.ReservedComments}}{{"\n"}}{{end -}}
+{{- if .ReservedComments}}{{"    "}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
 {{.ID}}{{":"}}
 {{- if .Requiredness.IsRequired}} required
 {{- else if .Requiredness.IsOptional}} optional{{end}}{{" "}}
@@ -130,11 +153,26 @@ const SingleLineFieldTemplate = `
 `
 const AnnotationsTemplate = `
 {{define "Annotations"}}
-{{- if . -}}(
+{{- if . -}}
+{{- $result := "" -}}
 {{- range .}}
 {{- $key := .Key -}}
 {{- range .Values -}}
- {{$key}} = "{{.}}", {{- end -}}
-{{- end -}}){{- end -}}
+{{ $value := JoinQuotes . }}
+{{- $result = printf "%s%s = %s, " $result $key $value -}}{{- end -}}
+{{- end -}}
+	({{- $result | RemoveLastComma -}})
+{{- end -}}
 {{- end -}}
 `
+
+func RemoveLastComma(s string) string {
+	return strings.TrimRight(s, ", ")
+}
+func JoinQuotes(s string) string {
+	return fmt.Sprintf("%s", "#OUTQUOTES"+s+"#OUTQUOTES")
+}
+func ReplaceQuotes(s string) string {
+	out := strings.Replace(s, "\"", "#OUTQUOTES", -1)
+	return out
+}
