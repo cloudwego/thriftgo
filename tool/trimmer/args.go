@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudwego/thriftgo/plugin"
+	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"strings"
 )
@@ -81,7 +82,7 @@ func (a *Arguments) Parse(argv []string) error {
 }
 
 func help() {
-	println("Version:", Version)
+	println("Version:", version.ThriftgoVersion)
 	println(`Usage: trimmer [options] file
 Options:
   --version           Print the compiler version and exit.

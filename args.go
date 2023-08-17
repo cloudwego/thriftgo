@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudwego/thriftgo/version"
 	"log"
 	"os"
 	"runtime"
@@ -189,7 +190,7 @@ func (a *Arguments) Parse(argv []string) error {
 }
 
 func help() {
-	println("Version:", Version)
+	println("Version:", version.ThriftgoVersion)
 	println(`Usage: thriftgo [options] file
 Options:
   --version           Print the compiler version and exit.

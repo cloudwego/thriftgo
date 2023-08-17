@@ -20,15 +20,13 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
 	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
+	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
 )
-
-// Version of trimmer tool.
-const Version = "0.0.1"
 
 var (
 	a Arguments
@@ -47,7 +45,7 @@ func main() {
 	println("IDL TRIMMER.....")
 	check(a.Parse(os.Args))
 	if a.AskVersion {
-		println("thriftgo trimmer tool ", Version)
+		println("thriftgo", version.ThriftgoVersion)
 		os.Exit(0)
 	}
 

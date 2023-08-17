@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/version"
 	"os"
 
 	"github.com/cloudwego/thriftgo/generator"
@@ -24,9 +25,6 @@ import (
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
 )
-
-// Version of thriftgo.
-const Version = "0.3.1"
 
 var (
 	a Arguments
@@ -47,7 +45,7 @@ func check(err error) {
 func main() {
 	check(a.Parse(os.Args))
 	if a.AskVersion {
-		println("thriftgo", Version)
+		println("thriftgo", version.ThriftgoVersion)
 		os.Exit(0)
 	}
 
@@ -74,7 +72,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	req := &plugin.Request{
-		Version:    Version,
+		Version:    version.ThriftgoVersion,
 		OutputPath: a.OutputPath,
 		Recursive:  a.Recursive,
 		AST:        ast,
