@@ -57,17 +57,18 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift, filename st
 	if theType.ValueType != nil {
 		t.markType(theType.ValueType, ast, filename)
 	}
-	if theType.IsTypedef != nil {
-		t.markTypeDef(theType, ast, filename)
-		return
-	}
-
 	baseAST := ast
 	if theType.Reference != nil {
 		// if referenced, redirect to included ast
 		baseAST = ast.Includes[theType.Reference.Index].Reference
 		t.marks[filename][ast.Includes[theType.Reference.Index]] = true
 	}
+
+	if theType.IsTypedef != nil {
+		t.markTypeDef(theType, baseAST, filename)
+		return
+	}
+
 	if theType.Category.IsStruct() {
 		for _, str := range baseAST.Structs {
 			if str.Name == theType.Name || (theType.Reference != nil && str.Name == theType.Reference.Name) {

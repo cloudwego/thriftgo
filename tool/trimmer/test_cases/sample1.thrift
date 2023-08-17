@@ -1,12 +1,26 @@
+// Copyright 2023 CloudWeGo Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 include "sample1b.thrift"
 include "sample1c.thrift"
 
 namespace go sample1a (a = "b\"c\"")
 //test
 cpp_include "sample1.thrift"
-const i32 const_abc = 1 (b = "c")
+const sample1b.neccesary_typedef const_abc = 1 (b = "c")
 const list<string> theList = ["a","b"]
-const map<string, i32> theMap = {"a":1, "b":2}
+const map<string, i32> theMap = {"a":1, "b":2, "c": Gender.MALE}
 const map<string, string> anotherMap = {}
 // test2
 

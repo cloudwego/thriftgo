@@ -1,3 +1,17 @@
+// Copyright 2023 CloudWeGo Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package trim
 
 import "github.com/cloudwego/thriftgo/parser"
@@ -5,61 +19,53 @@ import "github.com/cloudwego/thriftgo/parser"
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
-	var list1 []*parser.Include
+	var listInclude []*parser.Include
 	for i := range ast.Includes {
-		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants) > 0 {
+		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+len(ast.Includes[i].Reference.Enums) > 0 {
 			t.traversal(ast.Includes[i].Reference, filename)
-			list1 = append(list1, ast.Includes[i])
+			listInclude = append(listInclude, ast.Includes[i])
 		}
 	}
-	ast.Includes = list1
+	ast.Includes = listInclude
 
-	var list2 []*parser.Typedef
+	var listTypedef []*parser.Typedef
 	for i := range ast.Typedefs {
 		if t.marks[filename][ast.Typedefs[i]] {
-			list2 = append(list2, ast.Typedefs[i])
+			listTypedef = append(listTypedef, ast.Typedefs[i])
 		}
 	}
-	ast.Typedefs = list2
+	ast.Typedefs = listTypedef
 
-	var list3 []*parser.Enum
-	for i := range ast.Enums {
-		if t.marks[filename][ast.Enums[i]] {
-			list3 = append(list3, ast.Enums[i])
-		}
-	}
-	ast.Enums = list3
-
-	var list4 []*parser.StructLike
+	var listStruct []*parser.StructLike
 	for i := range ast.Structs {
 		if t.marks[filename][ast.Structs[i]] {
-			list4 = append(list4, ast.Structs[i])
+			listStruct = append(listStruct, ast.Structs[i])
 		}
 	}
-	ast.Structs = list4
+	ast.Structs = listStruct
 
-	var list5 []*parser.StructLike
+	var listUnion []*parser.StructLike
 	for i := range ast.Unions {
 		if t.marks[filename][ast.Unions[i]] {
-			list5 = append(list5, ast.Unions[i])
+			listUnion = append(listUnion, ast.Unions[i])
 		}
 	}
-	ast.Unions = list5
+	ast.Unions = listUnion
 
-	var list6 []*parser.StructLike
+	var listException []*parser.StructLike
 	for i := range ast.Exceptions {
 		if t.marks[filename][ast.Exceptions[i]] {
-			list6 = append(list6, ast.Exceptions[i])
+			listException = append(listException, ast.Exceptions[i])
 		}
 	}
-	ast.Exceptions = list6
+	ast.Exceptions = listException
 
-	var list7 []*parser.Service
+	var listService []*parser.Service
 	for i := range ast.Services {
 		if t.marks[filename][ast.Services[i]] {
-			list7 = append(list7, ast.Services[i])
+			listService = append(listService, ast.Services[i])
 		}
 	}
-	ast.Services = list7
+	ast.Services = listService
 
 }
