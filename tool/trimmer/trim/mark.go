@@ -22,12 +22,14 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 	t.marks[filename][svc] = true
 	if svc.Extends != "" {
 		// handle extension
-		theInclude := ast.Includes[svc.Reference.Index]
-		t.marks[filename][theInclude] = true
-		for _, service := range theInclude.Reference.Services {
-			if service.Name == svc.Reference.Name {
-				t.markService(service, theInclude.Reference, filename)
-				break
+		if svc.Reference != nil {
+			theInclude := ast.Includes[svc.Reference.Index]
+			t.marks[filename][theInclude] = true
+			for _, service := range theInclude.Reference.Services {
+				if service.Name == svc.Reference.Name {
+					t.markService(service, theInclude.Reference, filename)
+					break
+				}
 			}
 		}
 	}

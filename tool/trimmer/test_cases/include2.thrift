@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-include "include3.thrift"
+include "tests/include3.thrift"
 
 struct B{
     1: B b

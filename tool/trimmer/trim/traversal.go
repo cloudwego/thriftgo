@@ -21,20 +21,13 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listInclude []*parser.Include
 	for i := range ast.Includes {
-		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+len(ast.Includes[i].Reference.Enums) > 0 {
+		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+
+			len(ast.Includes[i].Reference.Enums)+len(ast.Includes[i].Reference.Typedefs) > 0 {
 			t.traversal(ast.Includes[i].Reference, filename)
 			listInclude = append(listInclude, ast.Includes[i])
 		}
 	}
 	ast.Includes = listInclude
-
-	var listTypedef []*parser.Typedef
-	for i := range ast.Typedefs {
-		if t.marks[filename][ast.Typedefs[i]] {
-			listTypedef = append(listTypedef, ast.Typedefs[i])
-		}
-	}
-	ast.Typedefs = listTypedef
 
 	var listStruct []*parser.StructLike
 	for i := range ast.Structs {

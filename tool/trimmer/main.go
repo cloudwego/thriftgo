@@ -69,42 +69,59 @@ func main() {
 
 	file, err := os.Stat(a.OutputFile)
 	if a.OutputFile == "" || err != nil {
-		if a.OutputFile == "" {
+		if a.OutputFile == "" && a.Recurse == "" {
 			parts := strings.Split(ast.Filename, ".")
 			parts = parts[:len(parts)-1]
 			a.OutputFile = strings.Join(parts, ".")
 			a.OutputFile = a.OutputFile + "_trimmed.thrift"
 		}
-	} else if file.IsDir() {
+	} else if file.IsDir() && a.Recurse == "" {
 		parts := strings.Split(a.IDL, string(filepath.Separator))
 		realSourceFilename := parts[len(parts)-1]
 		a.OutputFile = a.OutputFile + string(filepath.Separator) + realSourceFilename
 	}
 
-	if a.Recurse {
+	if a.Recurse != "" {
+		if err != nil {
+			err = os.MkdirAll(a.OutputFile, os.ModePerm)
+		}
+		file, err := os.Stat(a.OutputFile)
 		if err != nil || !file.IsDir() {
-			println("-o should be set as a valid dir to enable -r")
+			println("-o should be set as a valid dir to enable -r", err.Error())
 			os.Exit(2)
 		}
-		recurseDump(ast, file.Name())
+		createDirTree(a.Recurse, a.OutputFile)
+		recurseDump(ast, a.Recurse, a.OutputFile)
+		relativePath, err := filepath.Rel(a.Recurse, a.IDL)
+		if err != nil {
+			println("-r input err, range should cover all the target IDLs;", err.Error())
+			os.Exit(2)
+		}
+		outputFileUrl := filepath.Join(a.OutputFile, relativePath)
+		check(writeStringToFile(outputFileUrl, idl))
+		removeEmptyDir(a.OutputFile)
+	} else {
+		check(writeStringToFile(a.OutputFile, idl))
 	}
-	check(writeStringToFile(a.OutputFile, idl))
 
 	os.Exit(0)
 }
 
-func recurseDump(ast *parser.Thrift, dir string) {
+func recurseDump(ast *parser.Thrift, sourceDir string, outDir string) {
 	if ast == nil {
 		return
 	}
 	for _, includes := range ast.Includes {
 		out, err := dump.DumpIDL(includes.Reference)
 		check(err)
-		parts := strings.Split(includes.Reference.Filename, string(filepath.Separator))
-		realSourceFilename := parts[len(parts)-1]
-		outFile := dir + string(filepath.Separator) + realSourceFilename
-		check(writeStringToFile(outFile, out))
-		recurseDump(includes.Reference, dir)
+		relativeUrl, err := filepath.Rel(sourceDir, includes.Reference.Filename)
+		if err != nil {
+			println("-r input err, range should cover all the target IDLs;", err.Error())
+			os.Exit(2)
+		}
+		outputFileUrl := filepath.Join(outDir, relativeUrl)
+		check(writeStringToFile(outputFileUrl, out))
+		recurseDump(includes.Reference, sourceDir, outDir)
 	}
 }
 
