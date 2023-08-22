@@ -85,7 +85,10 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		trim.TrimAST(req.AST)
+		err := trim.TrimAST(req.AST, true)
+		if err != nil {
+			g.log.Warn("trim error:", err.Error())
+		}
 		g.log.Warn("You Are Using IDL Trimmer")
 	}
 	g.prepareTemplates()

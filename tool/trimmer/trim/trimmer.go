@@ -30,14 +30,15 @@ type Trimmer struct {
 	outDir string
 }
 
-func TrimAST(ast *parser.Thrift) error {
+// TrimAST 裁剪单个AST，如果作为thriftgo参数调用则第二个参数设为true
+func TrimAST(ast *parser.Thrift, useThriftgo bool) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.markAST(ast)
-	trimmer.traversal(ast, ast.Filename)
+	trimmer.traversal(ast, ast.Filename, useThriftgo)
 	return nil
 }
 
@@ -75,18 +76,6 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
 	trimmer.marks = make(map[string]map[interface{}]bool)
-
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if err != nil || info.IsDir() {
-			println(fmt.Errorf("input file invalid: %s", file))
-		}
-	}
-
-	info, err := os.Stat(outDir)
-	if err != nil || !info.IsDir() {
-		println(fmt.Errorf("output dir invalid: %s", outDir))
-	}
 
 	return trimmer, nil
 }

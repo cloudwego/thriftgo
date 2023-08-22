@@ -63,6 +63,11 @@ func removeEmptyDir(source string) {
 		return nil
 	})
 
+	parent := filepath.Dir(source)
+	if parent != source {
+		removeEmptyDir(parent)
+	}
+
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}

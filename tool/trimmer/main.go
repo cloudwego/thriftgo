@@ -42,8 +42,11 @@ func check(err error) {
 
 func main() {
 	// you can execute "go install" to install this tool and execute "trimmer" or "trimmer -version"
-	println("IDL TRIMMER.....")
-	check(a.Parse(os.Args))
+	err := a.Parse(os.Args)
+	if err != nil {
+		help()
+		check(err)
+	}
 	if a.AskVersion {
 		println("thriftgo", version.ThriftgoVersion)
 		os.Exit(0)
@@ -61,7 +64,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// trim ast
-	check(trim.TrimAST(ast))
+	check(trim.TrimAST(ast, false))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
@@ -87,8 +90,18 @@ func main() {
 		}
 		file, err := os.Stat(a.OutputFile)
 		if err != nil || !file.IsDir() {
-			println("-o should be set as a valid dir to enable -r", err.Error())
-			os.Exit(2)
+			if err != nil {
+				a.OutputFile = "trimmed_idl"
+				err = os.MkdirAll(a.OutputFile, os.ModePerm)
+				if err != nil {
+					println("-o should be set as a valid dir to enable -r", err.Error())
+					os.Exit(2)
+				}
+			} else {
+				println("-o should be set as a valid dir to enable -r", err.Error())
+				os.Exit(2)
+			}
+
 		}
 		createDirTree(a.Recurse, a.OutputFile)
 		recurseDump(ast, a.Recurse, a.OutputFile)
@@ -135,5 +148,6 @@ func writeStringToFile(filename string, content string) error {
 	if err != nil {
 		return err
 	}
+	println("dump", filename, "succeed")
 	return nil
 }

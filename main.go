@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/cloudwego/thriftgo/version"
 	"os"
+	"runtime/debug"
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"
@@ -43,6 +44,7 @@ func check(err error) {
 }
 
 func main() {
+	defer handlePanic()
 	check(a.Parse(os.Args))
 	if a.AskVersion {
 		println("thriftgo", version.ThriftgoVersion)
@@ -101,5 +103,13 @@ func main() {
 
 		err = g.Persist(res)
 		check(err)
+	}
+}
+
+func handlePanic() {
+	if r := recover(); r != nil {
+		fmt.Println("Recovered from panic:")
+		fmt.Println(r)
+		debug.PrintStack()
 	}
 }
