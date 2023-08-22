@@ -116,6 +116,7 @@ func main() {
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
 	}
+	println("success, dump to", a.OutputFile)
 
 	os.Exit(0)
 }
@@ -148,6 +149,5 @@ func writeStringToFile(filename string, content string) error {
 	if err != nil {
 		return err
 	}
-	println("dump", filename, "succeed")
 	return nil
 }

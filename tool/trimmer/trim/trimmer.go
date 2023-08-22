@@ -31,14 +31,14 @@ type Trimmer struct {
 }
 
 // TrimAST 裁剪单个AST，如果作为thriftgo参数调用则第二个参数设为true
-func TrimAST(ast *parser.Thrift, useThriftgo bool) error {
+func TrimAST(ast *parser.Thrift, keepIncludeStructure bool) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.markAST(ast)
-	trimmer.traversal(ast, ast.Filename, useThriftgo)
+	trimmer.traversal(ast, ast.Filename, keepIncludeStructure)
 	return nil
 }
 

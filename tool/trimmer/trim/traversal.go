@@ -17,15 +17,15 @@ package trim
 import "github.com/cloudwego/thriftgo/parser"
 
 // traverse and remove the unmarked part of ast
-func (t *Trimmer) traversal(ast *parser.Thrift, filename string, useThriftgo bool) {
+func (t *Trimmer) traversal(ast *parser.Thrift, filename string, keepIncludeStructure bool) {
 
 	var listInclude []*parser.Include
 	for i := range ast.Includes {
 		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+
 			len(ast.Includes[i].Reference.Enums)+len(ast.Includes[i].Reference.Typedefs) > 0 {
-			t.traversal(ast.Includes[i].Reference, filename, useThriftgo)
+			t.traversal(ast.Includes[i].Reference, filename, keepIncludeStructure)
 			listInclude = append(listInclude, ast.Includes[i])
-		} else if useThriftgo {
+		} else if keepIncludeStructure {
 			listInclude = append(listInclude, &parser.Include{})
 		}
 	}
