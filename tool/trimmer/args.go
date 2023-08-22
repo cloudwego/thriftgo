@@ -85,10 +85,10 @@ func help() {
 	println("Version:", version.ThriftgoVersion)
 	println(`Usage: trimmer [options] file
 Options:
-  --version           Print the compiler version and exit.
-  -h, --help          Print help message and exit.
-  -o, --out			  Specify the output IDL file/dir.
-  -r, --recurse		  Specify a dir and dump the included IDL recursively beneath the given dir. -o should be set as a directory.
+  --version				Print the compiler version and exit.
+  -h, --help			Print help message and exit.
+  -o, --out	[file/dir]	Specify the output IDL file/dir.
+  -r, --recurse	[dir]	Specify a root dir and dump the included IDL recursively beneath the given root. -o should be set as a directory.
 `)
 	// print backend options
 	for _, b := range g.AllBackend() {
