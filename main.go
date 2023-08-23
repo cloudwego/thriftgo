@@ -16,7 +16,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/version"
 	"os"
+	"runtime/debug"
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"
@@ -24,9 +26,6 @@ import (
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
 )
-
-// Version of thriftgo.
-const Version = "0.3.0"
 
 var (
 	a Arguments
@@ -45,9 +44,10 @@ func check(err error) {
 }
 
 func main() {
+	defer handlePanic()
 	check(a.Parse(os.Args))
 	if a.AskVersion {
-		println("thriftgo", Version)
+		println("thriftgo", version.ThriftgoVersion)
 		os.Exit(0)
 	}
 
@@ -74,7 +74,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	req := &plugin.Request{
-		Version:    Version,
+		Version:    version.ThriftgoVersion,
 		OutputPath: a.OutputPath,
 		Recursive:  a.Recursive,
 		AST:        ast,
@@ -103,5 +103,13 @@ func main() {
 
 		err = g.Persist(res)
 		check(err)
+	}
+}
+
+func handlePanic() {
+	if r := recover(); r != nil {
+		fmt.Println("Recovered from panic:")
+		fmt.Println(r)
+		debug.PrintStack()
 	}
 }
