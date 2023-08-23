@@ -44,7 +44,7 @@ func testCase1(t *testing.T) {
 	check(semantic.ResolveSymbols(ast))
 	trimmer.asts[filename] = ast
 	trimmer.markAST(ast)
-	trimmer.traversal(ast, ast.Filename, false)
+	trimmer.traversal(ast, ast.Filename)
 
 	test.Assert(t, len(ast.Structs) == 5)
 	test.Assert(t, len(ast.Includes) == 1)

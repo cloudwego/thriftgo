@@ -28,6 +28,9 @@ func createDirTree(sourceDir string, destinationDir string) {
 		}
 		if info.IsDir() {
 			newDir := filepath.Join(destinationDir, path[len(sourceDir):])
+			if path[len(sourceDir)-1] != filepath.Separator {
+				newDir = filepath.Join(destinationDir, path[len(sourceDir)-1:])
+			}
 			err := os.MkdirAll(newDir, os.ModePerm)
 			if err != nil {
 				return err

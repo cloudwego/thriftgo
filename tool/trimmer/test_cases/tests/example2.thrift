@@ -15,7 +15,8 @@
 namespace go a
 include "empty.thrift"
 include "test.thrift"
-
+include "../sample1.thrift"
+typedef map<i32, sample1.a> theMap
 
 struct E{
 

@@ -26,6 +26,10 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 	for _, constant := range ast.Constants {
 		t.markType(constant.Type, ast, ast.Filename)
 	}
+
+	for _, typedef := range ast.Typedefs {
+		t.markTypeDef(typedef.Type, ast, ast.Filename)
+	}
 }
 
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {

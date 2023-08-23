@@ -64,7 +64,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// trim ast
-	check(trim.TrimAST(ast, false))
+	check(trim.TrimAST(ast))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)

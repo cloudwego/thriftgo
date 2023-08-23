@@ -31,14 +31,23 @@ type Trimmer struct {
 }
 
 // TrimAST 裁剪单个AST，如果作为thriftgo参数调用则第二个参数设为true
-func TrimAST(ast *parser.Thrift, keepIncludeStructure bool) error {
+func TrimAST(ast *parser.Thrift) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.markAST(ast)
-	trimmer.traversal(ast, ast.Filename, keepIncludeStructure)
+	trimmer.traversal(ast, ast.Filename)
+	ast.Name2Category = nil
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+
 	return nil
 }
 
