@@ -52,34 +52,37 @@ type Features struct {
 	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
+
+	GenerateJSONStringMethod bool `generate_json_string_method:"Generate the JSON marshal method as String()."`
 }
 
 var defaultFeatures = Features{
-	MarshalEnumToText:      false,
-	GenerateSetter:         false,
-	GenDatabaseTag:         false,
-	GenOmitEmptyTag:        true,
-	TypedefAsTypeAlias:     true,
-	ValidateSet:            true,
-	ValueTypeForSIC:        false,
-	ScanValueForEnum:       true,
-	ReorderFields:          false,
-	TypedEnumString:        false,
-	KeepUnknownFields:      false,
-	GenDeepEqual:           false,
-	CompatibleNames:        false,
-	ReserveComments:        false,
-	NilSafe:                false,
-	FrugalTag:              false,
-	EscapeDoubleInTag:      true,
-	GenerateTypeMeta:       false,
-	GenerateJSONTag:        true,
-	AlwaysGenerateJSONTag:  false,
-	SnakeTyleJSONTag:       false,
-	LowerCamelCaseJSONTag:  false,
-	GenerateReflectionInfo: false,
-	EnumAsINT32:            false,
-	TrimIDL:                false,
+	MarshalEnumToText:        false,
+	GenerateSetter:           false,
+	GenDatabaseTag:           false,
+	GenOmitEmptyTag:          true,
+	TypedefAsTypeAlias:       true,
+	ValidateSet:              true,
+	ValueTypeForSIC:          false,
+	ScanValueForEnum:         true,
+	ReorderFields:            false,
+	TypedEnumString:          false,
+	KeepUnknownFields:        false,
+	GenDeepEqual:             false,
+	CompatibleNames:          false,
+	ReserveComments:          false,
+	NilSafe:                  false,
+	FrugalTag:                false,
+	EscapeDoubleInTag:        true,
+	GenerateTypeMeta:         false,
+	GenerateJSONTag:          true,
+	AlwaysGenerateJSONTag:    false,
+	SnakeTyleJSONTag:         false,
+	LowerCamelCaseJSONTag:    false,
+	GenerateReflectionInfo:   false,
+	EnumAsINT32:              false,
+	TrimIDL:                  false,
+	GenerateJSONStringMethod: false,
 }
 
 type param struct {
