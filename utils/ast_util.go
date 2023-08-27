@@ -33,6 +33,9 @@ var builtinTypes = map[string]thrift.TType{
 	"double": thrift.DOUBLE,
 	"string": thrift.STRING,
 	"binary": thrift.STRING,
+	"list":   thrift.LIST,
+	"map":    thrift.MAP,
+	"set":    thrift.SET,
 }
 
 // TypeToStructLike try to find the defined parser.StructLike of a parser.Type in ast
@@ -41,31 +44,26 @@ func GetStructLike(name string, ast *parser.Thrift) *parser.StructLike {
 	if _, ok := builtinTypes[tname]; ok {
 		return nil
 	}
-	switch tname {
-	case "list", "set", "map":
-		return nil
-	default:
-		typePkg, typeName := SplitSubfix(name)
-		if typePkg != "" {
-			ref, ok := ast.GetReference(typePkg)
-			if !ok {
-				return nil
-			}
-			ast = ref
-		}
-		if _, ok := ast.GetEnum(typeName); ok {
+	typePkg, typeName := SplitSubfix(name)
+	if typePkg != "" {
+		ref, ok := ast.GetReference(typePkg)
+		if !ok {
 			return nil
 		}
-		if typDef, ok := ast.GetTypedef(typeName); ok {
-			return GetStructLike(typDef.Type.Name, ast)
-		}
-		st, ok := ast.GetStruct(typeName)
-		if !ok {
-			st, ok = ast.GetUnion(typeName)
-			if !ok {
-				st, _ = ast.GetException(typeName)
-			}
-		}
-		return st
+		ast = ref
 	}
+	if _, ok := ast.GetEnum(typeName); ok {
+		return nil
+	}
+	if typDef, ok := ast.GetTypedef(typeName); ok {
+		return GetStructLike(typDef.Type.Name, ast)
+	}
+	st, ok := ast.GetStruct(typeName)
+	if !ok {
+		st, ok = ast.GetUnion(typeName)
+		if !ok {
+			st, _ = ast.GetException(typeName)
+		}
+	}
+	return st
 }
