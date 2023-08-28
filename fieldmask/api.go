@@ -19,8 +19,7 @@ package fieldmask
 import (
 	"strings"
 
-	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/utils"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 type fieldID int32
@@ -34,7 +33,7 @@ type fieldMaskMap struct {
 	tail map[fieldID]*FieldMask
 }
 
-func makeFieldMaskMap(fields []*parser.Field) fieldMaskMap {
+func makeFieldMaskMap(fields []*thrift_reflection.FieldDescriptor) fieldMaskMap {
 	max := 0
 	count := 0
 	for _, f := range fields {
@@ -113,39 +112,39 @@ type FieldMask struct {
 	flat fieldMaskBitmap
 	// for lookup next layer of fieldmasks
 	next fieldMaskMap
-	desc *parser.StructLike
+	// desc *parser.StructLike
 }
 
-func NewFieldMaskFromAST(IDL *parser.Thrift, rootStruct string, paths ...string) *FieldMask {
-	if IDL == nil {
-		panic("FieldMask must have a IDL!")
-	}
-	desc := utils.GetStructLike(rootStruct, IDL)
-	if desc == nil {
-		panic("struct '" + rootStruct + "' doesn't exist for the IDL")
-	}
+func NewFieldMaskFromNames(desc *thrift_reflection.StructDescriptor, paths ...string) *FieldMask {
+	// if IDL == nil {
+	// 	panic("FieldMask must have a IDL!")
+	// }
+	// desc := utils.GetStructLike(rootStruct, IDL)
+	// if desc == nil {
+	// 	panic("struct '" + rootStruct + "' doesn't exist for the IDL")
+	// }
 
 	ret := &FieldMask{}
-	ret.desc = desc
+	// ret.desc = desc
 	// horizontal traversal...
 	for _, path := range paths {
-		setPath(IDL, path, ret, ret.desc)
+		setPath(path, ret, desc)
 	}
 
 	return ret
 }
 
-func (self FieldMask) String() string {
+func (self FieldMask) String(desc *thrift_reflection.StructDescriptor) string {
 	buf := strings.Builder{}
 	buf.WriteString("(")
-	buf.WriteString(self.desc.GetName())
+	buf.WriteString(desc.GetName())
 	buf.WriteString(")\n")
-	self.print(&buf, 0)
+	self.print(&buf, 0, desc)
 	return buf.String()
 }
 
-func (self FieldMask) print(buf *strings.Builder, indent int) {
-	for _, f := range self.desc.GetFields() {
+func (self FieldMask) print(buf *strings.Builder, indent int, desc *thrift_reflection.StructDescriptor) {
+	for _, f := range desc.GetFields() {
 		if !self.InMask(f.GetID()) {
 			continue
 		}
@@ -153,7 +152,7 @@ func (self FieldMask) print(buf *strings.Builder, indent int) {
 	}
 }
 
-func (self FieldMask) printField(buf *strings.Builder, indent int, field *parser.Field) {
+func (self FieldMask) printField(buf *strings.Builder, indent int, field *thrift_reflection.FieldDescriptor) {
 	for i := 0; i < indent; i++ {
 		buf.WriteByte(' ')
 	}
@@ -162,27 +161,32 @@ func (self FieldMask) printField(buf *strings.Builder, indent int, field *parser
 	buf.WriteString(" (")
 	buf.WriteString(field.GetType().GetName())
 	buf.WriteString(")\n")
-	next := self.Next(field.GetID())
-	if next != nil {
-		next.print(buf, indent)
+	nd, err := field.GetType().GetStructDescriptor()
+	if err == nil {
+		next := self.Next(field.GetID())
+		if next != nil {
+			next.print(buf, indent, nd)
+		} else {
+			buf.WriteString("...\n")
+		}
 	}
 }
 
-func setPath(IDL *parser.Thrift, path string, cur *FieldMask, curDesc *parser.StructLike) {
+func setPath(path string, cur *FieldMask, curDesc *thrift_reflection.StructDescriptor) {
 	// vertical traversal...
 	iterPath(path, func(name string, path string) bool {
 		// find the field desc
-		f, ok := curDesc.GetField(name)
-		if !ok {
+		f := curDesc.GetFieldByName(name)
+		if f == nil {
 			panic("path '" + name + "' doesn't exist in current struct " + curDesc.GetName())
 		}
 
 		// set the field's mask
 		cur.flat.Set(fieldID(f.GetID()))
 
-		ft := f.GetType()
-		nextDesc := utils.GetStructLike(ft.GetName(), IDL)
-		if nextDesc == nil {
+		var err error
+		curDesc, err = f.GetType().GetStructDescriptor()
+		if err != nil {
 			if path != "" {
 				panic("too deep path '" + path + "' for current struct " + curDesc.GetName())
 			}
@@ -191,10 +195,8 @@ func setPath(IDL *parser.Thrift, path string, cur *FieldMask, curDesc *parser.St
 			if !cur.next.IsInitialized() {
 				cur.next = makeFieldMaskMap(curDesc.GetFields())
 			}
-			curDesc = nextDesc
 			// deep down to the next fieldmask
 			cur = cur.next.GetOrAlloc(fieldID(f.GetID()))
-			cur.desc = curDesc
 		}
 
 		// continue next layer
@@ -229,7 +231,7 @@ func iterPath(path string, f func(name, path string) bool) {
 	}
 }
 
-func (self *FieldMask) PathInMask(path string) bool {
+func (self *FieldMask) PathInMask(desc *thrift_reflection.StructDescriptor, path string) bool {
 	in := true
 	iterPath(path, func(name, path string) bool {
 		// empty fm or path means **IN MASK**
@@ -238,8 +240,8 @@ func (self *FieldMask) PathInMask(path string) bool {
 		}
 
 		// check if name exist
-		f, ok := self.desc.GetField(name)
-		if !ok {
+		f := desc.GetFieldByName(name)
+		if f == nil {
 			in = false
 			return false
 		}
@@ -247,6 +249,16 @@ func (self *FieldMask) PathInMask(path string) bool {
 		// check if name set mask
 		if !self.InMask(f.GetID()) {
 			in = false
+			return false
+		}
+
+		// deep to next desc
+		var err error
+		desc, err = f.GetType().GetStructDescriptor()
+		if err != nil {
+			if path != "" {
+				in = false
+			}
 			return false
 		}
 

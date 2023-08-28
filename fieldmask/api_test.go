@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 var (
@@ -50,6 +51,7 @@ struct ExtraInfo {
 struct MetaInfo {
 	1: map<string, string> PersistentKVS,
 	2: map<string, string> TransientKVS,
+	3: Base base,
 }
 
 struct BaseResp {
@@ -84,7 +86,6 @@ func TestNewFieldMaskFromAST(t *testing.T) {
 			want: &FieldMask{
 				flat: fieldMaskBitmap([]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
 				next: fieldMaskMap{},
-				desc: &parser.StructLike{Name: "Base"},
 			},
 		},
 	}
@@ -94,26 +95,26 @@ func TestNewFieldMaskFromAST(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := NewFieldMaskFromAST(IDL, tt.args.rootStruct, tt.args.paths...)
-			if tt.want.desc.Name != got.desc.Name {
-				t.Fatal("not expected desc, ", tt.want.desc.Name, got.desc.Name)
-			}
+			fd := thrift_reflection.RegisterAST(IDL)
+			st := fd.GetStructDescriptor(tt.args.rootStruct)
+			got := NewFieldMaskFromNames(st, tt.args.paths...)
+
 			if !reflect.DeepEqual(got.flat, tt.want.flat) {
 				t.Fatal("not expected flat, ", tt.want.flat, got.flat)
 			}
-			println(got.String())
+			println(got.String(st))
 			for _, path := range tt.args.paths {
-				if !got.PathInMask(path) {
+				if !got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
 			}
 			for _, path := range tt.args.inMasks {
-				if !got.PathInMask(path) {
+				if !got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
 			}
 			for _, path := range tt.args.notInMasks {
-				if got.PathInMask(path) {
+				if got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
 			}
