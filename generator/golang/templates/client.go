@@ -105,5 +105,5 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 	{{- end}}{{/* If .Void */}}
 }
 {{- end}}{{/* range .Functions */}}
-{{- end}}{{/* define "Cleint" */}}
+{{- end}}{{/* define "Client" */}}
 `
