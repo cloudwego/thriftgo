@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2023 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ struct ExtraInfo {
 struct MetaInfo {
 	1: map<string, string> PersistentKVS,
 	2: map<string, string> TransientKVS,
-	3: Base base,
+	3: Base Base,
 }
 
 struct BaseResp {
@@ -61,7 +61,7 @@ struct BaseResp {
 }`
 )
 
-func TestNewFieldMaskFromAST(t *testing.T) {
+func TestNewFieldMaskFromNames(t *testing.T) {
 	type args struct {
 		IDL        string
 		rootStruct string
@@ -80,12 +80,11 @@ func TestNewFieldMaskFromAST(t *testing.T) {
 				IDL:        baseIDL,
 				rootStruct: "Base",
 				paths:      []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"},
-				inMasks:    []string{"Meta.PersistentKVS", "Meta.TransientKVS"},
+				inMasks:    []string{"Meta.PersistentKVS", "Meta.TransientKVS", "Meta.Base.Caller"},
 				notInMasks: []string{"TrafficEnv.Name", "TrafficEnv.Code", "Caller", "Addr", "Extra", "Extra.KVS"},
 			},
 			want: &FieldMask{
 				flat: fieldMaskBitmap([]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
-				next: fieldMaskMap{},
 			},
 		},
 	}
@@ -97,12 +96,15 @@ func TestNewFieldMaskFromAST(t *testing.T) {
 			}
 			fd := thrift_reflection.RegisterAST(IDL)
 			st := fd.GetStructDescriptor(tt.args.rootStruct)
+
 			got := NewFieldMaskFromNames(st, tt.args.paths...)
 
 			if !reflect.DeepEqual(got.flat, tt.want.flat) {
 				t.Fatal("not expected flat, ", tt.want.flat, got.flat)
 			}
+
 			println(got.String(st))
+
 			for _, path := range tt.args.paths {
 				if !got.PathInMask(st, path) {
 					t.Fatal(path)
@@ -119,5 +121,51 @@ func TestNewFieldMaskFromAST(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func BenchmarkNewFieldMask(b *testing.B) {
+	IDL, err := parser.ParseString("a.thrift", baseIDL)
+	if err != nil {
+		b.Fatal(err)
+	}
+	fd := thrift_reflection.RegisterAST(IDL)
+	st := fd.GetStructDescriptor("Base")
+	if st == nil {
+		b.Fail()
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		fm := NewFieldMaskFromNames(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
+		fm.Recycle()
+	}
+}
+
+func BenchmarkFieldMask_InMask(b *testing.B) {
+	IDL, err := parser.ParseString("a.thrift", baseIDL)
+	if err != nil {
+		b.Fatal(err)
+	}
+	fd := thrift_reflection.RegisterAST(IDL)
+	st := fd.GetStructDescriptor("Base")
+	if st == nil {
+		b.Fail()
+	}
+	fm := NewFieldMaskFromNames(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if !fm.InMask(5) {
+			b.Fail()
+		}
+		next := fm.Next(5)
+		if !next.InMask(1) {
+			b.Fail()
+		}
+		if next.InMask(256) {
+			b.Fail()
+		}
+		if next.InMask(1024) {
+			b.Fail()
+		}
 	}
 }
