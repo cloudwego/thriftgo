@@ -61,6 +61,15 @@ struct BaseResp {
 }`
 )
 
+func GetDescriptor(IDL string, root string) *thrift_reflection.StructDescriptor {
+	ast, err := parser.ParseString("a.thrift", IDL)
+	if err != nil {
+		panic(err.Error())
+	}
+	fd := thrift_reflection.RegisterAST(ast)
+	return fd.GetStructDescriptor(root)
+}
+
 func TestNewFieldMaskFromNames(t *testing.T) {
 	type args struct {
 		IDL        string
@@ -90,13 +99,7 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			IDL, err := parser.ParseString("a.thrift", tt.args.IDL)
-			if err != nil {
-				t.Fatal(err)
-			}
-			fd := thrift_reflection.RegisterAST(IDL)
-			st := fd.GetStructDescriptor(tt.args.rootStruct)
-
+			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
 			got := NewFieldMaskFromNames(st, tt.args.paths...)
 
 			if !reflect.DeepEqual(got.flat, tt.want.flat) {
