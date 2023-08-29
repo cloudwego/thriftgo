@@ -15,8 +15,6 @@
 package test_util
 
 import (
-	"testing"
-
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang"
@@ -25,10 +23,10 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 )
 
-func GenerateGolang(tb testing.TB, idl string, output string, genOpts []plugin.Option, pluginOpts []*plugin.Desc) (generator.Generator, *plugin.Response) {
+func GenerateGolang(idl string, output string, genOpts []plugin.Option, pluginOpts []*plugin.Desc) (generator.Generator, *plugin.Response) {
 	ast, err := parser.ParseFile(idl, nil, true)
 	if err != nil {
-		tb.Fatalf("parse falied: %s", err.Error())
+		panic(err)
 	}
 
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
@@ -37,13 +35,13 @@ func GenerateGolang(tb testing.TB, idl string, output string, genOpts []plugin.O
 	})
 	if ok {
 		if err = resolver.ResolveSymbols(ast); err != nil {
-			tb.Fatalf("resolve: %s", err.Error())
+			panic(err)
 		}
 	}
 
 	var gen generator.Generator
 	if err := gen.RegisterBackend(new(golang.GoBackend)); err != nil {
-		tb.Fatal(err)
+		panic(err)
 	}
 
 	log := backend.LogFunc{
@@ -68,7 +66,7 @@ func GenerateGolang(tb testing.TB, idl string, output string, genOpts []plugin.O
 	res := gen.Generate(arg)
 
 	if v := res.GetError(); v != "" {
-		tb.Fatal(v)
+		panic(v)
 	}
 
 	return gen, res
