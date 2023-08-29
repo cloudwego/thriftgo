@@ -28,15 +28,18 @@ type Trimmer struct {
 	// mark the parts of the file's ast that is used
 	marks  map[string]map[interface{}]bool
 	outDir string
+	// use -m
+	trimMethods []string
 }
 
-// TrimAST 裁剪单个AST，如果作为thriftgo参数调用则第二个参数设为true
-func TrimAST(ast *parser.Thrift) error {
+// TrimAST 裁剪单个AST，如果以方法为单位裁切，第二个参数传方法名列表
+func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
 	}
 	trimmer.asts[ast.Filename] = ast
+	trimmer.trimMethods = trimMethods
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	ast.Name2Category = nil

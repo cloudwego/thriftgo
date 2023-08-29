@@ -94,6 +94,9 @@ struct Simple { // should not appear
     2: i32 int
 }
 
+struct MaybeUseless{
+}
+
 service EmployeeService extends sample1b.GetPerson {
     Employee getEmployee(1: string id)
     void addEmployee(1: Employee employee)
@@ -112,6 +115,7 @@ service CompanyService {
     void addCompany(1: Company company) throws(1: sample1b.AnotherException exc)
     void updateCompany(1: string id, 2: Company company)
     list<sample1b.Department> getDepartments(1: string company_id)
+    void anotherUselessMethod(1: MaybeUseless useless)
 }
 
 

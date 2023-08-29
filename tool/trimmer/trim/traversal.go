@@ -56,6 +56,15 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	var listService []*parser.Service
 	for i := range ast.Services {
 		if t.marks[filename][ast.Services[i]] {
+			if t.trimMethods != nil {
+				var trimmedMethods []*parser.Function
+				for j := range ast.Services[i].Functions {
+					if t.marks[filename][ast.Services[i].Functions[j]] {
+						trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
+					}
+				}
+				ast.Services[i].Functions = trimmedMethods
+			}
 			listService = append(listService, ast.Services[i])
 		}
 	}
