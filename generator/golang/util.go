@@ -43,6 +43,7 @@ const (
 	DefaultUnknownLib   = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 	DefaultMetaLib      = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
+	ThriftFieldMaskLib  = "github.com/cloudwego/thriftgo/fieldmask"
 	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
 	defaultTemplate     = "default"
 )

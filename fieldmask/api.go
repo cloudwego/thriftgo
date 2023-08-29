@@ -118,11 +118,11 @@ func (self FieldMask) String(desc *thrift_reflection.StructDescriptor) string {
 	return buf.String()
 }
 
-func (self *FieldMask) InMask(id int32) bool {
+func (self *FieldMask) InMask(id int16) bool {
 	return self == nil || self.flat == nil || self.flat.Get(fieldID(id))
 }
 
-func (self *FieldMask) Next(id int32) *FieldMask {
+func (self *FieldMask) Next(id int16) *FieldMask {
 	if self == nil || self.next == nil {
 		return nil
 	}
@@ -145,7 +145,7 @@ func (self *FieldMask) PathInMask(desc *thrift_reflection.StructDescriptor, path
 		}
 
 		// check if name set mask
-		if !self.InMask(f.GetID()) {
+		if !self.InMask(int16(f.GetID())) {
 			in = false
 			return false
 		}
@@ -160,7 +160,7 @@ func (self *FieldMask) PathInMask(desc *thrift_reflection.StructDescriptor, path
 			return false
 		}
 
-		self = self.Next(f.GetID())
+		self = self.Next(int16(f.GetID()))
 		return true
 	})
 

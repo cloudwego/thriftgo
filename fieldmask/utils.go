@@ -24,7 +24,7 @@ import (
 
 func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_reflection.StructDescriptor) {
 	for _, f := range desc.GetFields() {
-		if !self.InMask(f.GetID()) {
+		if !self.InMask(int16(f.GetID())) {
 			continue
 		}
 		self.printField(buf, indent+2, f)
@@ -42,7 +42,7 @@ func (self FieldMask) printField(buf *strings.Builder, indent int, field *thrift
 	buf.WriteString(")\n")
 	nd, err := field.GetType().GetStructDescriptor()
 	if err == nil {
-		next := self.Next(field.GetID())
+		next := self.Next(int16(field.GetID()))
 		if next != nil {
 			next.print(buf, indent, nd)
 		} else {

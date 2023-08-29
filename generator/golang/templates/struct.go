@@ -32,6 +32,10 @@ type {{$TypeName}} struct {
 	{{- UseStdLibrary "unknown"}}
 	_unknownFields unknown.Fields
 	{{- end}}
+	{{- if Features.WithFieldMask}}
+	{{- UseStdLibrary "fieldmask"}}
+	_fieldmask *fieldmask.FieldMask
+	{{- end}}
 }
 
 {{- if Features.GenerateTypeMeta}}
@@ -76,6 +80,15 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 	return len(p._unknownFields) > 0
 }
 {{end}}{{/* if Features.KeepUnknownFields */}}
+
+{{if Features.WithFieldMask}}
+func (p *{{$TypeName}}) GetFieldMask() *fieldmask.FieldMask {
+	return p._fieldmask
+}
+func (p *{{$TypeName}}) SetFieldMask(fm *fieldmask.FieldMask) {
+	p._fieldmask = fm
+}
+{{end}}{{/* if Features.WithFieldMask */}}
 
 var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{- range .Fields}}
@@ -154,11 +167,17 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 			break;
 		}
 		{{if or (gt (len .Fields) 0) Features.KeepUnknownFields}}
+		{{- if Features.WithFieldMask}}
+		if !p._fieldmask.InMask(fieldId) {
+			{{- template "HandleUnknownFields"}}
+			goto FieldEnd
+		}
+		{{- end}}{{/* Features.WithFieldMask */}}
 		switch fieldId {
 		{{- range .Fields}}
 		case {{.ID}}:
 			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }} {
-				if err = p.{{.Reader}}(iprot); err != nil {
+				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask .Type.Category.IsStructLike}}, p._fieldmask.Next(fieldId){{end}}); err != nil {
 					goto ReadFieldError
 				}
 				{{- if .Requiredness.IsRequired}}
@@ -171,22 +190,14 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 			}
 		{{- end}}{{/* range .Fields */}}
 		default:
-			{{- if Features.KeepUnknownFields}}
-			if err = p._unknownFields.Append(iprot, name, fieldTypeId, fieldId); err != nil {
-				goto UnknownFieldsAppendError
-			}
-			{{- else}}
-		    if err = iprot.Skip(fieldTypeId); err != nil {
-				goto SkipFieldError
-		    }
-			{{- end}}{{/* if Features.KeepUnknownFields */}}
+			{{- template "HandleUnknownFields"}}
 		}
 		{{- else -}}
 		if err = iprot.Skip(fieldTypeId); err != nil {
 		    goto SkipFieldTypeError
 		}
 		{{- end}}{{/* if len(.Fields) > 0 */}}
-
+		{{if Features.WithFieldMask}}FieldEnd:{{end}}
 		if err = iprot.ReadFieldEnd(); err != nil {
 		  goto ReadFieldEndError
 		}
@@ -239,6 +250,20 @@ RequiredFieldNotSetError:
 {{- end}}{{/* define "StructLikeRead" */}}
 `
 
+var HandleUnknownFields = `
+{{define "HandleUnknownFields"}}
+{{- if Features.KeepUnknownFields}}
+if err = p._unknownFields.Append(iprot, name, fieldTypeId, fieldId); err != nil {
+	goto UnknownFieldsAppendError
+}
+{{- else}}
+if err = iprot.Skip(fieldTypeId); err != nil {
+	goto SkipFieldError
+}
+{{- end}}{{/* if Features.KeepUnknownFields */}}
+{{- end}}{{/* define "HandleUnknownFields" */}}
+`
+
 // StructLikeReadField .
 var StructLikeReadField = `
 {{define "StructLikeReadField"}}
@@ -246,7 +271,7 @@ var StructLikeReadField = `
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
 {{$FieldName := .GoName}}
-func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
+func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol{{if and Features.WithFieldMask .Type.Category.IsStructLike}}, fm *fieldmask.FieldMask{{end}}) error {
 	{{- $ctx := MkRWCtx .}}
 	{{- template "FieldRead" $ctx}}
 	return nil
@@ -465,6 +490,7 @@ var FieldRead = `
 var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
 	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
+	{{if Features.WithFieldMask}}{{.Target}}._fieldmask = fm{{end}}
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
 	}
