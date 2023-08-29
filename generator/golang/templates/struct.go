@@ -300,11 +300,14 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	}
 	if p != nil {
 		{{- range .Fields}}
+		{{- if Features.WithFieldMask}}
+		if p._fieldmask.InMask({{.ID}}) { {{- end}}
 		if err = p.{{.Writer}}(oprot); err != nil {
 			fieldId = {{.ID}}
 			goto WriteFieldError
 		}
-		{{- end}}
+		{{- if Features.WithFieldMask}}}{{end}}
+		{{- end}}{{/* range .Fields */}}
 		{{if Features.KeepUnknownFields}}
 		if err = p._unknownFields.Write(oprot); err != nil {
 			goto UnknownFieldsWriteError
