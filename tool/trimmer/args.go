@@ -17,7 +17,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudwego/kitex/tool/internal_pkg/util"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/version"
 	"os"
@@ -44,7 +43,7 @@ type Arguments struct {
 	OutputFile string
 	IDL        string
 	Recurse    string
-	Methods    util.StringSlice
+	Methods    StringSlice
 }
 
 // BuildFlags initializes command line flags.
