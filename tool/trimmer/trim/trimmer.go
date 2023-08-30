@@ -30,7 +30,8 @@ type Trimmer struct {
 	marks  map[string]map[interface{}]bool
 	outDir string
 	// use -m
-	trimMethods []string
+	trimMethods     []string
+	trimMethodValid []bool
 }
 
 // TrimAST trim the single AST, pass method names if -m specified
@@ -41,6 +42,7 @@ func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.trimMethods = trimMethods
+	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	for i, method := range trimMethods {
 		parts := strings.Split(method, ".")
 		if len(parts) < 2 {
@@ -62,6 +64,13 @@ func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 	_, err = checker.CheckAll(ast)
 	check(err)
 	check(semantic.ResolveSymbols(ast))
+
+	for i, method := range trimMethods {
+		if !trimmer.trimMethodValid[i] {
+			println("err: method", method, "not found!")
+			os.Exit(2)
+		}
+	}
 
 	return nil
 }

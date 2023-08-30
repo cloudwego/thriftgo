@@ -44,10 +44,11 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 	for _, function := range svc.Functions {
 		if t.trimMethods != nil {
 			funcName := svc.Name + "." + function.Name
-			for _, method := range t.trimMethods {
+			for i, method := range t.trimMethods {
 				if funcName == method {
 					t.marks[filename][svc] = true
 					t.markFunction(function, ast, filename)
+					t.trimMethodValid[i] = true
 					continue
 				}
 			}
