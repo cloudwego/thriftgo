@@ -15,7 +15,6 @@
 package fieldmask
 
 import (
-	"os"
 	"testing"
 
 	"github.com/apache/thrift/lib/go/thrift"
@@ -26,7 +25,7 @@ import (
 	"github.com/cloudwego/thriftgo/test/golang/test_util"
 )
 
-func TestMain(m *testing.M) {
+func TestGen(t *testing.T) {
 	g, r := test_util.GenerateGolang("a.thrift", "output/old/", nil, nil)
 	if err := g.Persist(r); err != nil {
 		panic(err)
@@ -38,7 +37,6 @@ func TestMain(m *testing.M) {
 	if err := g.Persist(r); err != nil {
 		panic(err)
 	}
-	os.Exit(m.Run())
 }
 
 func SampleNewBase() *nbase.Base {
@@ -93,9 +91,6 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 			if err := obj.Write(t); err != nil {
 				b.Fatal(err)
 			}
-			// if err := obj.Read(t); err != nil {
-			// 	b.Fatal(err)
-			// }
 			buf.Reset()
 		}
 	})
@@ -109,9 +104,6 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 			if err := obj.Write(t); err != nil {
 				b.Fatal(err)
 			}
-			// if err := obj.Read(t); err != nil {
-			// 	b.Fatal(err)
-			// }
 			buf.Reset()
 		}
 	})
@@ -122,15 +114,12 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
 		fm := fieldmask.NewFieldMaskFromNames(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
-		obj.SetFieldMask(fm)
 
 		for i := 0; i < b.N; i++ {
+			obj.SetFieldMask(fm)
 			if err := obj.Write(t); err != nil {
 				b.Fatal(err)
 			}
-			// if err := obj.Read(t); err != nil {
-			// 	b.Fatal(err)
-			// }
 			buf.Reset()
 		}
 	})
@@ -186,11 +175,11 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		obj = nbase.NewBase()
 
 		fm := fieldmask.NewFieldMaskFromNames(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
-		obj.SetFieldMask(fm)
 
 		for i := 0; i < b.N; i++ {
 			buf.Reset()
 			buf.Write(data)
+			obj.SetFieldMask(fm)
 			if err := obj.Read(t); err != nil {
 				b.Fatal(err)
 			}
