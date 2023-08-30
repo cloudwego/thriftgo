@@ -19,6 +19,7 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/semantic"
 	"os"
+	"strings"
 )
 
 type Trimmer struct {
@@ -32,7 +33,7 @@ type Trimmer struct {
 	trimMethods []string
 }
 
-// TrimAST 裁剪单个AST，如果以方法为单位裁切，第二个参数传方法名列表
+// TrimAST trim the single AST, pass method names if -m specified
 func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -40,6 +41,17 @@ func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.trimMethods = trimMethods
+	for i, method := range trimMethods {
+		parts := strings.Split(method, ".")
+		if len(parts) < 2 {
+			if len(ast.Services) == 1 {
+				trimMethods[i] = ast.Services[0].Name + "." + method
+			} else {
+				println("please specify service name!\n  -m usage: -m [service_name.method_name]")
+				os.Exit(2)
+			}
+		}
+	}
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	ast.Name2Category = nil
