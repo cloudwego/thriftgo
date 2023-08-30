@@ -16,11 +16,12 @@ package golang
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"go/format"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 
 	ref_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/ref"
 	reflection_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/reflection"

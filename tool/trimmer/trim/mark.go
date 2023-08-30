@@ -73,7 +73,6 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 }
 
 func (t *Trimmer) markFunction(function *parser.Function, ast *parser.Thrift, filename string) {
-
 	t.marks[filename][function] = true
 	for _, arg := range function.Arguments {
 		t.markType(arg.Type, ast, filename)

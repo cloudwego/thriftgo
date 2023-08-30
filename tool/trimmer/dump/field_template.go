@@ -33,12 +33,14 @@ set<{{- template "Type" .ValueType}}>
 {{- template "Annotations" .Annotations -}}
 {{end}}
 `
+
 const TypeDefTemplate = `
 {{define "Typedef"}}
 {{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
 {{- "typedef"}} {{template "Type" .Type}} {{.Alias}} {{template "Annotations" .Annotations}}
 {{- end -}}
 `
+
 const ConstValueTemplate = `
 {{define "ConstValue"}}
 {{- if .TypedValue.Double}}{{.TypedValue.Double}}{{end}}
@@ -49,6 +51,7 @@ const ConstValueTemplate = `
 {{- if .TypedValue.IsSetMap}}{{template "ConstMap" .TypedValue.Map}}{{end}}
 {{- end -}}
 `
+
 const ConstListTemplate = `
 {{define "ConstList"}}
 {{- "[" -}}
@@ -58,6 +61,7 @@ const ConstListTemplate = `
 {{- "]" -}}
 {{- end -}}
 `
+
 const ConstMapTemplate = `
 {{define "ConstMap"}}
 {{- "{" -}}
@@ -67,6 +71,7 @@ const ConstMapTemplate = `
 {{- "}" -}}
 {{- end -}}
 `
+
 const ConstantTemplate = `
 {{define "Constant"}}
 {{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
@@ -75,6 +80,7 @@ const ConstantTemplate = `
 {{- template "Annotations" .Annotations -}}
 {{- end -}}
 `
+
 const EnumTemplate = `
 {{define "Enum"}}
 {{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
@@ -86,6 +92,7 @@ const EnumTemplate = `
 } {{template "Annotations" .Annotations -}}{{"\n"}}
 {{- end -}}
 `
+
 const FieldTemplate = `
 {{define "Field"}}
 {{- if .ReservedComments}}{{"    "}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
@@ -97,6 +104,7 @@ const FieldTemplate = `
 {{- template "Annotations" .Annotations -}}
 {{- end -}}
 `
+
 const StructTemplate = `
 {{define "Struct"}}
 {{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
@@ -107,6 +115,7 @@ const StructTemplate = `
 } {{template "Annotations" .Annotations -}}{{"\n"}}
 {{- end -}}
 `
+
 const UnionTemplate = `
 {{define "Union"}}
 {{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
@@ -117,6 +126,7 @@ const UnionTemplate = `
 } {{template "Annotations" .Annotations -}}{{"\n"}}
 {{- end -}}
 `
+
 const ExceptionTemplate = `
 {{define "Exception"}}
 {{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
@@ -127,6 +137,7 @@ const ExceptionTemplate = `
 } {{template "Annotations" .Annotations -}}{{"\n"}}
 {{- end -}}
 `
+
 const ServiceTemplate = `
 {{define "Service"}}
 {{- if .ReservedComments}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
@@ -137,6 +148,7 @@ const ServiceTemplate = `
 } {{template "Annotations" .Annotations -}}{{"\n"}}
 {{- end -}}
 `
+
 const FunctionTemplate = `
 {{define "Function"}}
 {{- if .ReservedComments}}{{"    "}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{end -}}
@@ -165,6 +177,7 @@ const SingleLineFieldTemplate = `
 {{- template "Annotations" .Annotations -}}
 {{- end -}}
 `
+
 const AnnotationsTemplate = `
 {{define "Annotations"}}
 {{- if . -}}
@@ -183,9 +196,11 @@ const AnnotationsTemplate = `
 func RemoveLastComma(s string) string {
 	return strings.TrimRight(s, ", ")
 }
+
 func JoinQuotes(s string) string {
 	return fmt.Sprintf("%s", "#OUTQUOTES"+s+"#OUTQUOTES")
 }
+
 func ReplaceQuotes(s string) string {
 	out := strings.Replace(s, "\"", "#OUTQUOTES", -1)
 	return out

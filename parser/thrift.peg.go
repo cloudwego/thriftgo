@@ -426,6 +426,7 @@ func Size(size int) func(*ThriftIDL) error {
 		return nil
 	}
 }
+
 func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 	var (
 		max                  token32

@@ -16,16 +16,17 @@ package trim
 
 import (
 	"fmt"
+	"path/filepath"
+	"testing"
+
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/cloudwego/thriftgo/semantic"
-	"path/filepath"
-	"testing"
 )
 
 func TestTrimmer(t *testing.T) {
 	t.Run("trim AST-case 1", testCase1)
-	//t.Run("trim AST - test many", testMany)
+	// t.Run("trim AST - test many", testMany)
 }
 
 // test single file ast trimming

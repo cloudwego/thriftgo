@@ -67,26 +67,26 @@ func BuildRefScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, *Scope, error) {
 	// todo not support now
 	// half ref
 	// we will change the fields from scope, we can't use BuildScope() to create scope because that function will put scope into a cache map.
-	localScope, err := doBuildScope(cu, ast)
-	if err != nil {
-		return nil, nil, err
-	}
-	refScope, err := doBuildScope(cu, ast)
-	if err != nil {
-		return nil, nil, err
-	}
-	refScope.setRefImport(thriftRef.Path)
-	// do not generate service to remote
-	refScope.services = nil
-	// grepService(thriftRef.Services, &localScope.services, &refScope.services)
-	grepStructs(thriftRef.Unions, &localScope.unions, &refScope.unions)
-	grepStructs(thriftRef.Exceptions, &localScope.exceptions, &refScope.exceptions)
-	grepStructs(thriftRef.Structs, &localScope.structs, &refScope.structs)
-	grepConstants(thriftRef.Consts, &localScope.constants, &refScope.constants)
-	grepTypedefs(thriftRef.Typedefs, &localScope.typedefs, &refScope.typedefs)
-	grepEnums(thriftRef.Enums, &localScope.enums, &refScope.enums)
-	// todo clean ref scope import
-	return localScope, refScope, nil
+	//localScope, err := doBuildScope(cu, ast)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	//refScope, err := doBuildScope(cu, ast)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	//refScope.setRefImport(thriftRef.Path)
+	//// do not generate service to remote
+	//refScope.services = nil
+	//// grepService(thriftRef.Services, &localScope.services, &refScope.services)
+	//grepStructs(thriftRef.Unions, &localScope.unions, &refScope.unions)
+	//grepStructs(thriftRef.Exceptions, &localScope.exceptions, &refScope.exceptions)
+	//grepStructs(thriftRef.Structs, &localScope.structs, &refScope.structs)
+	//grepConstants(thriftRef.Consts, &localScope.constants, &refScope.constants)
+	//grepTypedefs(thriftRef.Typedefs, &localScope.typedefs, &refScope.typedefs)
+	//grepEnums(thriftRef.Enums, &localScope.enums, &refScope.enums)
+	//// todo clean ref scope import
+	//return localScope, refScope, nil
 }
 
 func isContains(sa []string, s string) bool {

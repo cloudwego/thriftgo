@@ -17,10 +17,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudwego/thriftgo/plugin"
-	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/plugin"
+	"github.com/cloudwego/thriftgo/version"
 )
 
 // StringSlice implements the flag.Value interface on string slices

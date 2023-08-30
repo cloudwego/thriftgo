@@ -16,9 +16,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"runtime/debug"
+
+	"github.com/cloudwego/thriftgo/version"
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"

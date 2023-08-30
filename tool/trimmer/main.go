@@ -16,14 +16,15 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/semantic"
 	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
 	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"github.com/cloudwego/thriftgo/version"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
 )
@@ -101,7 +102,6 @@ func main() {
 				println("-o should be set as a valid dir to enable -r", err.Error())
 				os.Exit(2)
 			}
-
 		}
 		createDirTree(a.Recurse, a.OutputFile)
 		recurseDump(ast, a.Recurse, a.OutputFile)
@@ -121,7 +121,7 @@ func main() {
 	os.Exit(0)
 }
 
-func recurseDump(ast *parser.Thrift, sourceDir string, outDir string) {
+func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	if ast == nil {
 		return
 	}
@@ -139,7 +139,7 @@ func recurseDump(ast *parser.Thrift, sourceDir string, outDir string) {
 	}
 }
 
-func writeStringToFile(filename string, content string) error {
+func writeStringToFile(filename, content string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
