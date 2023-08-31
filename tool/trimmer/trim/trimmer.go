@@ -16,10 +16,11 @@ package trim
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/semantic"
 	"os"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/semantic"
 )
 
 type Trimmer struct {
@@ -76,7 +77,7 @@ func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 }
 
 // Trim to trim thrift files to remove unused fields
-func Trim(files []string, includeDir []string, outDir string) error {
+func Trim(files, includeDir []string, outDir string) error {
 	trimmer, err := newTrimmer(files, outDir)
 	if err != nil {
 		return err
@@ -95,7 +96,7 @@ func Trim(files []string, includeDir []string, outDir string) error {
 		check(semantic.ResolveSymbols(ast))
 		trimmer.asts[filename] = ast
 		trimmer.markAST(ast)
-		//TODO: 多文件处理/dump成.thrift
+		// TODO: handle multi files and dump to 'xxx.thrift'
 	}
 
 	return nil

@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"runtime/debug"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
+	"github.com/cloudwego/thriftgo/version"
 )
 
 var (

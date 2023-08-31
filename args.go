@@ -17,12 +17,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudwego/thriftgo/version"
 	"log"
 	"os"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/cloudwego/thriftgo/version"
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/backend"

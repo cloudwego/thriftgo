@@ -16,12 +16,13 @@ package dump
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/pkg/test"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
 func TestDumpSingle(t *testing.T) {

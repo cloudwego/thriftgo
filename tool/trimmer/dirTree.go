@@ -21,7 +21,7 @@ import (
 )
 
 // create directory-tree before dump
-func createDirTree(sourceDir string, destinationDir string) {
+func createDirTree(sourceDir, destinationDir string) {
 	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -38,7 +38,6 @@ func createDirTree(sourceDir string, destinationDir string) {
 		}
 		return nil
 	})
-
 	if err != nil {
 		fmt.Printf("manage output error: %v\n", err)
 		os.Exit(2)
