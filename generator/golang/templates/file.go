@@ -30,7 +30,7 @@ import (
 // jsonMarshaler customize json.Marshal as you like
 type jsonMarshaler func(v interface{}) ([]byte, error)
 var jsonFunc jsonMarshaler = json.Marshal
-func ResetFunc(jn jsonMarshaler) {
+func ResetJSONMarshalFunc(jn jsonMarshaler) {
 	jsonFunc = jn
 }
 {{- end}}
