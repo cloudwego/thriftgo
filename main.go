@@ -19,13 +19,12 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/cloudwego/thriftgo/version"
-
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
+	"github.com/cloudwego/thriftgo/version"
 )
 
 var (

@@ -96,7 +96,7 @@ func Trim(files, includeDir []string, outDir string) error {
 		check(semantic.ResolveSymbols(ast))
 		trimmer.asts[filename] = ast
 		trimmer.markAST(ast)
-		// TODO: 多文件处理/dump成.thrift
+		// TODO: handle multi files and dump to 'xxx.thrift'
 	}
 
 	return nil
