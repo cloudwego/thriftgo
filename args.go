@@ -15,7 +15,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -120,7 +119,8 @@ func (a *Arguments) checkOptions(opt []plugin.Option) error {
 	cu.HandleOptions(params)
 	if cu.Features().EnableNestedStruct {
 		if cu.Template() != "slim" {
-			return errors.New("EnableNestedStruct is only available under the \"slim\" template, example: -go:template=slim,enable_nested_struct")
+			log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+			cu.SetTemplate("slim")
 		}
 	}
 	return nil
