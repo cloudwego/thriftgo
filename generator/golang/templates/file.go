@@ -25,6 +25,16 @@ import (
 	{{- if Features.GenerateReflectionInfo}}thriftreflection "github.com/cloudwego/kitex/pkg/reflection/thrift"{{end}}
 )
 
+{{- if Features.GenerateJSONStringMethod }}
+{{- UseStdLibrary "json"}}
+// jsonMarshaler customize json.Marshal as you like
+type jsonMarshaler func(v interface{}) ([]byte, error)
+var jsonFunc jsonMarshaler = json.Marshal
+func ResetFunc(jn jsonMarshaler) {
+	jsonFunc = jn
+}
+{{- end}}
+
 {{template "Constant" .}}
 
 {{- range .Enums}}

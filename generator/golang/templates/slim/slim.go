@@ -94,8 +94,8 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 func (p *{{$TypeName}}) String() string {
 	{{- if Features.GenerateJSONStringMethod }}
 	{{- UseStdLibrary "json"}}
-		JsonBytes , _  := json.Marshal(p)
-		return string(JsonBytes)
+	JsonBytes , _  := jsonFunc(p)
+	return string(JsonBytes)	
 	{{- else}}
 	if p == nil {
 		return "<nil>"

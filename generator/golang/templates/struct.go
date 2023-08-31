@@ -96,7 +96,7 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 func (p *{{$TypeName}}) String() string {
 	{{- if Features.GenerateJSONStringMethod }}
 	{{- UseStdLibrary "json"}}
-		JsonBytes , _  := json.Marshal(p)
+		JsonBytes , _  := jsonFunc(p)
 		return string(JsonBytes)
 	{{- else}}
 	if p == nil {
