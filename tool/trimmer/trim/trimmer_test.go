@@ -16,16 +16,17 @@ package trim
 
 import (
 	"fmt"
+	"path/filepath"
+	"testing"
+
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/cloudwego/thriftgo/semantic"
-	"path/filepath"
-	"testing"
 )
 
 func TestTrimmer(t *testing.T) {
 	t.Run("trim AST-case 1", testCase1)
-	//t.Run("trim AST - test many", testMany)
+	// t.Run("trim AST - test many", testMany)
 }
 
 // test single file ast trimming
@@ -46,7 +47,7 @@ func testCase1(t *testing.T) {
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 
-	test.Assert(t, len(ast.Structs) == 5)
+	test.Assert(t, len(ast.Structs) == 6)
 	test.Assert(t, len(ast.Includes) == 1)
 	test.Assert(t, len(ast.Typedefs) == 3)
 	test.Assert(t, len(ast.Namespaces) == 1)

@@ -16,16 +16,19 @@ package dump
 
 import (
 	"bytes"
-	"github.com/cloudwego/thriftgo/parser"
 	"html"
 	"html/template"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/parser"
 )
 
 // DumpIDL Dump the ast to idl string
 func DumpIDL(ast *parser.Thrift) (string, error) {
-	tmpl, _ := template.New("thrift").Funcs(template.FuncMap{"RemoveLastComma": RemoveLastComma,
-		"JoinQuotes": JoinQuotes, "ReplaceQuotes": ReplaceQuotes}).
+	tmpl, _ := template.New("thrift").Funcs(template.FuncMap{
+		"RemoveLastComma": RemoveLastComma,
+		"JoinQuotes":      JoinQuotes, "ReplaceQuotes": ReplaceQuotes,
+	}).
 		Parse(IDLTemplate + TypeDefTemplate + AnnotationsTemplate +
 			ConstantTemplate + EnumTemplate + ConstValueTemplate + FieldTemplate + StructTemplate + UnionTemplate +
 			ExceptionTemplate + ServiceTemplate + FunctionTemplate + SingleLineFieldTemplate + TypeTemplate +

@@ -4,6 +4,7 @@ package plugin
 
 import (
 	"fmt"
+
 	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	"github.com/cloudwego/thriftgo/parser"
 )

@@ -453,6 +453,7 @@ func (r *resolver) ResolveTypedefs() error {
 			return fmt.Errorf("typedefs can not be resolved: %s", strings.Join(ss, ", "))
 		}
 		tds = tmp
+		cnt = len(tds)
 	}
 	return nil
 }

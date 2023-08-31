@@ -18,7 +18,6 @@ import "github.com/cloudwego/thriftgo/parser"
 
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
-
 	var listInclude []*parser.Include
 	for i := range ast.Includes {
 		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+
@@ -56,9 +55,17 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	var listService []*parser.Service
 	for i := range ast.Services {
 		if t.marks[filename][ast.Services[i]] {
+			if t.trimMethods != nil {
+				var trimmedMethods []*parser.Function
+				for j := range ast.Services[i].Functions {
+					if t.marks[filename][ast.Services[i].Functions[j]] {
+						trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
+					}
+				}
+				ast.Services[i].Functions = trimmedMethods
+			}
 			listService = append(listService, ast.Services[i])
 		}
 	}
 	ast.Services = listService
-
 }

@@ -15,8 +15,9 @@
 package config
 
 import (
-	"github.com/cloudwego/thriftgo/pkg/test"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
 func TestLoad(t *testing.T) {

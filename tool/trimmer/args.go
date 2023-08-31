@@ -17,10 +17,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudwego/thriftgo/plugin"
-	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/plugin"
+	"github.com/cloudwego/thriftgo/version"
 )
 
 // StringSlice implements the flag.Value interface on string slices
@@ -43,6 +44,7 @@ type Arguments struct {
 	OutputFile string
 	IDL        string
 	Recurse    string
+	Methods    StringSlice
 }
 
 // BuildFlags initializes command line flags.
@@ -56,6 +58,9 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 
 	f.StringVar(&a.Recurse, "r", "", "")
 	f.StringVar(&a.Recurse, "recurse", "", "")
+
+	f.Var(&a.Methods, "m", "")
+	f.Var(&a.Methods, "method", "")
 
 	f.Usage = help
 	return f
@@ -89,6 +94,7 @@ Options:
   -h, --help			Print help message and exit.
   -o, --out	[file/dir]	Specify the output IDL file/dir.
   -r, --recurse	[dir]		Specify a root dir and dump the included IDL recursively beneath the given root. -o should be set as a directory.
+  -m, --method [service.method] Only keep the specified methods and their dependents. Accept multiple -m.
 `)
 	// print backend options
 	for _, b := range g.AllBackend() {

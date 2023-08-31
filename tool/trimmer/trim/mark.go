@@ -37,8 +37,27 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		return
 	}
 
-	t.marks[filename][svc] = true
-	if svc.Extends != "" {
+	if t.trimMethods == nil {
+		t.marks[filename][svc] = true
+	}
+
+	for _, function := range svc.Functions {
+		if t.trimMethods != nil {
+			funcName := svc.Name + "." + function.Name
+			for i, method := range t.trimMethods {
+				if funcName == method {
+					t.marks[filename][svc] = true
+					t.markFunction(function, ast, filename)
+					t.trimMethodValid[i] = true
+					continue
+				}
+			}
+			continue
+		}
+		t.markFunction(function, ast, filename)
+	}
+
+	if svc.Extends != "" && t.marks[filename][svc] {
 		// handle extension
 		if svc.Reference != nil {
 			theInclude := ast.Includes[svc.Reference.Index]
@@ -51,17 +70,18 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 			}
 		}
 	}
+}
 
-	for _, function := range svc.Functions {
-		for _, arg := range function.Arguments {
-			t.markType(arg.Type, ast, filename)
-		}
-		for _, throw := range function.Throws {
-			t.markType(throw.Type, ast, filename)
-		}
-		if !function.Void {
-			t.markType(function.FunctionType, ast, filename)
-		}
+func (t *Trimmer) markFunction(function *parser.Function, ast *parser.Thrift, filename string) {
+	t.marks[filename][function] = true
+	for _, arg := range function.Arguments {
+		t.markType(arg.Type, ast, filename)
+	}
+	for _, throw := range function.Throws {
+		t.markType(throw.Type, ast, filename)
+	}
+	if !function.Void {
+		t.markType(function.FunctionType, ast, filename)
 	}
 }
 

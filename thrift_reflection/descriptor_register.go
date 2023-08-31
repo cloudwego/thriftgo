@@ -16,6 +16,7 @@ package thrift_reflection
 
 import (
 	"fmt"
+
 	"github.com/cloudwego/thriftgo/parser"
 )
 

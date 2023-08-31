@@ -16,11 +16,12 @@ package golang
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"go/format"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 
 	ref_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/ref"
 	reflection_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/reflection"
@@ -85,7 +86,7 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		err := trim.TrimAST(req.AST)
+		err := trim.TrimAST(req.AST, nil)
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
 		}
