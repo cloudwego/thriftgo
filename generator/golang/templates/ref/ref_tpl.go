@@ -21,6 +21,11 @@ package {{.FilePackage}}
 import (
 	{{InsertionPoint "imports"}}
 	{{define "Imports"}}
+		{{- if Features.CodeRefSlim }}
+			{{- range $path, $alias := .}}
+			{{$alias }}"{{$path}}"
+			{{- end}}
+		{{- end}}
 	{{end}}
 	{{.RefPackage}} "{{.RefPath}}"
 )
@@ -130,7 +135,8 @@ var structRef = `
 		{{if SupportIsSet .Field}}
 		{{$DefaultVarName := printf "%s_%s_%s" $TypeName $FieldName "DEFAULT"}}
 		{{- if Features.CodeRefSlim }}
-
+			var {{$DefaultVarName}} {{$DefaultVarTypeName}}
+			{{- if .Default}} = {{.DefaultValue}}{{- end}}
 		{{- else }}
 			var {{$DefaultVarName}} = {{$RefPackage}}.{{$DefaultVarName}}
 		{{- end }}
