@@ -116,10 +116,6 @@ func (cu *CodeUtils) Template() string {
 	return cu.useTemplate
 }
 
-func (cu *CodeUtils) SetTemplate(tmpl string) {
-	cu.useTemplate = tmpl
-}
-
 // UseTemplate specifies a different template to generate codes.
 func (cu *CodeUtils) UseTemplate(value string) error {
 	if value != defaultTemplate && cu.alternative[value] == nil {
