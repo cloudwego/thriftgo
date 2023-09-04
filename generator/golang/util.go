@@ -45,6 +45,7 @@ const (
 	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
 	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
 	defaultTemplate     = "default"
+	ThriftJSONUtilLib   = "github.com/cloudwego/thriftgo/utils/json_utils"
 )
 
 var escape = regexp.MustCompile(`\\.`)

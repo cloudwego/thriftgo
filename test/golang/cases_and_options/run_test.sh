@@ -44,7 +44,7 @@ features=(\
     nil_safe \
     frugal_tag \
     unescape_double_quote \
-    generate_json_string_method \ 
+    json_stringer \ 
 )
 
 run_cases() {

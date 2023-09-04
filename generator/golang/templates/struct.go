@@ -94,9 +94,9 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{template "StructLikeWriteField" .}}
 
 func (p *{{$TypeName}}) String() string {
-	{{- if Features.GenerateJSONStringMethod }}
-	{{- UseStdLibrary "json"}}
-		JsonBytes , _  := jsonFunc(p)
+	{{- if Features.JSONStringer}}
+	{{- UseStdLibrary "json_utils"}}
+		JsonBytes , _  := json_utils.JSONFunc(p)
 		return string(JsonBytes)
 	{{- else}}
 	if p == nil {
