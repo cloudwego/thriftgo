@@ -174,7 +174,7 @@ func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename
 }
 
 // for -m, trace the extends and find specified method to base on
-func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
+func (t *Trimmer) traceExtendMethod(father *parser.Service, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
 	for _, function := range svc.Functions {
 		funcName := father.Name + "." + function.Name
 		for i, method := range t.trimMethods {
