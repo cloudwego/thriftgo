@@ -14,7 +14,11 @@
 
 package trim
 
-import "github.com/cloudwego/thriftgo/parser"
+import (
+	"github.com/cloudwego/thriftgo/parser"
+	"regexp"
+	"strings"
+)
 
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
@@ -30,7 +34,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listStruct []*parser.StructLike
 	for i := range ast.Structs {
-		if t.marks[filename][ast.Structs[i]] {
+		if t.marks[filename][ast.Structs[i]] || checkPreserve(ast.Structs[i]) {
 			listStruct = append(listStruct, ast.Structs[i])
 		}
 	}
@@ -68,4 +72,11 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 		}
 	}
 	ast.Services = listService
+
+}
+
+func checkPreserve(theStruct *parser.StructLike) bool {
+	pattern := `^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
+	regex := regexp.MustCompile(pattern)
+	return regex.MatchString(strings.ToLower(theStruct.ReservedComments))
 }

@@ -22,6 +22,6 @@ struct E{
 
 }
 
-service MyService{
+service MyService extends sample1.EmployeeService{
     string A(1:required E req,2:required test.TestStruct t)
 }
