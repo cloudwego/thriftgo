@@ -15,9 +15,10 @@
 package trim
 
 import (
-	"github.com/cloudwego/thriftgo/parser"
 	"regexp"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/parser"
 )
 
 // traverse and remove the unmarked part of ast
@@ -72,7 +73,6 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 		}
 	}
 	ast.Services = listService
-
 }
 
 func checkPreserve(theStruct *parser.StructLike) bool {

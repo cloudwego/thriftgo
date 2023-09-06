@@ -16,16 +16,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/semantic"
-	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
-	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
-	"github.com/cloudwego/thriftgo/version"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/semantic"
+	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
+	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
+	"github.com/cloudwego/thriftgo/version"
 )
 
 var (
@@ -120,7 +120,7 @@ func main() {
 	os.Exit(0)
 }
 
-func recurseDump(ast *parser.Thrift, sourceDir string, outDir string) {
+func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	if ast == nil {
 		return
 	}
