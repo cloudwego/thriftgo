@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,8 +88,8 @@ func isDirectoryEmpty(path string) (bool, error) {
 		return false, nil
 	}
 
-	if len(err.Error()) > len("EOF") {
-		return false, err
+	if errors.Is(err, os.ErrNotExist) {
+		return true, nil
 	}
-	return true, nil
+	return false, err
 }

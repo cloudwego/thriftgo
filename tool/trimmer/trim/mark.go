@@ -14,7 +14,10 @@
 
 package trim
 
-import "github.com/cloudwego/thriftgo/parser"
+import (
+	"github.com/cloudwego/thriftgo/parser"
+	"strings"
+)
 
 // mark the used part of ast
 func (t *Trimmer) markAST(ast *parser.Thrift) {
@@ -29,6 +32,26 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 
 	for _, typedef := range ast.Typedefs {
 		t.markTypeDef(typedef.Type, ast, ast.Filename)
+	}
+
+	if !t.forceTrimming {
+		for _, str := range ast.Structs {
+			if !t.marks[ast.Filename][str] && t.checkPreserve(str) {
+				t.markStructLike(str, ast, ast.Filename)
+			}
+		}
+
+		for _, str := range ast.Unions {
+			if !t.marks[ast.Filename][str] && t.checkPreserve(str) {
+				t.markStructLike(str, ast, ast.Filename)
+			}
+		}
+
+		for _, str := range ast.Exceptions {
+			if !t.marks[ast.Filename][str] && t.checkPreserve(str) {
+				t.markStructLike(str, ast, ast.Filename)
+			}
+		}
 	}
 }
 
@@ -216,4 +239,12 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 		}
 	}
 	return ret
+}
+
+// check for @Preserve comments
+func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
+	if t.forceTrimming {
+		return false
+	}
+	return t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments))
 }
