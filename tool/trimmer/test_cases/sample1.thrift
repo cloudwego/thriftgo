@@ -53,6 +53,7 @@ enum Gender {
     FEMALE (key = "1", key = "2", key2 = "v2")
 } (a = "b")
 
+#@PRESERvE
 struct Address {
     1: required string(key = "v") street
     2: required string city
