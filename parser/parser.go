@@ -510,7 +510,7 @@ func (p *parser) parseEnum(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// ENUM Identifier LWING ( ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator?)* RWING
+	// ENUM Identifier LWING (ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator? ReservedEndLineComments SkipLine)* RWING
 	node = node.next // ignore ENUM
 	name := p.pegText(node)
 	var values []*EnumValue
@@ -539,11 +539,26 @@ func (p *parser) parseEnum(node *node32) (err error) {
 			}
 
 			if n.next.pegRule == ruleAnnotations {
-				v.Annotations, err = p.parseAnnotations(n.next)
+				n = n.next
+				v.Annotations, err = p.parseAnnotations(n)
 				if err != nil {
 					return err
 				}
 			}
+
+			if n.next.pegRule == ruleListSeparator {
+				n = n.next
+			}
+			// endline comment's priority is lower than the header comment
+			if n.next.pegRule == ruleReservedEndLineComments && v.ReservedComments == "" {
+				n = n.next
+				endlineComments, err := p.parseReservedEndLineComments(n)
+				if err != nil {
+					return err
+				}
+				v.ReservedComments = endlineComments
+			}
+
 			values = append(values, &v)
 		}
 	}
@@ -674,11 +689,11 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 			f.ReservedComments = reservedComments
 		case ruleReservedEndLineComments:
 			// endline comment's priority is lower than the header comment
-			reservedComments, err := p.parseReservedEndLineComments(node)
-			if err != nil {
-				return nil, err
-			}
 			if f.ReservedComments == "" {
+				reservedComments, err := p.parseReservedEndLineComments(node)
+				if err != nil {
+					return nil, err
+				}
 				f.ReservedComments = reservedComments
 			}
 		case ruleFieldId:

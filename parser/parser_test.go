@@ -28,8 +28,9 @@ typedef map<i32, string> (cpp.template = "std::map") itoa_map (foo='bar')
 typedef list<double (string.presentation = "hex")> float_list
 
 enum Enum {
+	// reserve comment E1
 	E1 (value = "10"),
-	E2
+	E2 // end line comment E2
 	E3 (value = "100")
 } (eee = "eee")
 
@@ -98,6 +99,8 @@ func TestAnnotation(t *testing.T) {
 	test.Assert(t, len(ast.Enums[0].Values[2].Annotations) == 1)
 	test.Assert(t, has(ast.Enums[0].Values[0].Annotations, "value", "10"))
 	test.Assert(t, has(ast.Enums[0].Values[2].Annotations, "value", "100"))
+	test.Assert(t, ast.Enums[0].Values[0].ReservedComments == "// reserve comment E1")
+	test.Assert(t, ast.Enums[0].Values[1].ReservedComments == "// end line comment E2")
 
 	test.Assert(t, len(ast.Structs) == 1)
 	test.Assert(t, len(ast.Structs[0].Annotations) == 3)
