@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
@@ -53,12 +54,11 @@ func main() {
 	}
 
 	preserve := true
-	if a.Preserve != "true" && a.Preserve != "false" {
-		help()
-		os.Exit(2)
-	} else {
-		if a.Preserve == "false" {
-			preserve = false
+	if a.Preserve != "" {
+		preserve, err = strconv.ParseBool(a.Preserve)
+		if err != nil {
+			help()
+			os.Exit(2)
 		}
 	}
 
