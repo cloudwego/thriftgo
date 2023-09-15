@@ -15,8 +15,9 @@
 package trim
 
 import (
-	"github.com/cloudwego/thriftgo/parser"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/parser"
 )
 
 // mark the used part of ast

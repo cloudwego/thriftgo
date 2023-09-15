@@ -52,6 +52,16 @@ func main() {
 		os.Exit(0)
 	}
 
+	preserve := true
+	if a.Preserve != "true" && a.Preserve != "false" {
+		help()
+		os.Exit(2)
+	} else {
+		if a.Preserve == "false" {
+			preserve = false
+		}
+	}
+
 	// parse file to ast
 	ast, err := parser.ParseFile(a.IDL, nil, true)
 	check(err)
@@ -64,7 +74,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// trim ast
-	check(trim.TrimAST(ast, a.Methods, a.Force))
+	check(trim.TrimAST(ast, a.Methods, !preserve))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
