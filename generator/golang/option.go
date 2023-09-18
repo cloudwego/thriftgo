@@ -52,6 +52,7 @@ type Features struct {
 	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
+	CheckOptionGrammar     bool `check_option_grammar:"Check thrift option grammar"`
 }
 
 var defaultFeatures = Features{

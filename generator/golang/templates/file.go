@@ -56,6 +56,16 @@ import (
 {{template "Processor" .}}
 {{- end}}
 
+{{- $Options := .GetOption .AST.Filename }}
+{{- if $Options}}
+{{- UseStdLibrary "thrift_option"}}
+var (
+	{{- range $Line := $Options}}
+		{{$Line}}
+	{{- end}}
+)
+{{- end}}
+
 {{- if Features.GenerateReflectionInfo}}
 	var file_{{.IDLName}}_rawDesc = {{.IDLMeta}}
 	func init(){
