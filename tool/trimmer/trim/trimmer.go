@@ -17,6 +17,7 @@ package trim
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -33,10 +34,12 @@ type Trimmer struct {
 	// use -m
 	trimMethods     []string
 	trimMethodValid []bool
+	preserveRegex   *regexp.Regexp
+	forceTrimming   bool
 }
 
 // TrimAST trim the single AST, pass method names if -m specified
-func TrimAST(ast *parser.Thrift, trimMethods []string) error {
+func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
@@ -44,6 +47,7 @@ func TrimAST(ast *parser.Thrift, trimMethods []string) error {
 	trimmer.asts[ast.Filename] = ast
 	trimmer.trimMethods = trimMethods
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
+	trimmer.forceTrimming = forceTrimming
 	for i, method := range trimMethods {
 		parts := strings.Split(method, ".")
 		if len(parts) < 2 {
@@ -110,7 +114,8 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
 	trimmer.marks = make(map[string]map[interface{}]bool)
-
+	pattern := `^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
+	trimmer.preserveRegex = regexp.MustCompile(pattern)
 	return trimmer, nil
 }
 

@@ -45,6 +45,7 @@ type Arguments struct {
 	IDL        string
 	Recurse    string
 	Methods    StringSlice
+	Preserve   string
 }
 
 // BuildFlags initializes command line flags.
@@ -61,6 +62,9 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 
 	f.Var(&a.Methods, "m", "")
 	f.Var(&a.Methods, "method", "")
+
+	f.StringVar(&a.Preserve, "p", "true", "")
+	f.StringVar(&a.Preserve, "preserve", "true", "")
 
 	f.Usage = help
 	return f
@@ -95,6 +99,7 @@ Options:
   -o, --out	[file/dir]	Specify the output IDL file/dir.
   -r, --recurse	[dir]		Specify a root dir and dump the included IDL recursively beneath the given root. -o should be set as a directory.
   -m, --method [service.method] Only keep the specified methods and their dependents. Accept multiple -m.
+  -p, --preserve [true/false]	Set to false to ignore @preserve comments
 `)
 	// print backend options
 	for _, b := range g.AllBackend() {
