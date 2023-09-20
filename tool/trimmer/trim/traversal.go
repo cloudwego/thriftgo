@@ -15,9 +15,6 @@
 package trim
 
 import (
-	"regexp"
-	"strings"
-
 	"github.com/cloudwego/thriftgo/parser"
 )
 
@@ -35,7 +32,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listStruct []*parser.StructLike
 	for i := range ast.Structs {
-		if t.marks[filename][ast.Structs[i]] || checkPreserve(ast.Structs[i]) {
+		if t.marks[filename][ast.Structs[i]] || t.checkPreserve(ast.Structs[i]) {
 			listStruct = append(listStruct, ast.Structs[i])
 		}
 	}
@@ -73,10 +70,4 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 		}
 	}
 	ast.Services = listService
-}
-
-func checkPreserve(theStruct *parser.StructLike) bool {
-	pattern := `^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
-	regex := regexp.MustCompile(pattern)
-	return regex.MatchString(strings.ToLower(theStruct.ReservedComments))
 }

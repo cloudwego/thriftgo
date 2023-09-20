@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
@@ -52,6 +53,15 @@ func main() {
 		os.Exit(0)
 	}
 
+	preserve := true
+	if a.Preserve != "" {
+		preserve, err = strconv.ParseBool(a.Preserve)
+		if err != nil {
+			help()
+			os.Exit(2)
+		}
+	}
+
 	// parse file to ast
 	ast, err := parser.ParseFile(a.IDL, nil, true)
 	check(err)
@@ -64,7 +74,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// trim ast
-	check(trim.TrimAST(ast, a.Methods))
+	check(trim.TrimAST(ast, a.Methods, !preserve))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
