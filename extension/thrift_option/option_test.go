@@ -1,4 +1,4 @@
-package option
+package thrift_option
 
 import (
 	"github.com/cloudwego/thriftgo/parser"

@@ -16,7 +16,8 @@ package golang
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/option"
+	thrift_option "github.com/cloudwego/thriftgo/extension/thrift_option"
+
 	"strconv"
 	"strings"
 
@@ -51,7 +52,7 @@ func (s *Scope) init(cu *CodeUtils) (err error) {
 
 	if cu.Features().UseOption {
 		for ast := range s.AST().DepthFirstSearch() {
-			er := option.CheckOptionGrammar(ast)
+			er := thrift_option.CheckOptionGrammar(ast)
 			if er != nil {
 				return er
 			}

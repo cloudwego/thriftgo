@@ -1,4 +1,4 @@
-namespace go option_test.annotation.validation
+namespace go option_gen.annotation.validation
 
 struct _StructOptions {
       1:required string person_string_info

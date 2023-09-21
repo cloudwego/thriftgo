@@ -1,4 +1,4 @@
-package option
+package thrift_option
 
 import (
 	"errors"
@@ -15,7 +15,8 @@ type commonOption struct {
 type OptionData struct {
 	name           string
 	typeDescriptor *thrift_reflection.TypeDescriptor
-	value          interface{}
+	mapVal         interface{}
+	instanceVal    interface{}
 }
 
 func (o *OptionData) GetName() interface{} {
@@ -23,7 +24,11 @@ func (o *OptionData) GetName() interface{} {
 }
 
 func (o *OptionData) GetValue() interface{} {
-	return o.value
+	return o.mapVal
+}
+
+func (o *OptionData) GetInstance() interface{} {
+	return o.instanceVal
 }
 
 func (o *OptionData) GetFieldValue(name string) (interface{}, error) {
@@ -38,8 +43,24 @@ func (o *OptionData) GetFieldValue(name string) (interface{}, error) {
 	if f == nil {
 		return nil, errors.New("field name not match")
 	}
-	resultMap := o.value.(map[string]interface{})
+	resultMap := o.mapVal.(map[string]interface{})
 	return resultMap[name], nil
+}
+
+func (o *OptionData) IsFieldSet(name string) (bool, error) {
+	if !o.typeDescriptor.IsStruct() {
+		return false, errors.New("not struct")
+	}
+	sd, err := o.typeDescriptor.GetStructDescriptor()
+	if err != nil {
+		return false, errors.New("struct descriptor not found")
+	}
+	f := sd.GetFieldByName(name)
+	if f == nil {
+		return false, errors.New("field name not match")
+	}
+	_, ok := o.mapVal.(map[string]interface{})[name]
+	return ok, nil
 }
 
 type AnnotationMeta struct {
@@ -122,47 +143,47 @@ func NewFieldOption(filepath, name string) *FieldOption {
 }
 
 func ParseFieldOption(field *parser.Field, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseCommonOption(field, ast, optionName, "_FieldOptions")
+	return parseOptionFromAST(field, ast, optionName, "_FieldOptions")
 }
 
 func ParseStructOption(structLike *parser.StructLike, annotationName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseCommonOption(structLike, ast, annotationName, "_StructOptions")
+	return parseOptionFromAST(structLike, ast, annotationName, "_StructOptions")
 }
 
 func ParseMethodOption(f *parser.Function, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseCommonOption(f, ast, optionName, "_MethodOptions")
+	return parseOptionFromAST(f, ast, optionName, "_MethodOptions")
 }
 
 func ParseServiceOption(s *parser.Service, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseCommonOption(s, ast, optionName, "_ServiceOptions")
+	return parseOptionFromAST(s, ast, optionName, "_ServiceOptions")
 }
 
 func ParseEnumOption(e *parser.Enum, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseCommonOption(e, ast, optionName, "_EnumOptions")
+	return parseOptionFromAST(e, ast, optionName, "_EnumOptions")
 }
 
 func ParseEnumValueOption(ev *parser.EnumValue, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseCommonOption(ev, ast, optionName, "_EnumValueOptions")
+	return parseOptionFromAST(ev, ast, optionName, "_EnumValueOptions")
 }
 
-func GetFieldOption(s *thrift_reflection.FieldDescriptor, os *FieldOption) (val interface{}, err error) {
-	return parseOptionRuntime(s, os)
-}
-
-func GetEnumOption(s *thrift_reflection.EnumDescriptor, os *EnumOption) (val interface{}, err error) {
+func GetFieldOption(s *thrift_reflection.FieldDescriptor, os *FieldOption) (val *OptionData, err error) {
 	return parseOptionRuntime(s, os)
 }
 
-func GetEnumValueOption(s *thrift_reflection.EnumValueDescriptor, os *EnumValueOption) (val interface{}, err error) {
-	return parseOptionRuntime(s, os)
-}
-func GetServiceOption(s *thrift_reflection.ServiceDescriptor, os *ServiceOption) (val interface{}, err error) {
-	return parseOptionRuntime(s, os)
-}
-func GetMethodOption(s *thrift_reflection.MethodDescriptor, os *MethodOption) (val interface{}, err error) {
+func GetEnumOption(s *thrift_reflection.EnumDescriptor, os *EnumOption) (val *OptionData, err error) {
 	return parseOptionRuntime(s, os)
 }
 
-func GetStructOption(s *thrift_reflection.StructDescriptor, os *StructOption) (val interface{}, err error) {
+func GetEnumValueOption(s *thrift_reflection.EnumValueDescriptor, os *EnumValueOption) (val *OptionData, err error) {
+	return parseOptionRuntime(s, os)
+}
+func GetServiceOption(s *thrift_reflection.ServiceDescriptor, os *ServiceOption) (val *OptionData, err error) {
+	return parseOptionRuntime(s, os)
+}
+func GetMethodOption(s *thrift_reflection.MethodDescriptor, os *MethodOption) (val *OptionData, err error) {
+	return parseOptionRuntime(s, os)
+}
+
+func GetStructOption(s *thrift_reflection.StructDescriptor, os *StructOption) (val *OptionData, err error) {
 	return parseOptionRuntime(s, os)
 }

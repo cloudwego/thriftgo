@@ -7,7 +7,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	thrift_option "github.com/cloudwego/thriftgo/option"
+	"github.com/cloudwego/thriftgo/extension/thrift_option"
 	"reflect"
 )
 
@@ -2312,8 +2312,8 @@ func (p *TestStruct) String() string {
 }
 
 var (
-	STRUCT_OPTION_PERSON_BASIC_INFO     = thrift_option.NewStructOption("option_idl/annotations/entity/entity.thrift", "person_basic_info")
-	STRUCT_OPTION_PERSON_STRUCT_INFO    = thrift_option.NewStructOption("option_idl/annotations/entity/entity.thrift", "person_struct_info")
-	STRUCT_OPTION_PERSON_CONTAINER_INFO = thrift_option.NewStructOption("option_idl/annotations/entity/entity.thrift", "person_container_info")
-	FIELD_OPTION_PERSON_FIELD_INFO      = thrift_option.NewFieldOption("option_idl/annotations/entity/entity.thrift", "person_field_info")
+	STRUCT_OPTION_PERSON_BASIC_INFO     = thrift_option.NewStructOption("../option_idl/annotations/entity/entity.thrift", "person_basic_info")
+	STRUCT_OPTION_PERSON_STRUCT_INFO    = thrift_option.NewStructOption("../option_idl/annotations/entity/entity.thrift", "person_struct_info")
+	STRUCT_OPTION_PERSON_CONTAINER_INFO = thrift_option.NewStructOption("../option_idl/annotations/entity/entity.thrift", "person_container_info")
+	FIELD_OPTION_PERSON_FIELD_INFO      = thrift_option.NewFieldOption("../option_idl/annotations/entity/entity.thrift", "person_field_info")
 )

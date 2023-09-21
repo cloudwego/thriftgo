@@ -1,4 +1,4 @@
-namespace go option_test
+namespace go option_gen
 include "annotations/entity/entity.thrift"
 
 

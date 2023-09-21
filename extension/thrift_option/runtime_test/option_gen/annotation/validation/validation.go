@@ -7,7 +7,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	thrift_option "github.com/cloudwego/thriftgo/option"
+	"github.com/cloudwego/thriftgo/extension/thrift_option"
 )
 
 const (
@@ -2230,15 +2230,15 @@ func (p *_EnumValueOptions) String() string {
 }
 
 var (
-	STRUCT_OPTION_PERSON_STRING_INFO               = thrift_option.NewStructOption("option_idl/annotations/validation/validation.thrift", "person_string_info")
-	STRUCT_OPTION_PERSON_MAP_INFO                  = thrift_option.NewStructOption("option_idl/annotations/validation/validation.thrift", "person_map_info")
-	STRUCT_OPTION_PERSON_ENUM_INFO                 = thrift_option.NewStructOption("option_idl/annotations/validation/validation.thrift", "person_enum_info")
-	STRUCT_OPTION_PERSON_BASIC_TYPEDEF_INFO        = thrift_option.NewStructOption("option_idl/annotations/validation/validation.thrift", "person_basic_typedef_info")
-	STRUCT_OPTION_PERSON_STRUCT_TYPEDEF_INFO       = thrift_option.NewStructOption("option_idl/annotations/validation/validation.thrift", "person_struct_typedef_info")
-	STRUCT_OPTION_PERSON_STRUCT_DEFAULT_VALUE_INFO = thrift_option.NewStructOption("option_idl/annotations/validation/validation.thrift", "person_struct_default_value_info")
-	FIELD_OPTION_CARD_FIELD_INFO                   = thrift_option.NewFieldOption("option_idl/annotations/validation/validation.thrift", "card_field_info")
-	SERVICE_OPTION_SVC_INFO                        = thrift_option.NewServiceOption("option_idl/annotations/validation/validation.thrift", "svc_info")
-	METHOD_OPTION_METHOD_INFO                      = thrift_option.NewMethodOption("option_idl/annotations/validation/validation.thrift", "method_info")
-	ENUM_OPTION_ENUM_INFO                          = thrift_option.NewEnumOption("option_idl/annotations/validation/validation.thrift", "enum_info")
-	ENUM_VALUE_OPTION_ENUM_VALUE_INFO              = thrift_option.NewEnumValueOption("option_idl/annotations/validation/validation.thrift", "enum_value_info")
+	STRUCT_OPTION_PERSON_STRING_INFO               = thrift_option.NewStructOption("../option_idl/annotations/validation/validation.thrift", "person_string_info")
+	STRUCT_OPTION_PERSON_MAP_INFO                  = thrift_option.NewStructOption("../option_idl/annotations/validation/validation.thrift", "person_map_info")
+	STRUCT_OPTION_PERSON_ENUM_INFO                 = thrift_option.NewStructOption("../option_idl/annotations/validation/validation.thrift", "person_enum_info")
+	STRUCT_OPTION_PERSON_BASIC_TYPEDEF_INFO        = thrift_option.NewStructOption("../option_idl/annotations/validation/validation.thrift", "person_basic_typedef_info")
+	STRUCT_OPTION_PERSON_STRUCT_TYPEDEF_INFO       = thrift_option.NewStructOption("../option_idl/annotations/validation/validation.thrift", "person_struct_typedef_info")
+	STRUCT_OPTION_PERSON_STRUCT_DEFAULT_VALUE_INFO = thrift_option.NewStructOption("../option_idl/annotations/validation/validation.thrift", "person_struct_default_value_info")
+	FIELD_OPTION_CARD_FIELD_INFO                   = thrift_option.NewFieldOption("../option_idl/annotations/validation/validation.thrift", "card_field_info")
+	SERVICE_OPTION_SVC_INFO                        = thrift_option.NewServiceOption("../option_idl/annotations/validation/validation.thrift", "svc_info")
+	METHOD_OPTION_METHOD_INFO                      = thrift_option.NewMethodOption("../option_idl/annotations/validation/validation.thrift", "method_info")
+	ENUM_OPTION_ENUM_INFO                          = thrift_option.NewEnumOption("../option_idl/annotations/validation/validation.thrift", "enum_info")
+	ENUM_VALUE_OPTION_ENUM_VALUE_INFO              = thrift_option.NewEnumValueOption("../option_idl/annotations/validation/validation.thrift", "enum_value_info")
 )

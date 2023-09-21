@@ -1,4 +1,4 @@
-package option
+package thrift_option
 
 import (
 	"github.com/cloudwego/thriftgo/parser"
@@ -16,7 +16,7 @@ var optionDefMap = map[string]bool{
 	"_EnumValueOptions": true,
 }
 
-func parseCommonOption(in interface{ GetAnnotations() parser.Annotations }, ast *parser.Thrift, annotationName string, optionType string) (option *OptionData, err error) {
+func parseOptionFromAST(in interface{ GetAnnotations() parser.Annotations }, ast *parser.Thrift, annotationName string, optionType string) (option *OptionData, err error) {
 	// init FileDescriptor to enable reflection apis
 	fd := thrift_reflection.RegisterAST(ast)
 	prefix, optionName := utils.ParseAlias(annotationName)
@@ -37,13 +37,13 @@ func parseCommonOption(in interface{ GetAnnotations() parser.Annotations }, ast 
 func parseOptionRuntime(in interface {
 	GetAnnotations() map[string][]string
 	GetFilepath() string
-}, optionMeta OptionGetter) (val interface{}, err error) {
+}, optionMeta OptionGetter) (val *OptionData, err error) {
 
 	optionData, err := parseOption(in.GetFilepath(), in.GetAnnotations(), optionMeta, false)
 	if err != nil {
 		return nil, err
 	}
-	return optionData.value, nil
+	return optionData, nil
 
 }
 
@@ -89,11 +89,11 @@ func parseOption(filepath string, annotations map[string][]string, optionMeta Op
 	opt = strings.ReplaceAll(opt, "\t", " ")
 	opt = strings.TrimSpace(opt)
 
-	instance, er := createInstance(typeDesc, opt, mapMode)
+	mapVal, instanceVal, er := createInstance(typeDesc, opt, mapMode)
 	if er != nil {
 		return nil, ParseFailedError(optionName, er)
 	}
-	return &OptionData{optionName, typeDesc, instance}, nil
+	return &OptionData{optionName, typeDesc, mapVal, instanceVal}, nil
 
 }
 

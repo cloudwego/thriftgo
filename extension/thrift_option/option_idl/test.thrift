@@ -1,4 +1,4 @@
-namespace go option_test
+namespace go option_gen
 include "annotations/entity/entity.thrift"
 include "annotations/validation/validation.thrift"
 
@@ -11,6 +11,9 @@ struct Person{
     1:required string name (entity.person_field_info='the name of this person' local_field_info='the ID of this person')
     2:required IDCard id
 }(
+    local_struct_info = '{
+        b1: true
+    }'
     aaa.bbb = "hello"
     entity.person_basic_info = '{
             valuei8:8
@@ -94,4 +97,12 @@ struct _FieldOptions {
       1:required string local_field_info
 }
 
+struct _StructOptions {
+      1:required TinyStruct local_struct_info
+}
+
+struct TinyStruct{
+    1:required bool b1
+    2:required bool b2
+}
 

@@ -1,4 +1,4 @@
-namespace go option_test.annotation.entity
+namespace go option_gen.annotation.entity
 include "entity_struct.thrift"
 
 struct _StructOptions {

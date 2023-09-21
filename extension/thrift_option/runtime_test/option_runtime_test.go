@@ -1,18 +1,30 @@
-package option_test_test
+package runtime_test
 
 import (
-	"github.com/cloudwego/thriftgo/option"
-	"github.com/cloudwego/thriftgo/option/option_test"
-	"github.com/cloudwego/thriftgo/option/option_test/annotation/entity"
-	"github.com/cloudwego/thriftgo/option/option_test/annotation/validation"
+	"github.com/cloudwego/thriftgo/extension/thrift_option"
+	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen"
+	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen/annotation/entity"
+	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen/annotation/validation"
 	"testing"
 )
 
+func TestCheckOptionFieldSet(t *testing.T) {
+	// test basic option
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), option_gen.STRUCT_OPTION_LOCAL_STRUCT_INFO)
+	assert(t, err == nil && option != nil)
+	ok, err := option.IsFieldSet("b2")
+	assert(t, err == nil)
+	assert(t, !ok)
+	optionVal := option.GetInstance().(*option_gen.TinyStruct)
+	assert(t, optionVal.B1)
+	assert(t, optionVal.B2 == false)
+}
+
 func TestRuntimeBasicStructOption(t *testing.T) {
 	// test basic option
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_BASIC_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_BASIC_INFO)
 	assert(t, err == nil && option != nil)
-	opt, ok := option.(*entity.PersonBasicInfo)
+	opt, ok := option.GetInstance().(*entity.PersonBasicInfo)
 	assert(t, ok)
 
 	assert(t, opt.GetValuei8() == 8)
@@ -30,9 +42,9 @@ func TestRuntimeBasicStructOption(t *testing.T) {
 func TestRuntimeStructStructOption(t *testing.T) {
 
 	// test struct option
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_STRUCT_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_STRUCT_INFO)
 	assert(t, err == nil && option != nil)
-	opt, ok := option.(*entity.PersonStructInfo)
+	opt, ok := option.GetInstance().(*entity.PersonStructInfo)
 	assert(t, ok)
 
 	innerStruct := opt.GetValuestruct()
@@ -62,9 +74,9 @@ func TestRuntimeStructStructOption(t *testing.T) {
 func TestRuntimeContainerStructOption(t *testing.T) {
 
 	// test container option
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_CONTAINER_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_CONTAINER_INFO)
 	assert(t, err == nil && option != nil)
-	opt, ok := option.(*entity.PersonContainerInfo)
+	opt, ok := option.GetInstance().(*entity.PersonContainerInfo)
 	assert(t, ok)
 
 	valuemap := opt.GetValuemap()
@@ -99,9 +111,9 @@ func TestRuntimeContainerStructOption(t *testing.T) {
 func TestRuntimeBasicOption(t *testing.T) {
 
 	// test basic string option
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRING_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRING_INFO)
 	assert(t, err == nil && option != nil)
-	valuestring, ok := option.(string)
+	valuestring, ok := option.GetInstance().(string)
 	assert(t, ok)
 	assert(t, valuestring == "hello")
 
@@ -110,9 +122,9 @@ func TestRuntimeBasicOption(t *testing.T) {
 func TestRuntimeContainerOption(t *testing.T) {
 
 	// test container
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_MAP_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_MAP_INFO)
 	assert(t, err == nil && option != nil)
-	valuemap, ok := option.(map[string]string)
+	valuemap, ok := option.GetInstance().(map[string]string)
 	assert(t, ok)
 	assert(t, len(valuemap) == 1)
 	assert(t, valuemap["hey1"] == "value1")
@@ -121,29 +133,29 @@ func TestRuntimeContainerOption(t *testing.T) {
 
 func TestRuntimeEnumOption(t *testing.T) {
 	// test enum option
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_ENUM_INFO)
-	assert(t, err == nil && option == validation.MyEnum_XXL)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_ENUM_INFO)
+	assert(t, err == nil && option.GetInstance() == validation.MyEnum_XXL)
 }
 
 func TestRuntimeTypedefOption(t *testing.T) {
 	// test basic typedef option
-	option1, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_BASIC_TYPEDEF_INFO)
+	option1, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_BASIC_TYPEDEF_INFO)
 	assert(t, err == nil && option1 != nil)
-	valuebasicTypedef, ok := option1.(validation.MyBasicTypedef)
+	valuebasicTypedef, ok := option1.GetInstance().(validation.MyBasicTypedef)
 	assert(t, ok && valuebasicTypedef == "hello there")
 
 	// test struct typedef option
-	option2, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRUCT_TYPEDEF_INFO)
+	option2, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRUCT_TYPEDEF_INFO)
 	assert(t, err == nil && option2 != nil)
-	valuestructTypedef, ok := option2.(*validation.MyStructTypedef)
+	valuestructTypedef, ok := option2.GetInstance().(*validation.MyStructTypedef)
 	assert(t, ok && valuestructTypedef.GetName() == "empty name")
 }
 
 func TestRuntimeStructOptionWithDefaultValue(t *testing.T) {
-	option, err := option.GetStructOption(option_test.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRUCT_DEFAULT_VALUE_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRUCT_DEFAULT_VALUE_INFO)
 	assert(t, err == nil)
 
-	opt := option.(*validation.MyStructWithDefaultVal)
+	opt := option.GetInstance().(*validation.MyStructWithDefaultVal)
 	assert(t, opt.GetV1() == "v1 string")
 	assert(t, opt.GetV2() == "v2")
 	assert(t, opt.GetV3() == 8)
@@ -159,70 +171,70 @@ func TestRuntimeStructOptionWithDefaultValue(t *testing.T) {
 
 func TestRuntimeFieldOption(t *testing.T) {
 
-	pd := option_test.NewPerson().GetDescriptor()
+	pd := option_gen.NewPerson().GetDescriptor()
 	fd := pd.GetFieldByName("name")
 	// test basic string option
-	opt, err := option.GetFieldOption(fd, entity.FIELD_OPTION_PERSON_FIELD_INFO)
+	opt, err := thrift_option.GetFieldOption(fd, entity.FIELD_OPTION_PERSON_FIELD_INFO)
 	assert(t, err == nil && opt != nil)
-	valuestring, ok := opt.(string)
+	valuestring, ok := opt.GetInstance().(string)
 	assert(t, ok)
 	assert(t, valuestring == "the name of this person")
 
 	// test basic string option
-	opt2, err := option.GetFieldOption(fd, option_test.FIELD_OPTION_LOCAL_FIELD_INFO)
+	opt2, err := thrift_option.GetFieldOption(fd, option_gen.FIELD_OPTION_LOCAL_FIELD_INFO)
 	assert(t, err == nil && opt2 != nil)
-	valuestring, ok = opt2.(string)
+	valuestring, ok = opt2.GetInstance().(string)
 	assert(t, ok)
 	assert(t, valuestring == "the ID of this person")
 
 }
 
-func TestServiceAndMethodOption(t *testing.T) {
+func TestRuntimeServiceAndMethodOption(t *testing.T) {
 
 	// service option
-	svc := option_test.GetFileDescriptorForTest().GetServiceDescriptor("MyService")
-	opt, err := option.GetServiceOption(svc, validation.SERVICE_OPTION_SVC_INFO)
+	svc := option_gen.GetFileDescriptorForTest().GetServiceDescriptor("MyService")
+	opt, err := thrift_option.GetServiceOption(svc, validation.SERVICE_OPTION_SVC_INFO)
 	assert(t, err == nil, err)
 
-	valueInfo, ok := opt.(*validation.TestInfo)
+	valueInfo, ok := opt.GetInstance().(*validation.TestInfo)
 	assert(t, ok)
 	assert(t, valueInfo.GetName() == "ServiceInfoName")
 	assert(t, valueInfo.GetNumber() == 666)
 
 	// method option
 
-	//method := option_test.GetMethodDescriptorForMyServiceM1()
+	//method := option_gen.GetMethodDescriptorForMyServiceM1()
 	method := svc.GetMethodByName("M1")
 	assert(t, method != nil)
-	methodOption, err := option.GetMethodOption(method, validation.METHOD_OPTION_METHOD_INFO)
+	methodOption, err := thrift_option.GetMethodOption(method, validation.METHOD_OPTION_METHOD_INFO)
 	assert(t, err == nil, err)
 
-	methodValueInfo, ok := methodOption.(*validation.TestInfo)
+	methodValueInfo, ok := methodOption.GetInstance().(*validation.TestInfo)
 	assert(t, ok)
 	assert(t, methodValueInfo.GetName() == "MethodInfoName")
 	assert(t, methodValueInfo.GetNumber() == 555)
 
 }
 
-func TestEnumAndEnumValueOption(t *testing.T) {
+func TestRuntimeEnumAndEnumValueOption(t *testing.T) {
 
 	// enum option
-	e := option_test.MyEnum(0).GetDescriptor()
+	e := option_gen.MyEnum(0).GetDescriptor()
 	assert(t, e != nil)
-	opt, err := option.GetEnumOption(e, validation.ENUM_OPTION_ENUM_INFO)
+	opt, err := thrift_option.GetEnumOption(e, validation.ENUM_OPTION_ENUM_INFO)
 	assert(t, err == nil, err)
 
-	valueInfo, ok := opt.(*validation.TestInfo)
+	valueInfo, ok := opt.GetInstance().(*validation.TestInfo)
 	assert(t, ok)
 	assert(t, valueInfo.GetName() == "EnumInfoName")
 	assert(t, valueInfo.GetNumber() == 333)
 
 	// enum value option
 	ev := e.GetValues()[0]
-	enumValueOption, err := option.GetEnumValueOption(ev, validation.ENUM_VALUE_OPTION_ENUM_VALUE_INFO)
+	enumValueOption, err := thrift_option.GetEnumValueOption(ev, validation.ENUM_VALUE_OPTION_ENUM_VALUE_INFO)
 	assert(t, err == nil, err)
 
-	enumValueInfo, ok := enumValueOption.(*validation.TestInfo)
+	enumValueInfo, ok := enumValueOption.GetInstance().(*validation.TestInfo)
 	assert(t, ok)
 	assert(t, enumValueInfo.GetName() == "EnumValueInfoName")
 	assert(t, enumValueInfo.GetNumber() == 222)
