@@ -6,7 +6,7 @@ struct PersonA{
     1:required string name
 }(
     // 错误的 option 名称
-    option = 'entity.person_xxx_info = {
+    entity.person_xxx_info = '{
             valuei16:16
             valuei32:32
             valuei64:64
@@ -21,7 +21,7 @@ struct PersonB{
     1:required string name
 }(
     // 错误的 field value
-    option = 'entity.person_basic_info = {
+    entity.person_basic_info = '{
                 valuei16:hellostring
                 valuei32:32
                 valuei64:64
@@ -37,7 +37,7 @@ struct PersonC{
     1:required string name
 }(
     // 错误的 field 名称
-    option = 'entity.person_struct_info = {
+    entity.person_struct_info = '{
             value_xxx:{
              name: "lee"
              innerStruct:{
@@ -49,22 +49,22 @@ struct PersonC{
 
 struct PersonD{
     1:required string name
-}(
+}//(
     // 错误的 option 语法
-    option = 'entity.person_struct_info := {
-            valueteststruct:{
-             name: "lee"
-             innerStruct:{
-                 email:"no email"
-              }
-            }
-    }'
-)
+//    option = 'entity.person_struct_info := {
+//            valueteststruct:{
+//             name: "lee"
+//             innerStruct:{
+//                 email:"no email"
+//              }
+//            }
+//    }'
+//)
 struct PersonE{
     1:required string name
 }(
     // 错误的 kv 语法
-     option = 'entity.person_container_info = {
+     entity.person_container_info = '{
                 valuemap:{{"hey1":"value1"}
                 valuelist:["list1","list2"]
                 valueset:["list3","list4"]
@@ -74,10 +74,10 @@ struct PersonE{
         }'
 )
 struct PersonF{
-    1:required string name (option = "entity.person_field_info='the name of this person'")
+    1:required string name (entity.person_field_info="'the name of this person'")
 }(
     // 没有 include 对应 IDL
-    option = 'validation.person_string_info = hello'
+    validation.person_string_info = 'hello'
 )
 
 

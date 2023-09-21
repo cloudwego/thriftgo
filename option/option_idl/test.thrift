@@ -8,10 +8,11 @@ struct IDCard{
 }
 
 struct Person{
-    1:required string name (option = "entity.person_field_info='the name of this person'")
+    1:required string name (entity.person_field_info='the name of this person' local_field_info='the ID of this person')
     2:required IDCard id
 }(
-    option = 'entity.person_basic_info = {
+    aaa.bbb = "hello"
+    entity.person_basic_info = '{
             valuei8:8
             valuei16:16
             valuei32:32
@@ -22,7 +23,7 @@ struct Person{
             valuedouble:3.14159
             valuebool: true
     }'
-    option = 'entity.person_struct_info = {
+    entity.person_struct_info = '{
             valuestruct:{email:"empty email"}
             valueteststruct:{
              name: "lee"
@@ -34,7 +35,7 @@ struct Person{
             valuestructtypedef:{email:"empty email"}
             valuebasictypedef: "hello there"
     }'
-    option = 'entity.person_container_info = {
+    entity.person_container_info = '{
             valuemap:{"hey1":"value1"}
             valuelist:["list1","list2"]
             valueset:["list3","list4"]
@@ -42,25 +43,25 @@ struct Person{
             valuelistsetstruct:[[{email:e1},{email:e2}],[{email:e3},{email:e4}]]
             valuemapstruct:{k1:{email:e1} k2:{email:e2}}
     }'
-    option = 'validation.person_string_info = hello'
-    option = 'validation.person_map_info = {"hey1":"value1"}'
-    option = 'validation.person_enum_info = XXL'
-    option = 'validation.person_basic_typedef_info = "hello there"'
-    option = 'validation.person_struct_typedef_info = {name:"empty name"}'
-    option = 'validation.person_struct_default_value_info = {v1:"v1 string"}'
+    validation.person_string_info = 'hello'
+    validation.person_map_info = '{"hey1":"value1"}'
+    validation.person_enum_info = 'XXL'
+    validation.person_basic_typedef_info = '"hello there"'
+    validation.person_struct_typedef_info = '{name:"empty name"}'
+    validation.person_struct_default_value_info = '{v1:"v1 string"}'
 )
 
 enum MyEnum{
     A
     (
-        option = 'validation.enum_value_info = {
+        validation.enum_value_info = '{
             name: EnumValueInfoName
             number: 222
         }'
     )
     B
 }(
-    option = 'validation.enum_info = {
+    validation.enum_info = '{
         name: EnumInfoName
         number: 333
     }'
@@ -69,24 +70,28 @@ enum MyEnum{
 service MyService{
     string M1()
     (
-        option = 'validation.method_info = {
+        validation.method_info = '{
             name: MethodInfoName
             number: 555
         }'
     )
     string M2()
     (
-        option = 'validation.method_info = {
+        validation.method_info = '{
             name: MethodInfoName
             number: 444
         }'
     )
 }(
-    option = 'validation.svc_info = {
+    validation.svc_info = '{
         name: ServiceInfoName
         number: 666
     }'
 
 )
+
+struct _FieldOptions {
+      1:required string local_field_info
+}
 
 

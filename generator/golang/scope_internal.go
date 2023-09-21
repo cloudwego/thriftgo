@@ -49,7 +49,7 @@ func (s *Scope) init(cu *CodeUtils) (err error) {
 		}
 	}()
 
-	if cu.Features().CheckOptionGrammar {
+	if cu.Features().UseOption {
 		for ast := range s.AST().DepthFirstSearch() {
 			er := option.CheckOptionGrammar(ast)
 			if er != nil {

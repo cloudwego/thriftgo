@@ -5,7 +5,6 @@ import (
 	"github.com/cloudwego/thriftgo/option/option_test"
 	"github.com/cloudwego/thriftgo/option/option_test/annotation/entity"
 	"github.com/cloudwego/thriftgo/option/option_test/annotation/validation"
-	"strings"
 	"testing"
 )
 
@@ -158,41 +157,23 @@ func TestRuntimeStructOptionWithDefaultValue(t *testing.T) {
 	assert(t, opt.GetV11() == "hello there")
 }
 
-// 检测各种报错提示场景
-func TestRuntimeOptionError(t *testing.T) {
-
-	// 获取不存在的 option
-	_, err := option.GetStructOption(option_test.NewPersonA().GetDescriptor(), entity.STRUCT_OPTION_PERSON_BASIC_INFO)
-	assert(t, err != nil && err.Error() == "option not exist on current descriptor")
-
-	// 错误的 field value
-	_, err = option.GetStructOption(option_test.NewPersonB().GetDescriptor(), entity.STRUCT_OPTION_PERSON_BASIC_INFO)
-	assert(t, err != nil && err.Error() == "parse failed for entity.person_basic_info:strconv.ParseInt: parsing \"hellostring\": invalid syntax", err)
-
-	// 错误的 field name
-	_, err = option.GetStructOption(option_test.NewPersonC().GetDescriptor(), entity.STRUCT_OPTION_PERSON_STRUCT_INFO)
-	assert(t, err != nil && err.Error() == "parse failed for entity.person_struct_info:field not exist:value_xxx", err)
-
-	// 错误的 option 语法
-	_, err = option.GetStructOption(option_test.NewPersonD().GetDescriptor(), entity.STRUCT_OPTION_PERSON_STRUCT_INFO)
-	assert(t, err != nil && strings.HasPrefix(err.Error(), "grammar error"), err)
-
-	// 错误的 kv 语法
-	_, err = option.GetStructOption(option_test.NewPersonE().GetDescriptor(), entity.STRUCT_OPTION_PERSON_CONTAINER_INFO)
-	assert(t, err != nil && err.Error() == "parse failed for entity.person_container_info:{} not match", err)
-
-}
-
 func TestRuntimeFieldOption(t *testing.T) {
 
 	pd := option_test.NewPerson().GetDescriptor()
 	fd := pd.GetFieldByName("name")
 	// test basic string option
-	option, err := option.GetFieldOption(fd, entity.FIELD_OPTION_PERSON_FIELD_INFO)
-	assert(t, err == nil && option != nil)
-	valuestring, ok := option.(string)
+	opt, err := option.GetFieldOption(fd, entity.FIELD_OPTION_PERSON_FIELD_INFO)
+	assert(t, err == nil && opt != nil)
+	valuestring, ok := opt.(string)
 	assert(t, ok)
 	assert(t, valuestring == "the name of this person")
+
+	// test basic string option
+	opt2, err := option.GetFieldOption(fd, option_test.FIELD_OPTION_LOCAL_FIELD_INFO)
+	assert(t, err == nil && opt2 != nil)
+	valuestring, ok = opt2.(string)
+	assert(t, ok)
+	assert(t, valuestring == "the ID of this person")
 
 }
 

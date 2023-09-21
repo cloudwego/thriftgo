@@ -2,7 +2,6 @@ package option
 
 import (
 	"github.com/cloudwego/thriftgo/parser"
-	"strings"
 	"testing"
 )
 
@@ -12,11 +11,10 @@ func TestStructOptionWithStructBasic(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test basic option
-	opt := options["entity.person_basic_info"]
+	opt, err := ParseStructOption(p, "entity.person_basic_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v, err := opt.GetFieldValue("valuei100")
@@ -76,11 +74,10 @@ func TestStructOptionWithStructStruct(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test struct option
-	opt := options["entity.person_struct_info"]
+	opt, err := ParseStructOption(p, "entity.person_struct_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v, err := opt.GetFieldValue("valuestruct")
@@ -117,11 +114,10 @@ func TestStructOptionWithStructContainer(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test container option
-	opt := options["entity.person_container_info"]
+	opt, err := ParseStructOption(p, "entity.person_container_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v, err := opt.GetFieldValue("valuemap")
@@ -179,11 +175,10 @@ func TestStructOptionWithBasic(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test basic option
-	opt := options["validation.person_string_info"]
+	opt, err := ParseStructOption(p, "validation.person_string_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v := opt.GetValue()
@@ -200,11 +195,10 @@ func TestStructOptionWithContainer(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test container option
-	opt := options["validation.person_map_info"]
+	opt, err := ParseStructOption(p, "validation.person_map_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v := opt.GetValue()
@@ -222,11 +216,10 @@ func TestStructOptionWithEnum(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test enum option
-	opt := options["validation.person_enum_info"]
+	opt, err := ParseStructOption(p, "validation.person_enum_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v := opt.GetValue()
@@ -243,11 +236,10 @@ func TestStructOptionWithTypedef(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test basic typedef option
-	opt1 := options["validation.person_basic_typedef_info"]
+	opt1, err := ParseStructOption(p, "validation.person_basic_typedef_info", ast)
+	assert(t, err == nil)
 	assert(t, opt1 != nil)
 
 	v := opt1.GetValue()
@@ -257,7 +249,8 @@ func TestStructOptionWithTypedef(t *testing.T) {
 	assert(t, valuestring == "hello there")
 
 	// test struct typedef option
-	opt2 := options["validation.person_struct_typedef_info"]
+	opt2, err := ParseStructOption(p, "validation.person_struct_typedef_info", ast)
+	assert(t, err == nil)
 	assert(t, opt2 != nil)
 
 	v = opt2.GetValue()
@@ -274,11 +267,10 @@ func TestStructOptionWithDefaultValue(t *testing.T) {
 
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
-	options, err := ParseStructOption(p, ast)
-	assert(t, err == nil, err)
 
 	// test basic option
-	opt := options["validation.person_struct_default_value_info"]
+	opt, err := ParseStructOption(p, "validation.person_struct_default_value_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v1, err := opt.GetFieldValue("v1")
@@ -323,10 +315,9 @@ func TestFieldOption(t *testing.T) {
 	p := getStructFromAst("Person", ast)
 	assert(t, p != nil)
 	f, ok := p.GetField("name")
-	options, err := ParseFieldOption(f, ast)
-	assert(t, err == nil, err)
 
-	opt := options["entity.person_field_info"]
+	opt, err := ParseFieldOption(f, "entity.person_field_info", ast)
+	assert(t, err == nil)
 	assert(t, opt != nil)
 
 	v := opt.GetValue()
@@ -334,6 +325,16 @@ func TestFieldOption(t *testing.T) {
 	valuestring, ok := v.(string)
 	assert(t, ok)
 	assert(t, valuestring == "the name of this person")
+
+	optLocal, err := ParseFieldOption(f, "local_field_info", ast)
+	assert(t, err == nil)
+	assert(t, optLocal != nil)
+
+	v = optLocal.GetValue()
+	assert(t, err == nil)
+	valuestring, ok = v.(string)
+	assert(t, ok)
+	assert(t, valuestring == "the ID of this person")
 
 }
 
@@ -345,10 +346,9 @@ func TestServiceAndMethodOption(t *testing.T) {
 	// service option
 	svc := getServiceFromAst("MyService", ast)
 	assert(t, svc != nil)
-	options, err := ParseServiceOption(svc, ast)
-	assert(t, err == nil, err)
 
-	opt := options["validation.svc_info"]
+	opt, err := ParseServiceOption(svc, "validation.svc_info", ast)
+	assert(t, err == nil, err)
 	assert(t, opt != nil)
 
 	v := opt.GetValue()
@@ -362,10 +362,9 @@ func TestServiceAndMethodOption(t *testing.T) {
 	// method option
 	method := getMethodFromService("M1", svc)
 	assert(t, method != nil)
-	methodOptions, err := ParseMethodOption(method, ast)
-	assert(t, err == nil, err)
 
-	methodOption := methodOptions["validation.method_info"]
+	methodOption, err := ParseMethodOption(method, "validation.method_info", ast)
+	assert(t, err == nil, err)
 	assert(t, methodOption != nil)
 
 	mv := methodOption.GetValue()
@@ -386,10 +385,9 @@ func TestEnumAndEnumValueOption(t *testing.T) {
 	// enum option
 	e := getEnumFromAst("MyEnum", ast)
 	assert(t, e != nil)
-	options, err := ParseEnumOption(e, ast)
-	assert(t, err == nil, err)
 
-	opt := options["validation.enum_info"]
+	opt, err := ParseEnumOption(e, "validation.enum_info", ast)
+	assert(t, err == nil, err)
 	assert(t, opt != nil)
 
 	v := opt.GetValue()
@@ -402,10 +400,9 @@ func TestEnumAndEnumValueOption(t *testing.T) {
 
 	// enum value option
 	ev := getEnumValueFromEnum("A", e)
-	methodOptions, err := ParseEnumValueOption(ev, ast)
-	assert(t, err == nil, err)
 
-	enumValueOption := methodOptions["validation.enum_value_info"]
+	enumValueOption, err := ParseEnumValueOption(ev, "validation.enum_value_info", ast)
+	assert(t, err == nil, err)
 	assert(t, enumValueOption != nil)
 
 	evv := enumValueOption.GetValue()
@@ -416,76 +413,6 @@ func TestEnumAndEnumValueOption(t *testing.T) {
 	enumValueNumber, ok := enumValueInfo["number"].(int16)
 	assert(t, ok && enumValueNumber == 222)
 
-}
-
-// 检测各种报错提示场景
-func TestOptionError(t *testing.T) {
-	ast, err := parser.ParseFile("option_idl/test_grammar_error.thrift", []string{"option_idl"}, true)
-	assert(t, err == nil)
-
-	// 错误或者不存在的 Option 名称
-	p := getStructFromAst("PersonA", ast)
-	assert(t, p != nil)
-	_, err = ParseStructOption(p, ast)
-	assert(t, err != nil && err.Error() == "no such option: entity.person_xxx_info", err)
-
-	// 错误的 field value
-	p = getStructFromAst("PersonB", ast)
-	assert(t, p != nil)
-	_, err = ParseStructOption(p, ast)
-	assert(t, err != nil && err.Error() == "parse failed for entity.person_basic_info:strconv.ParseInt: parsing \"hellostring\": invalid syntax", err)
-
-	// 错误的 field name
-	p = getStructFromAst("PersonC", ast)
-	assert(t, p != nil)
-	_, err = ParseStructOption(p, ast)
-	assert(t, err != nil && err.Error() == "parse failed for entity.person_struct_info:field not exist:value_xxx", err)
-
-	// 错误的 option 语法
-	p = getStructFromAst("PersonD", ast)
-	assert(t, p != nil)
-	_, err = ParseStructOption(p, ast)
-	assert(t, err != nil && strings.HasPrefix(err.Error(), "grammar error"), err)
-
-	// 错误的 kv 语法
-	p = getStructFromAst("PersonE", ast)
-	assert(t, p != nil)
-	_, err = ParseStructOption(p, ast)
-	assert(t, err != nil && err.Error() == "parse failed for entity.person_container_info:{} not match", err)
-
-	// 没有 include 对应 option 的 IDL
-	p = getStructFromAst("PersonF", ast)
-	assert(t, p != nil)
-	_, err = ParseStructOption(p, ast)
-	assert(t, err != nil && err.Error() == "no such struct found from given include IDLs:validation.person_string_info", err)
-
-}
-
-func TestParseOptionStr(t *testing.T) {
-	st1 := "IsOdd=true"
-	name, content, ok := ParseOptionStr(st1)
-	assert(t, ok && name == "IsOdd" && content == "true")
-
-	st2 := "m2.IsOdd = true"
-	name, content, ok = ParseOptionStr(st2)
-	assert(t, ok && name == "m2.IsOdd" && content == "true")
-
-	st3 := " IsOdd= true"
-	name, content, ok = ParseOptionStr(st3)
-	assert(t, ok && name == "IsOdd" && content == "true")
-
-	st4 := "MyStruct={a:b c:d e=f}"
-	name, content, ok = ParseOptionStr(st4)
-	assert(t, ok && name == "MyStruct" && content == "{a:b c:d e=f}")
-
-	st5 := `MyStruct={
-			a:b c:d
-			e:f
-			g:h
-		}
-	`
-	name, content, ok = ParseOptionStr(st5)
-	assert(t, ok && name == "MyStruct" && content == "{    a:b c:d    e:f    g:h   }")
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {

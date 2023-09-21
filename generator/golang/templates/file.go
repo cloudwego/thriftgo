@@ -56,6 +56,7 @@ import (
 {{template "Processor" .}}
 {{- end}}
 
+{{- if Features.UseOption}}
 {{- $Options := .GetOption .AST.Filename }}
 {{- if $Options}}
 {{- UseStdLibrary "thrift_option"}}
@@ -64,6 +65,7 @@ var (
 		{{$Line}}
 	{{- end}}
 )
+{{- end}}
 {{- end}}
 
 {{- if Features.GenerateReflectionInfo}}

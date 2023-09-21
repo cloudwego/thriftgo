@@ -705,7 +705,6 @@ func buildSynthesized(v *parser.Function) (argType, resType *parser.StructLike) 
 
 func (s *Scope) GetOption(filepath string) []string {
 	ods := []string{}
-
 	for _, st := range s.ast.Structs {
 		if st.Name == "_StructOptions" {
 			for _, f := range st.Fields {
