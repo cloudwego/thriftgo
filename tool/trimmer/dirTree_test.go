@@ -15,10 +15,11 @@
 package main
 
 import (
-	"github.com/cloudwego/thriftgo/pkg/test"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
 func TestDirTree(t *testing.T) {
