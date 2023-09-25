@@ -47,7 +47,7 @@ func createDirTree(sourceDir, destinationDir string) {
 
 // remove empty directory of output dir-tree
 func removeEmptyDir(source string) {
-	files, err := os.ReadDir(source) //读取目录下文件
+	files, err := os.ReadDir(source)
 	if err != nil {
 		return
 	}
@@ -57,10 +57,7 @@ func removeEmptyDir(source string) {
 		}
 	}
 	empty, err := isDirectoryEmpty(source)
-	if err != nil {
-		println(err.Error())
-	}
-	if empty {
+	if empty || err != nil {
 		_ = os.RemoveAll(source)
 	}
 }
