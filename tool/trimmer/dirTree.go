@@ -28,13 +28,13 @@ func createDirTree(sourceDir, destinationDir string) {
 			return err
 		}
 		if info.IsDir() {
-			newDir := filepath.Join(destinationDir, path[len(sourceDir):])
 			if path[len(sourceDir)-1] != filepath.Separator {
-				newDir = filepath.Join(destinationDir, path[len(sourceDir)-1:])
+				path = path + string(filepath.Separator)
 			}
+			newDir := filepath.Join(destinationDir, path[len(sourceDir):])
 			err := os.MkdirAll(newDir, os.ModePerm)
 			if err != nil {
-				return err
+				return errors.New("create dir tree error:" + err.Error())
 			}
 		}
 		return nil
@@ -47,32 +47,21 @@ func createDirTree(sourceDir, destinationDir string) {
 
 // remove empty directory of output dir-tree
 func removeEmptyDir(source string) {
-	err := filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			empty, err := isDirectoryEmpty(path)
-			if err != nil {
-				return err
-			}
-			if empty {
-				err := os.Remove(path)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
-
-	parent := filepath.Dir(source)
-	if parent != source {
-		removeEmptyDir(parent)
-	}
-
+	files, err := os.ReadDir(source) //读取目录下文件
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		return
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			removeEmptyDir(source + string(filepath.Separator) + file.Name())
+		}
+	}
+	empty, err := isDirectoryEmpty(source)
+	if err != nil {
+		println(err.Error())
+	}
+	if empty {
+		_ = os.RemoveAll(source)
 	}
 }
 
