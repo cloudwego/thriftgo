@@ -112,6 +112,11 @@ func main() {
 				os.Exit(2)
 			}
 		}
+		relPath, err := filepath.Rel(a.Recurse, a.OutputFile)
+		if err == nil && (len(relPath) < 2 || relPath[:2] != "..") {
+			println("output-dir should be set outside of -r base-dir to avoid overlay")
+			os.Exit(2)
+		}
 		createDirTree(a.Recurse, a.OutputFile)
 		recurseDump(ast, a.Recurse, a.OutputFile)
 		relativePath, err := filepath.Rel(a.Recurse, a.IDL)
