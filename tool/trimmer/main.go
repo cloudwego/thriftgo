@@ -117,16 +117,7 @@ func main() {
 			println("output-dir should be set outside of -r base-dir to avoid overlay")
 			os.Exit(2)
 		}
-		createDirTree(a.Recurse, a.OutputFile)
 		recurseDump(ast, a.Recurse, a.OutputFile)
-		relativePath, err := filepath.Rel(a.Recurse, a.IDL)
-		if err != nil {
-			println("-r input err, range should cover all the target IDLs;", err.Error())
-			os.Exit(2)
-		}
-		outputFileUrl := filepath.Join(a.OutputFile, relativePath)
-		check(writeStringToFile(outputFileUrl, idl))
-		removeEmptyDir(a.OutputFile)
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
 	}
@@ -139,16 +130,21 @@ func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	if ast == nil {
 		return
 	}
+	out, err := dump.DumpIDL(ast)
+	check(err)
+	relativeUrl, err := filepath.Rel(sourceDir, ast.Filename)
+	if err != nil {
+		println("-r input err, range should cover all the target IDLs;", err.Error())
+		os.Exit(2)
+	}
+	outputFileUrl := filepath.Join(outDir, relativeUrl)
+	err = os.MkdirAll(filepath.Dir(outputFileUrl), os.ModePerm)
+	if err != nil {
+		println("mkdir", filepath.Dir(outputFileUrl), "error:", err.Error())
+		os.Exit(2)
+	}
+	check(writeStringToFile(outputFileUrl, out))
 	for _, includes := range ast.Includes {
-		out, err := dump.DumpIDL(includes.Reference)
-		check(err)
-		relativeUrl, err := filepath.Rel(sourceDir, includes.Reference.Filename)
-		if err != nil {
-			println("-r input err, range should cover all the target IDLs;", err.Error())
-			os.Exit(2)
-		}
-		outputFileUrl := filepath.Join(outDir, relativeUrl)
-		check(writeStringToFile(outputFileUrl, out))
 		recurseDump(includes.Reference, sourceDir, outDir)
 	}
 }
