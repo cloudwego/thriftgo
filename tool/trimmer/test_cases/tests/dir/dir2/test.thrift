@@ -20,3 +20,9 @@ struct TestStruct{
     1: sample1.Person person
     2: another.AnotherStruct another
 }
+
+service TestService{
+    void func1()
+    another.AnotherStruct func2()
+    void func3()
+}
