@@ -87,7 +87,13 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
 		cfg := trim.ParseYamlConfig(filepath.Dir(req.AST.Filename))
-		err := trim.TrimAST(req.AST, cfg.Methods, !*cfg.Preserve)
+		var err error
+		if cfg == nil {
+			err = trim.TrimAST(req.AST, nil, false)
+		} else {
+			err = trim.TrimAST(req.AST, cfg.Methods, !*cfg.Preserve)
+		}
+
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
 		}
