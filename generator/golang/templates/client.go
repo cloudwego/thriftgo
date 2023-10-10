@@ -86,6 +86,15 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 	if err = p.Client_().Call(ctx, "{{.Name}}", &_args, &_result); err != nil {
 		return
 	}
+	{{- if .Throws}}
+	switch {
+	{{- range .Throws}}
+	case _result.{{($ResType.Field .Name).GoName}} != nil:
+		return _result.{{($ResType.Field .Name).GoName}}
+	{{- end}}
+	}
+	{{- end}}
+
 	{{- end}}
 	return nil
 	{{- else}}{{/* If .Void */}}
