@@ -36,7 +36,13 @@ func ReplaceFileDescriptor(replacer *FileDescriptorReplacer) *FileDescriptor {
 	currentGoPkgPath := replacer.CurrentGoPkgPath
 	currentFilepath := replacer.CurrentFilepath
 	matcher := replacer.Matcher
-	remoteDesc := matchRemoteFileDescriptor(remoteGoPkgPath, matcher)
+	var remoteDesc *FileDescriptor
+	for _, fd := range defaultGlobalDescriptor.globalFD {
+		if fd.checkGoPkgPathWithRef(remoteGoPkgPath) && checkMatch(matcher, fd) {
+			remoteDesc = fd
+			break
+		}
+	}
 	if remoteDesc == nil {
 		panic("not found remote fd")
 	}
@@ -53,17 +59,8 @@ func ReplaceFileDescriptor(replacer *FileDescriptorReplacer) *FileDescriptor {
 		shadowDesc.Filepath = currentFilepath
 		shadowDesc.setGoPkgPathRef(currentGoPkgPath)
 	}
-	checkDuplicateAndRegister(shadowDesc, currentGoPkgPath)
+	defaultGlobalDescriptor.checkDuplicateAndRegister(shadowDesc, currentGoPkgPath)
 	return shadowDesc
-}
-
-func matchRemoteFileDescriptor(remoteGoPkgPath, matcher string) *FileDescriptor {
-	for k, fd := range globalFD {
-		if fd.checkGoPkgPathWithRef(remoteGoPkgPath) && checkMatch(matcher, fd) {
-			return globalFD[k]
-		}
-	}
-	return nil
 }
 
 func (f *FileDescriptor) setGoPkgPathRef(local string) {

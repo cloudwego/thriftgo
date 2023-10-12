@@ -1,11 +1,12 @@
 package runtime_test
 
 import (
+	"testing"
+
 	"github.com/cloudwego/thriftgo/extension/thrift_option"
 	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen"
 	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen/annotation/entity"
 	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen/annotation/validation"
-	"testing"
 )
 
 func TestCheckOptionFieldSet(t *testing.T) {
@@ -36,11 +37,9 @@ func TestRuntimeBasicStructOption(t *testing.T) {
 	assert(t, len(opt.GetValuebinary()) == 1 && opt.GetValuebinary()[0] == 18)
 	assert(t, opt.GetValuedouble() == 3.14159)
 	assert(t, opt.GetValuebool() == true)
-
 }
 
 func TestRuntimeStructStructOption(t *testing.T) {
-
 	// test struct option
 	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_STRUCT_INFO)
 	assert(t, err == nil && option != nil)
@@ -68,11 +67,9 @@ func TestRuntimeStructStructOption(t *testing.T) {
 	valuestructTypedef := opt.GetValuestructtypedef()
 	assert(t, valuestructTypedef != nil)
 	assert(t, ok && valuestructTypedef.GetEmail() == "empty email")
-
 }
 
 func TestRuntimeContainerStructOption(t *testing.T) {
-
 	// test container option
 	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_CONTAINER_INFO)
 	assert(t, err == nil && option != nil)
@@ -105,22 +102,18 @@ func TestRuntimeContainerStructOption(t *testing.T) {
 	assert(t, ok && valuemapstructk1.GetEmail() == "e1")
 	valuemapstructk2 := valuemapstruct["k2"]
 	assert(t, ok && valuemapstructk2.GetEmail() == "e2")
-
 }
 
 func TestRuntimeBasicOption(t *testing.T) {
-
 	// test basic string option
 	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_STRING_INFO)
 	assert(t, err == nil && option != nil)
 	valuestring, ok := option.GetInstance().(string)
 	assert(t, ok)
 	assert(t, valuestring == "hello")
-
 }
 
 func TestRuntimeContainerOption(t *testing.T) {
-
 	// test container
 	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), validation.STRUCT_OPTION_PERSON_MAP_INFO)
 	assert(t, err == nil && option != nil)
@@ -128,7 +121,6 @@ func TestRuntimeContainerOption(t *testing.T) {
 	assert(t, ok)
 	assert(t, len(valuemap) == 1)
 	assert(t, valuemap["hey1"] == "value1")
-
 }
 
 func TestRuntimeEnumOption(t *testing.T) {
@@ -170,7 +162,6 @@ func TestRuntimeStructOptionWithDefaultValue(t *testing.T) {
 }
 
 func TestRuntimeFieldOption(t *testing.T) {
-
 	pd := option_gen.NewPerson().GetDescriptor()
 	fd := pd.GetFieldByName("name")
 	// test basic string option
@@ -186,11 +177,9 @@ func TestRuntimeFieldOption(t *testing.T) {
 	valuestring, ok = opt2.GetInstance().(string)
 	assert(t, ok)
 	assert(t, valuestring == "the ID of this person")
-
 }
 
 func TestRuntimeServiceAndMethodOption(t *testing.T) {
-
 	// service option
 	svc := option_gen.GetFileDescriptorForTest().GetServiceDescriptor("MyService")
 	opt, err := thrift_option.GetServiceOption(svc, validation.SERVICE_OPTION_SVC_INFO)
@@ -203,7 +192,7 @@ func TestRuntimeServiceAndMethodOption(t *testing.T) {
 
 	// method option
 
-	//method := option_gen.GetMethodDescriptorForMyServiceM1()
+	// method := option_gen.GetMethodDescriptorForMyServiceM1()
 	method := svc.GetMethodByName("M1")
 	assert(t, method != nil)
 	methodOption, err := thrift_option.GetMethodOption(method, validation.METHOD_OPTION_METHOD_INFO)
@@ -213,11 +202,9 @@ func TestRuntimeServiceAndMethodOption(t *testing.T) {
 	assert(t, ok)
 	assert(t, methodValueInfo.GetName() == "MethodInfoName")
 	assert(t, methodValueInfo.GetNumber() == 555)
-
 }
 
 func TestRuntimeEnumAndEnumValueOption(t *testing.T) {
-
 	// enum option
 	e := option_gen.MyEnum(0).GetDescriptor()
 	assert(t, e != nil)
@@ -238,7 +225,6 @@ func TestRuntimeEnumAndEnumValueOption(t *testing.T) {
 	assert(t, ok)
 	assert(t, enumValueInfo.GetName() == "EnumValueInfoName")
 	assert(t, enumValueInfo.GetNumber() == 222)
-
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {

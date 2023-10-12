@@ -1,19 +1,24 @@
 package thrift_option
 
 import (
-	"github.com/cloudwego/thriftgo/parser"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 func TestStructOptionWithStructBasic(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test basic option
-	opt, err := ParseStructOption(p, "entity.person_basic_info", ast)
+	opt, err := ParseStructOption(p, "entity.person_basic_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -64,19 +69,20 @@ func TestStructOptionWithStructBasic(t *testing.T) {
 	assert(t, err == nil)
 	val8, ok := v.(bool)
 	assert(t, ok && val8 == true)
-
 }
 
 func TestStructOptionWithStructStruct(t *testing.T) {
-
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test struct option
-	opt, err := ParseStructOption(p, "entity.person_struct_info", ast)
+	opt, err := ParseStructOption(p, "entity.person_struct_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -112,11 +118,14 @@ func TestStructOptionWithStructContainer(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test container option
-	opt, err := ParseStructOption(p, "entity.person_container_info", ast)
+	opt, err := ParseStructOption(p, "entity.person_container_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -166,18 +175,20 @@ func TestStructOptionWithStructContainer(t *testing.T) {
 	assert(t, ok && valuemapstructk1["email"] == "e1")
 	valuemapstructk2, ok := valuemapstruct["k2"].(map[string]interface{})
 	assert(t, ok && valuemapstructk2["email"] == "e2")
-
 }
 
 func TestStructOptionWithBasic(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test basic option
-	opt, err := ParseStructOption(p, "validation.person_string_info", ast)
+	opt, err := ParseStructOption(p, "validation.person_string_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -186,18 +197,20 @@ func TestStructOptionWithBasic(t *testing.T) {
 	valuestring, ok := v.(string)
 	assert(t, ok)
 	assert(t, valuestring == "hello")
-
 }
 
 func TestStructOptionWithContainer(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test container option
-	opt, err := ParseStructOption(p, "validation.person_map_info", ast)
+	opt, err := ParseStructOption(p, "validation.person_map_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -207,18 +220,20 @@ func TestStructOptionWithContainer(t *testing.T) {
 	assert(t, ok)
 	assert(t, len(valuemap) == 1)
 	assert(t, valuemap["hey1"] == "value1")
-
 }
 
 func TestStructOptionWithEnum(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test enum option
-	opt, err := ParseStructOption(p, "validation.person_enum_info", ast)
+	opt, err := ParseStructOption(p, "validation.person_enum_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -227,18 +242,20 @@ func TestStructOptionWithEnum(t *testing.T) {
 	valueenum, ok := v.(int64)
 	assert(t, ok)
 	assert(t, valueenum == 2)
-
 }
 
 func TestStructOptionWithTypedef(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test basic typedef option
-	opt1, err := ParseStructOption(p, "validation.person_basic_typedef_info", ast)
+	opt1, err := ParseStructOption(p, "validation.person_basic_typedef_info")
 	assert(t, err == nil)
 	assert(t, opt1 != nil)
 
@@ -249,7 +266,7 @@ func TestStructOptionWithTypedef(t *testing.T) {
 	assert(t, valuestring == "hello there")
 
 	// test struct typedef option
-	opt2, err := ParseStructOption(p, "validation.person_struct_typedef_info", ast)
+	opt2, err := ParseStructOption(p, "validation.person_struct_typedef_info")
 	assert(t, err == nil)
 	assert(t, opt2 != nil)
 
@@ -258,18 +275,20 @@ func TestStructOptionWithTypedef(t *testing.T) {
 	valuestruct, ok := v.(map[string]interface{})
 	assert(t, ok)
 	assert(t, valuestruct["name"] == "empty name")
-
 }
 
 func TestStructOptionWithDefaultValue(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("Person")
 	assert(t, p != nil)
 
 	// test basic option
-	opt, err := ParseStructOption(p, "validation.person_struct_default_value_info", ast)
+	opt, err := ParseStructOption(p, "validation.person_struct_default_value_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -305,18 +324,21 @@ func TestStructOptionWithDefaultValue(t *testing.T) {
 
 	v11, err := opt.GetFieldValue("v11")
 	assert(t, err == nil && v11.(string) == "hello there")
-
 }
 
 func TestFieldOption(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("Person", ast)
-	assert(t, p != nil)
-	f, ok := p.GetField("name")
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
 
-	opt, err := ParseFieldOption(f, "entity.person_field_info", ast)
+	p := fd.GetStructDescriptor("Person")
+	assert(t, p != nil)
+	f := p.GetFieldByName("name")
+	assert(t, f != nil)
+
+	opt, err := ParseFieldOption(f, "entity.person_field_info")
 	assert(t, err == nil)
 	assert(t, opt != nil)
 
@@ -326,7 +348,7 @@ func TestFieldOption(t *testing.T) {
 	assert(t, ok)
 	assert(t, valuestring == "the name of this person")
 
-	optLocal, err := ParseFieldOption(f, "local_field_info", ast)
+	optLocal, err := ParseFieldOption(f, "local_field_info")
 	assert(t, err == nil)
 	assert(t, optLocal != nil)
 
@@ -335,19 +357,20 @@ func TestFieldOption(t *testing.T) {
 	valuestring, ok = v.(string)
 	assert(t, ok)
 	assert(t, valuestring == "the ID of this person")
-
 }
 
 func TestServiceAndMethodOption(t *testing.T) {
-
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
 	// service option
-	svc := getServiceFromAst("MyService", ast)
+	svc := fd.GetServiceDescriptor("MyService")
 	assert(t, svc != nil)
 
-	opt, err := ParseServiceOption(svc, "validation.svc_info", ast)
+	opt, err := ParseServiceOption(svc, "validation.svc_info")
 	assert(t, err == nil, err)
 	assert(t, opt != nil)
 
@@ -360,10 +383,10 @@ func TestServiceAndMethodOption(t *testing.T) {
 	assert(t, ok && number == 666)
 
 	// method option
-	method := getMethodFromService("M1", svc)
+	method := svc.GetMethodByName("M1")
 	assert(t, method != nil)
 
-	methodOption, err := ParseMethodOption(method, "validation.method_info", ast)
+	methodOption, err := ParseMethodOption(method, "validation.method_info")
 	assert(t, err == nil, err)
 	assert(t, methodOption != nil)
 
@@ -374,19 +397,20 @@ func TestServiceAndMethodOption(t *testing.T) {
 	assert(t, methodValueInfo["name"] == "MethodInfoName")
 	methodNumber, ok := methodValueInfo["number"].(int16)
 	assert(t, ok && methodNumber == 555)
-
 }
 
 func TestEnumAndEnumValueOption(t *testing.T) {
-
 	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
 	// enum option
-	e := getEnumFromAst("MyEnum", ast)
+	e := fd.GetEnumDescriptor("MyEnum")
 	assert(t, e != nil)
 
-	opt, err := ParseEnumOption(e, "validation.enum_info", ast)
+	opt, err := ParseEnumOption(e, "validation.enum_info")
 	assert(t, err == nil, err)
 	assert(t, opt != nil)
 
@@ -399,9 +423,9 @@ func TestEnumAndEnumValueOption(t *testing.T) {
 	assert(t, ok && number == 333)
 
 	// enum value option
-	ev := getEnumValueFromEnum("A", e)
+	ev := e.GetValues()[0]
 
-	enumValueOption, err := ParseEnumValueOption(ev, "validation.enum_value_info", ast)
+	enumValueOption, err := ParseEnumValueOption(ev, "validation.enum_value_info")
 	assert(t, err == nil, err)
 	assert(t, enumValueOption != nil)
 
@@ -412,7 +436,6 @@ func TestEnumAndEnumValueOption(t *testing.T) {
 	assert(t, enumValueInfo["name"] == "EnumValueInfoName")
 	enumValueNumber, ok := enumValueInfo["number"].(int16)
 	assert(t, ok && enumValueNumber == 222)
-
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {
@@ -425,49 +448,4 @@ func assert(t *testing.T, cond bool, val ...interface{}) {
 			t.Fatal("assertion failed")
 		}
 	}
-}
-
-func getStructFromAst(name string, ast *parser.Thrift) *parser.StructLike {
-	for _, st := range ast.Structs {
-		if st.Name == name {
-			return st
-		}
-	}
-	return nil
-}
-
-func getServiceFromAst(name string, ast *parser.Thrift) *parser.Service {
-	for _, svc := range ast.Services {
-		if svc.Name == name {
-			return svc
-		}
-	}
-	return nil
-}
-
-func getMethodFromService(name string, service *parser.Service) *parser.Function {
-	for _, m := range service.Functions {
-		if m.Name == name {
-			return m
-		}
-	}
-	return nil
-}
-
-func getEnumFromAst(name string, ast *parser.Thrift) *parser.Enum {
-	for _, e := range ast.Enums {
-		if e.Name == name {
-			return e
-		}
-	}
-	return nil
-}
-
-func getEnumValueFromEnum(name string, e *parser.Enum) *parser.EnumValue {
-	for _, ev := range e.Values {
-		if ev.Name == name {
-			return ev
-		}
-	}
-	return nil
 }

@@ -2,7 +2,9 @@ package thrift_option
 
 import (
 	"errors"
+
 	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 var (
@@ -83,20 +85,22 @@ func hasOptionCompileError(err error) bool {
 }
 
 func CheckOptionGrammar(ast *parser.Thrift) error {
-	for _, s := range ast.Structs {
+	_, fd := thrift_reflection.RegisterAST(ast)
+
+	for _, s := range fd.Structs {
 		if optionDefMap[s.Name] {
 			continue
 		}
-		for _, an := range s.Annotations {
-			_, err := ParseStructOption(s, an.GetKey(), ast)
+		for an := range s.Annotations {
+			_, err := ParseStructOption(s, an)
 			if hasOptionCompileError(err) {
 				return err
 			}
 		}
 
 		for _, f := range s.Fields {
-			for _, fan := range f.Annotations {
-				_, err := ParseFieldOption(f, fan.GetKey(), ast)
+			for fan := range f.Annotations {
+				_, err := ParseFieldOption(f, fan)
 				if hasOptionCompileError(err) {
 					return err
 				}
@@ -104,32 +108,32 @@ func CheckOptionGrammar(ast *parser.Thrift) error {
 		}
 
 	}
-	for _, s := range ast.Services {
-		for _, san := range s.Annotations {
-			_, err := ParseServiceOption(s, san.GetKey(), ast)
+	for _, s := range fd.Services {
+		for san := range s.Annotations {
+			_, err := ParseServiceOption(s, san)
 			if hasOptionCompileError(err) {
 				return err
 			}
 		}
-		for _, f := range s.Functions {
-			for _, fa := range f.Annotations {
-				_, err := ParseMethodOption(f, fa.GetKey(), ast)
+		for _, f := range s.Methods {
+			for fa := range f.Annotations {
+				_, err := ParseMethodOption(f, fa)
 				if hasOptionCompileError(err) {
 					return err
 				}
 			}
 		}
 	}
-	for _, en := range ast.Enums {
-		for _, an := range en.Annotations {
-			_, err := ParseEnumOption(en, an.GetKey(), ast)
+	for _, en := range fd.Enums {
+		for an := range en.Annotations {
+			_, err := ParseEnumOption(en, an)
 			if hasOptionCompileError(err) {
 				return err
 			}
 		}
 		for _, f := range en.Values {
-			for _, an := range f.Annotations {
-				_, err := ParseEnumValueOption(f, an.GetKey(), ast)
+			for an := range f.Annotations {
+				_, err := ParseEnumValueOption(f, an)
 				if hasOptionCompileError(err) {
 					return err
 				}

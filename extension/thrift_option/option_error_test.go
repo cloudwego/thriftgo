@@ -2,9 +2,11 @@ package thrift_option
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/test"
-	"testing"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 // 检测各种报错提示场景
@@ -12,48 +14,48 @@ func TestOptionError(t *testing.T) {
 	ast, err := parser.ParseFile("option_idl/test_grammar_error.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)
 
-	p := getStructFromAst("PersonA", ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
+
+	p := fd.GetStructDescriptor("PersonA")
 	assert(t, p != nil)
 
 	// 错误或者不存在的 Option 名称
-	_, err = ParseStructOption(p, "abc", ast)
+	_, err = ParseStructOption(p, "abc")
 	// todo 这里需要展示前缀？
 	assert(t, err != nil && errors.Is(err, ErrKeyNotMatch), err)
 
 	// 错误或者不存在的 Option 名称
-	_, err = ParseStructOption(p, "entity.person_xxx_info", ast)
+	_, err = ParseStructOption(p, "entity.person_xxx_info")
 	// todo 这里需要展示前缀？
 	assert(t, err != nil && errors.Is(err, ErrNotExistOption), err)
 
 	// 错误的 field value
-	p = getStructFromAst("PersonB", ast)
+	p = fd.GetStructDescriptor("PersonB")
 	assert(t, p != nil)
-	_, err = ParseStructOption(p, "entity.person_basic_info", ast)
+	_, err = ParseStructOption(p, "entity.person_basic_info")
 	assert(t, err != nil && errors.Is(err, ErrParseFailed), err)
 
 	// 错误的 field name
-	p = getStructFromAst("PersonC", ast)
+	p = fd.GetStructDescriptor("PersonC")
 	assert(t, p != nil)
-	_, err = ParseStructOption(p, "entity.person_struct_info", ast)
+	_, err = ParseStructOption(p, "entity.person_struct_info")
 	// todo 具体的 parse field 可以以后增加测试校验
 	assert(t, err != nil && errors.Is(err, ErrParseFailed), err)
 
 	// 错误的 kv 语法
-	p = getStructFromAst("PersonE", ast)
+	p = fd.GetStructDescriptor("PersonE")
 	assert(t, p != nil)
-	_, err = ParseStructOption(p, "entity.person_container_info", ast)
+	_, err = ParseStructOption(p, "entity.person_container_info")
 	assert(t, err != nil && errors.Is(err, ErrParseFailed), err)
 
 	// 没有 include 对应 option 的 IDL
-	p = getStructFromAst("PersonF", ast)
+	p = fd.GetStructDescriptor("PersonF")
 	assert(t, p != nil)
-	_, err = ParseStructOption(p, "validation.person_string_info", ast)
+	_, err = ParseStructOption(p, "validation.person_string_info")
 	assert(t, err != nil && errors.Is(err, ErrNotIncluded), err)
-
 }
 
 func TestGrammarCheck(t *testing.T) {
-
 	// 测试有 option 解析错误等各种情况的 IDL
 	ast, err := parser.ParseFile("option_idl/test_grammar_error.thrift", []string{"option_idl"}, true)
 	assert(t, err == nil)

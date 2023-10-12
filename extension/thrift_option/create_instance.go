@@ -3,14 +3,15 @@ package thrift_option
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/cloudwego/thriftgo/thrift_reflection"
-	"github.com/cloudwego/thriftgo/utils"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/thrift_reflection"
+	"github.com/cloudwego/thriftgo/utils"
 )
 
-func createInstance(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
+func createInstance(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	if td.IsBasic() {
 		val, err := createBasic(td.GetName(), content)
 		return val, val, err
@@ -30,7 +31,7 @@ func createInstance(td *thrift_reflection.TypeDescriptor, content string, mapMod
 	return nil, nil, errors.New("unknown type")
 }
 
-func createEnum(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
+func createEnum(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	enumDesc, err := td.GetEnumDescriptor()
 	if err != nil {
 		return nil, nil, err
@@ -55,7 +56,7 @@ func createEnum(td *thrift_reflection.TypeDescriptor, content string, mapMode bo
 	return nil, nil, errors.New("enum value " + content + " not found for" + enumDesc.GetName())
 }
 
-func createTypedef(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
+func createTypedef(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	tdDesc, err := td.GetTypedefDescriptor()
 	if err != nil {
 		return nil, nil, err
@@ -70,7 +71,7 @@ type quadruple struct {
 	instanceValue interface{}
 }
 
-func creatStruct(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
+func creatStruct(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	des, err := td.GetStructDescriptor()
 	if err != nil {
 		return nil, nil, err
@@ -129,7 +130,7 @@ func creatStruct(td *thrift_reflection.TypeDescriptor, content string, mapMode b
 	return resultMap, nil, nil
 }
 
-func createBasic(name string, value string) (interface{}, error) {
+func createBasic(name, value string) (interface{}, error) {
 	switch name {
 	case "bool":
 		i, er := strconv.ParseBool(value)
@@ -193,7 +194,7 @@ func createBasic(name string, value string) (interface{}, error) {
 	}
 }
 
-func createList(td *thrift_reflection.TypeDescriptor, value string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
+func createList(td *thrift_reflection.TypeDescriptor, value string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	arr, err := utils.ParseArr(value)
 	if err != nil {
 		return nil, nil, errors.New(err.Error() + " when parse " + td.Name)
@@ -225,8 +226,7 @@ func createList(td *thrift_reflection.TypeDescriptor, value string, mapMode bool
 	}
 }
 
-func createMap(td *thrift_reflection.TypeDescriptor, value string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
-
+func createMap(td *thrift_reflection.TypeDescriptor, value string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	kvMap, err := utils.ParseKV(value)
 	if err != nil {
 		return nil, nil, errors.New(err.Error() + " when parse map " + td.Name)
@@ -263,7 +263,7 @@ func createMap(td *thrift_reflection.TypeDescriptor, value string, mapMode bool)
 	}
 }
 
-func createContainer(td *thrift_reflection.TypeDescriptor, value string, mapMode bool) (mapVal interface{}, instanceVal interface{}, e error) {
+func createContainer(td *thrift_reflection.TypeDescriptor, value string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
 	typeName := td.GetName()
 	if typeName == "map" {
 		return createMap(td, value, mapMode)

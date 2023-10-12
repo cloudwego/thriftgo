@@ -2,7 +2,7 @@ package thrift_option
 
 import (
 	"errors"
-	"github.com/cloudwego/thriftgo/parser"
+
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
@@ -142,28 +142,28 @@ func NewFieldOption(filepath, name string) *FieldOption {
 	return &FieldOption{newOption(filepath, name, "_FieldOptions")}
 }
 
-func ParseFieldOption(field *parser.Field, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseOptionFromAST(field, ast, optionName, "_FieldOptions")
+func ParseFieldOption(field *thrift_reflection.FieldDescriptor, optionName string) (option *OptionData, err error) {
+	return parseOptionFromKey(field, optionName, "_FieldOptions")
 }
 
-func ParseStructOption(structLike *parser.StructLike, annotationName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseOptionFromAST(structLike, ast, annotationName, "_StructOptions")
+func ParseStructOption(structLike *thrift_reflection.StructDescriptor, annotationName string) (option *OptionData, err error) {
+	return parseOptionFromKey(structLike, annotationName, "_StructOptions")
 }
 
-func ParseMethodOption(f *parser.Function, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseOptionFromAST(f, ast, optionName, "_MethodOptions")
+func ParseMethodOption(f *thrift_reflection.MethodDescriptor, optionName string) (option *OptionData, err error) {
+	return parseOptionFromKey(f, optionName, "_MethodOptions")
 }
 
-func ParseServiceOption(s *parser.Service, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseOptionFromAST(s, ast, optionName, "_ServiceOptions")
+func ParseServiceOption(s *thrift_reflection.ServiceDescriptor, optionName string) (option *OptionData, err error) {
+	return parseOptionFromKey(s, optionName, "_ServiceOptions")
 }
 
-func ParseEnumOption(e *parser.Enum, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseOptionFromAST(e, ast, optionName, "_EnumOptions")
+func ParseEnumOption(e *thrift_reflection.EnumDescriptor, optionName string) (option *OptionData, err error) {
+	return parseOptionFromKey(e, optionName, "_EnumOptions")
 }
 
-func ParseEnumValueOption(ev *parser.EnumValue, optionName string, ast *parser.Thrift) (option *OptionData, err error) {
-	return parseOptionFromAST(ev, ast, optionName, "_EnumValueOptions")
+func ParseEnumValueOption(ev *thrift_reflection.EnumValueDescriptor, optionName string) (option *OptionData, err error) {
+	return parseOptionFromKey(ev, optionName, "_EnumValueOptions")
 }
 
 func GetFieldOption(s *thrift_reflection.FieldDescriptor, os *FieldOption) (val *OptionData, err error) {
@@ -177,9 +177,11 @@ func GetEnumOption(s *thrift_reflection.EnumDescriptor, os *EnumOption) (val *Op
 func GetEnumValueOption(s *thrift_reflection.EnumValueDescriptor, os *EnumValueOption) (val *OptionData, err error) {
 	return parseOptionRuntime(s, os)
 }
+
 func GetServiceOption(s *thrift_reflection.ServiceDescriptor, os *ServiceOption) (val *OptionData, err error) {
 	return parseOptionRuntime(s, os)
 }
+
 func GetMethodOption(s *thrift_reflection.MethodDescriptor, os *MethodOption) (val *OptionData, err error) {
 	return parseOptionRuntime(s, os)
 }

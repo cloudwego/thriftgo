@@ -16,10 +16,10 @@ package golang
 
 import (
 	"fmt"
-	thrift_option "github.com/cloudwego/thriftgo/extension/thrift_option"
-
 	"strconv"
 	"strings"
+
+	thrift_option "github.com/cloudwego/thriftgo/extension/thrift_option"
 
 	"github.com/cloudwego/thriftgo/generator/golang/common"
 	"github.com/cloudwego/thriftgo/parser"

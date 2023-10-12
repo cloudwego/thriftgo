@@ -1,10 +1,10 @@
 package thrift_option
 
 import (
-	"github.com/cloudwego/thriftgo/parser"
+	"strings"
+
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 	"github.com/cloudwego/thriftgo/utils"
-	"strings"
 )
 
 var optionDefMap = map[string]bool{
@@ -16,40 +16,51 @@ var optionDefMap = map[string]bool{
 	"_EnumValueOptions": true,
 }
 
-func parseOptionFromAST(in interface{ GetAnnotations() parser.Annotations }, ast *parser.Thrift, annotationName string, optionType string) (option *OptionData, err error) {
+func parseOptionFromKey(in interface {
+	GetAnnotations() map[string][]string
+	GetFilepath() string
+	GetExtra() map[string]string
+}, annotationName, optionType string) (option *OptionData, err error) {
 	// init FileDescriptor to enable reflection apis
-	fd := thrift_reflection.RegisterAST(ast)
+
+	gd := thrift_reflection.GetGlobalDescriptor(in)
 	prefix, optionName := utils.ParseAlias(annotationName)
-	optionFD := fd.GetIncludeFD(prefix)
-	filepath := ""
-	if optionFD != nil {
-		filepath = optionFD.GetFilepath()
-	}
 	optionMeta := &commonOption{
 		name:       optionName,
-		filepath:   filepath,
 		optionType: optionType,
 	}
+	optionFD := gd.LookupFD(in.GetFilepath()).GetIncludeFD(prefix)
+	if optionFD != nil {
+		optionMeta.filepath = optionFD.GetFilepath()
+	}
 
-	return parseOption(fd.GetFilepath(), utils.GetAnnotationsAsMap(in.GetAnnotations()), optionMeta, true)
+	anno := &AnnotationMeta{
+		filepath:    in.GetFilepath(),
+		annotations: in.GetAnnotations(),
+	}
+	return parseOption(gd, anno, optionMeta, true)
 }
 
 func parseOptionRuntime(in interface {
 	GetAnnotations() map[string][]string
 	GetFilepath() string
-}, optionMeta OptionGetter) (val *OptionData, err error) {
-
-	optionData, err := parseOption(in.GetFilepath(), in.GetAnnotations(), optionMeta, false)
+	GetExtra() map[string]string
+}, optionMeta OptionGetter) (val *OptionData, err error,
+) {
+	anno := &AnnotationMeta{
+		filepath:    in.GetFilepath(),
+		annotations: in.GetAnnotations(),
+	}
+	gd := thrift_reflection.GetGlobalDescriptor(in)
+	optionData, err := parseOption(gd, anno, optionMeta, false)
 	if err != nil {
 		return nil, err
 	}
 	return optionData, nil
-
 }
 
 // todo 添加缓存
-func parseOption(filepath string, annotations map[string][]string, optionMeta OptionGetter, mapMode bool) (option *OptionData, err error) {
-
+func parseOption(gd *thrift_reflection.GlobalDescriptor, anno *AnnotationMeta, optionMeta OptionGetter, mapMode bool) (option *OptionData, err error) {
 	optionName := optionMeta.GetName()
 	if optionMeta.GetType() == "_StructOptions" && optionDefMap[optionName] {
 		return nil, NotAllowError(optionName)
@@ -59,14 +70,7 @@ func parseOption(filepath string, annotations map[string][]string, optionMeta Op
 		return nil, NotIncludedError(optionName)
 	}
 
-	// todo 参数生成支持
-
-	anno := &AnnotationMeta{
-		filepath:    filepath,
-		annotations: annotations,
-	}
-
-	_, opt, ok := getOptionContent(anno, optionMeta)
+	_, opt, ok := getOptionContent(gd, anno, optionMeta)
 	if !ok {
 		// 传入的 Option 并不能在 Annotation 里找到
 		return nil, KeyNotMatchError(optionMeta.GetName())
@@ -75,11 +79,10 @@ func parseOption(filepath string, annotations map[string][]string, optionMeta Op
 	optionFilepath := optionMeta.GetFilepath()
 	optionType := optionMeta.GetType()
 
-	fieldDesc := thrift_reflection.LookupFD(optionFilepath).GetStructDescriptor(optionType).GetFieldByName(optionName)
+	fieldDesc := gd.LookupFD(optionFilepath).GetStructDescriptor(optionType).GetFieldByName(optionName)
 	if fieldDesc == nil || fieldDesc.GetType() == nil {
 		// 传入的 Option 和 Annotation 能匹配到，但并没有实际对应真正的 Option
 		return nil, NotExistError(optionName)
-
 	}
 
 	typeDesc := fieldDesc.GetType()
@@ -94,10 +97,9 @@ func parseOption(filepath string, annotations map[string][]string, optionMeta Op
 		return nil, ParseFailedError(optionName, er)
 	}
 	return &OptionData{optionName, typeDesc, mapVal, instanceVal}, nil
-
 }
 
-func getOptionContent(annotation *AnnotationMeta, optionMeta OptionGetter) (string, string, bool) {
+func getOptionContent(gd *thrift_reflection.GlobalDescriptor, annotation *AnnotationMeta, optionMeta OptionGetter) (string, string, bool) {
 	for annotationKey, values := range annotation.annotations {
 		if len(values) > 0 {
 			prefix, expectedOptionName := utils.ParseAlias(annotationKey)
@@ -111,7 +113,7 @@ func getOptionContent(annotation *AnnotationMeta, optionMeta OptionGetter) (stri
 					match = optionMeta.GetFilepath() == annotation.filepath
 				} else {
 					// option and current struct are not in the same idl
-					currentFD := thrift_reflection.LookupFD(annotation.filepath)
+					currentFD := gd.LookupFD(annotation.filepath)
 					// check if current struct idl include the option's idl
 					match = optionMeta.GetFilepath() == currentFD.Includes[prefix]
 				}
