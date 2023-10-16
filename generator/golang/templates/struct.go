@@ -171,7 +171,7 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 		{{- range .Fields}}
 		case {{.ID}}:
 			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }}{{if Features.WithFieldMask}} && p._fieldmask.InMask(fieldId){{end}} {
-				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask .Type.Category.IsStructLike}}, p._fieldmask.Next(fieldId){{end}}); err != nil {
+				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask .Type.Category.IsComplex}}, p._fieldmask.Next(fieldId){{end}}); err != nil {
 					goto ReadFieldError
 				}
 				{{- if .Requiredness.IsRequired}}
@@ -264,7 +264,7 @@ var StructLikeReadField = `
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
 {{$FieldName := .GoName}}
-func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol{{if and Features.WithFieldMask .Type.Category.IsStructLike}}, fm *fieldmask.FieldMask{{end}}) error {
+func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol{{if and Features.WithFieldMask .Type.Category.IsComplex}}, fm *fieldmask.FieldMask{{end}}) error {
 	{{- $ctx := MkRWCtx .}}
 	{{- template "FieldRead" $ctx}}
 	return nil

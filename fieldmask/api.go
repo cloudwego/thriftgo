@@ -87,11 +87,11 @@ func (cur *FieldMask) setPath(path string, curDesc *thrift_reflection.StructDesc
 		}
 
 		if !f.GetType().IsStruct() {
-			panic("too deep path '" + path + "' for current struct " + curDesc.GetName())
+			panic("not support path '" + name + "." + path + "' for struct " + curDesc.GetName())
 		}
 		curDesc, _ = f.GetType().GetStructDescriptor()
 		if curDesc == nil {
-			panic("too deep path '" + path + "' for current struct " + curDesc.GetName())
+			panic("too deep path '" + name + "." + path + "' for struct " + curDesc.GetName())
 		}
 
 		// check current FieldMaskMap if it is allocated

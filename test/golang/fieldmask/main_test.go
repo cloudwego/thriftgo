@@ -48,8 +48,8 @@ func SampleNewBase() *nbase.Base {
 	obj.Meta.PersistentKVS = map[string]string{
 		"abcd": "abcd",
 	}
-	obj.Meta.TransientKVS = map[string]string{
-		"abcd": "abcd",
+	obj.Meta.TransientKVS = map[*nbase.Key]*nbase.Val{
+		&nbase.Key{ID: "abcd"}: &nbase.Val{ID: "abcd"},
 	}
 	obj.Extra = nbase.NewExtraInfo()
 	obj.TrafficEnv = nbase.NewTrafficEnv()
@@ -69,8 +69,8 @@ func SampleOldBase() *obase.Base {
 	obj.Meta.PersistentKVS = map[string]string{
 		"abcd": "abcd",
 	}
-	obj.Meta.TransientKVS = map[string]string{
-		"abcd": "abcd",
+	obj.Meta.TransientKVS = map[*obase.Key]*obase.Val{
+		&obase.Key{ID: "abcd"}: &obase.Val{ID: "abcd"},
 	}
 	obj.Extra = obase.NewExtraInfo()
 	obj.TrafficEnv = obase.NewTrafficEnv()

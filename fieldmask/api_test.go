@@ -50,8 +50,16 @@ struct ExtraInfo {
 
 struct MetaInfo {
 	1: map<string, string> PersistentKVS,
-	2: map<string, string> TransientKVS,
+	2: map<Key, Val> TransientKVS,
 	3: Base Base,
+}
+
+struct Key {
+	1: string id
+}
+
+struct Val {
+	1: string id
 }
 
 struct BaseResp {
@@ -77,6 +85,7 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 		paths      []string
 		inMasks    []string
 		notInMasks []string
+		err        interface{}
 	}
 	tests := []struct {
 		name string
@@ -96,9 +105,29 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 				flat: fieldMaskBitmap([]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
 			},
 		},
+		{
+			name: "not struct err",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths:      []string{"LogID.X"},
+				err:        "not support path 'LogID.X' for struct Base",
+			},
+			want: &FieldMask{
+				flat: fieldMaskBitmap([]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if v := recover(); v != nil {
+					if tt.args.err == nil || v != tt.args.err {
+						t.Fatal("panic: ", v)
+					}
+				}
+			}()
+
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
 			got := NewFieldMaskFromNames(st, tt.args.paths...)
 

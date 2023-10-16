@@ -22,8 +22,16 @@ struct ExtraInfo {
 
 struct MetaInfo {
 	1: map<string, string> PersistentKVS,
-	2: map<string, string> TransientKVS,
+	2: map<Key, Val> TransientKVS,
 	3: Base Base,
+}
+
+struct Key {
+	1: string id
+}
+
+struct Val {
+	1: string id
 }
 
 struct BaseResp {

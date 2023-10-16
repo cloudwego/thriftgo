@@ -118,3 +118,8 @@ func (p Category) IsContainerType() bool {
 func (p Category) IsStructLike() bool {
 	return p == Category_Struct || p == Category_Union || p == Category_Exception
 }
+
+// IsStructLike tells if the category is a struct-like, or map/set/list
+func (p Category) IsComplex() bool {
+	return p == Category_Struct || p == Category_Union || p == Category_Exception || p == Category_List || p == Category_Map || p == Category_Set
+}
