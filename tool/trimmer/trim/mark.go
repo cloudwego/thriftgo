@@ -27,33 +27,7 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 		t.markService(service, ast, ast.Filename)
 	}
 
-	for _, constant := range ast.Constants {
-		t.markType(constant.Type, ast, ast.Filename)
-	}
-
-	for _, typedef := range ast.Typedefs {
-		t.markTypeDef(typedef.Type, ast, ast.Filename)
-	}
-
-	if !t.forceTrimming {
-		for _, str := range ast.Structs {
-			if !t.marks[ast.Filename][str] && t.checkPreserve(str) {
-				t.markStructLike(str, ast, ast.Filename)
-			}
-		}
-
-		for _, str := range ast.Unions {
-			if !t.marks[ast.Filename][str] && t.checkPreserve(str) {
-				t.markStructLike(str, ast, ast.Filename)
-			}
-		}
-
-		for _, str := range ast.Exceptions {
-			if !t.marks[ast.Filename][str] && t.checkPreserve(str) {
-				t.markStructLike(str, ast, ast.Filename)
-			}
-		}
-	}
+	t.markKeptParts(ast, ast.Filename)
 }
 
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {
@@ -89,6 +63,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		if svc.Reference != nil {
 			theInclude := ast.Includes[svc.Reference.Index]
 			t.marks[filename][theInclude] = true
+			t.markKeptParts(theInclude.Reference, filename)
 			for _, service := range theInclude.Reference.Services {
 				if service.Name == svc.Reference.Name {
 					t.markService(service, theInclude.Reference, filename)
@@ -129,6 +104,7 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift, filename st
 		// if referenced, redirect to included ast
 		baseAST = ast.Includes[theType.Reference.Index].Reference
 		t.marks[filename][ast.Includes[theType.Reference.Index]] = true
+		t.markKeptParts(ast.Includes[theType.Reference.Index].Reference, filename)
 	}
 
 	if theType.IsTypedef != nil {
@@ -186,13 +162,44 @@ func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename
 		return
 	}
 
-	for _, typedef := range ast.Typedefs {
+	for i, typedef := range ast.Typedefs {
 		if typedef.Alias == theType.Name {
-			if !t.marks[filename][typedef] {
-				t.marks[filename][typedef] = true
+			if !t.marks[filename][ast.Typedefs[i]] {
+				t.marks[filename][ast.Typedefs[i]] = true
 				t.markType(typedef.Type, ast, filename)
 			}
 			return
+		}
+	}
+}
+
+func (t *Trimmer) markKeptParts(ast *parser.Thrift, filename string) {
+	for _, constant := range ast.Constants {
+		t.markType(constant.Type, ast, filename)
+	}
+
+	for _, typedef := range ast.Typedefs {
+		t.marks[filename][typedef] = true
+		t.markType(typedef.Type, ast, filename)
+	}
+
+	if !t.forceTrimming {
+		for _, str := range ast.Structs {
+			if !t.marks[filename][str] && t.checkPreserve(str) {
+				t.markStructLike(str, ast, filename)
+			}
+		}
+
+		for _, str := range ast.Unions {
+			if !t.marks[filename][str] && t.checkPreserve(str) {
+				t.markStructLike(str, ast, filename)
+			}
+		}
+
+		for _, str := range ast.Exceptions {
+			if !t.marks[filename][str] && t.checkPreserve(str) {
+				t.markStructLike(str, ast, filename)
+			}
 		}
 	}
 }
@@ -237,6 +244,7 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 		t.marks[filename][svc] = true
 		if svc.Reference != nil {
 			t.marks[filename][ast.Includes[svc.Reference.Index]] = true
+			t.markKeptParts(ast.Includes[svc.Reference.Index].Reference, filename)
 		}
 	}
 	return ret
