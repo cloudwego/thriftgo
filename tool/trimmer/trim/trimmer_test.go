@@ -49,7 +49,7 @@ func testSingleFile(t *testing.T) {
 
 	test.Assert(t, len(ast.Structs) == 6)
 	test.Assert(t, len(ast.Includes) == 1)
-	test.Assert(t, len(ast.Typedefs) == 3)
+	test.Assert(t, len(ast.Typedefs) == 5)
 	test.Assert(t, len(ast.Namespaces) == 1)
 	test.Assert(t, len(ast.Includes[0].Reference.Structs) == 2)
 	test.Assert(t, len(ast.Includes[0].Reference.Constants) == 2)
