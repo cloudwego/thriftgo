@@ -28,7 +28,7 @@ func TestDirTree(t *testing.T) {
 	fileCount, dirCount, err := countFilesAndSubdirectories("trimmer_test")
 	test.Assert(t, err == nil)
 	test.Assert(t, fileCount == 0)
-	test.Assert(t, dirCount == 3)
+	test.Assert(t, dirCount == 4)
 	removeEmptyDir("trimmer_test")
 	_, err = os.ReadDir("trimmer_test")
 	test.Assert(t, err != nil)
