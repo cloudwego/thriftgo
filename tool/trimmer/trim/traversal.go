@@ -71,4 +71,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	}
 	ast.Services = listService
 	ast.Name2Category = nil
+	for _, inc := range ast.Includes {
+		inc.Used = nil
+	}
 }
