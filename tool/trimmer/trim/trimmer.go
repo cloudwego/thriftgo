@@ -61,7 +61,6 @@ func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool) error
 	}
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
-	ast.Name2Category = nil
 	if path := parser.CircleDetect(ast); len(path) > 0 {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
 	}
