@@ -178,7 +178,7 @@ func (t *Trimmer) markInclude(include *parser.Include, filename string) {
 		return
 	}
 	t.marks[filename][include] = true
-	//t.markKeptPart(include.Reference, filename)
+	// t.markKeptPart(include.Reference, filename)
 }
 
 func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) {
