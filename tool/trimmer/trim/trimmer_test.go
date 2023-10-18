@@ -56,3 +56,32 @@ func testSingleFile(t *testing.T) {
 	test.Assert(t, len(ast.Includes[0].Reference.Services) == 1)
 	test.Assert(t, len(ast.Includes[0].Reference.Namespaces) == 1)
 }
+
+func TestInclude(t *testing.T) {
+	trimmer, err := newTrimmer(nil, "")
+	test.Assert(t, err == nil, err)
+	filename := filepath.Join("..", "test_cases/test_include", "example.thrift")
+	ast, err := parser.ParseFile(filename, []string{"test_cases/test_include"}, true)
+	check(err)
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+	trimmer.asts[filename] = ast
+	trimmer.markAST(ast)
+	trimmer.traversal(ast, ast.Filename)
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker = semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+
+	test.Assert(t, len(ast.Structs) == 0)
+	test.Assert(t, len(ast.Includes) == 1)
+	test.Assert(t, ast.Includes[0].Used == nil)
+}
