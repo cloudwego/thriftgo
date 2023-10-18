@@ -99,6 +99,7 @@ func ParseArr(str string) ([]string, error) {
 
 // ParseKV parses a string such as {a:b,c:d} into a string map
 func ParseKV(str string) (map[string]string, error) {
+	str = strings.ReplaceAll(str, ",", ", ")
 	for {
 		newstr := strings.ReplaceAll(str, "\t", " ")
 		newstr = strings.ReplaceAll(newstr, "\n", " ")
@@ -106,6 +107,7 @@ func ParseKV(str string) (map[string]string, error) {
 		newstr = strings.ReplaceAll(newstr, "{ ", "{")
 		newstr = strings.ReplaceAll(newstr, " :", ":")
 		newstr = strings.ReplaceAll(newstr, ": ", ":")
+		newstr = strings.ReplaceAll(newstr, " ,", ",")
 		newstr = strings.ReplaceAll(newstr, "  ", " ")
 		newstr = strings.TrimSpace(newstr)
 		if len(newstr) == len(str) {
@@ -165,7 +167,10 @@ func ParseKV(str string) (map[string]string, error) {
 					return nil, errors.New("grammar error")
 				}
 				kstart = i + 1
-				value = str[vstart:vend]
+				value = strings.TrimSpace(str[vstart:vend])
+				if strings.HasSuffix(value, ",") {
+					value = strings.TrimSuffix(value, ",")
+				}
 				result[strings.TrimSpace(key)] = strings.TrimSpace(value)
 			}
 			continue
@@ -180,6 +185,10 @@ func ParseKV(str string) (map[string]string, error) {
 			return nil, errors.New("grammar error")
 		}
 		value = str[vstart:vend]
+		value = strings.TrimSpace(str[vstart:vend])
+		if strings.HasSuffix(value, ",") {
+			value = strings.TrimSuffix(value, ",")
+		}
 		result[strings.TrimSpace(key)] = strings.TrimSpace(value)
 		return result, nil
 	} else {
