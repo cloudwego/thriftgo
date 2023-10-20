@@ -100,6 +100,13 @@ struct Simple { // should not appear
 struct MaybeUseless{
 }
 
+// some comments
+# @preServe
+// some others
+struct preserved{
+
+}
+
 service EmployeeService extends sample1b.GetPerson {
     Employee getEmployee(1: string id)
     void addEmployee(1: Employee employee)
