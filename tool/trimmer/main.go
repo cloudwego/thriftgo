@@ -74,13 +74,15 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// try parse yaml config
-	cfg := trim.ParseYamlConfig(filepath.Dir(a.IDL))
-	if cfg != nil {
-		if len(a.Methods) == 0 && len(cfg.Methods) > 0 {
-			a.Methods = cfg.Methods
-		}
-		if a.Preserve == "" && !(*cfg.Preserve) {
-			preserve = false
+	if wd, err := os.Getwd(); err == nil {
+		cfg := trim.ParseYamlConfig(wd)
+		if cfg != nil {
+			if len(a.Methods) == 0 && len(cfg.Methods) > 0 {
+				a.Methods = cfg.Methods
+			}
+			if a.Preserve == "" && !(*cfg.Preserve) {
+				preserve = false
+			}
 		}
 	}
 

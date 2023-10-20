@@ -17,6 +17,7 @@ package golang
 import (
 	"fmt"
 	"go/format"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -86,7 +87,8 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		cfg := trim.ParseYamlConfig(filepath.Dir(req.AST.Filename))
+		wd, _ := os.Getwd()
+		cfg := trim.ParseYamlConfig(wd)
 		var err error
 		if cfg == nil {
 			err = trim.TrimAST(req.AST, nil, false)
