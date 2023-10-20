@@ -113,7 +113,7 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
 	trimmer.marks = make(map[string]map[interface{}]bool)
-	pattern := `^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
+	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
 	return trimmer, nil
 }
