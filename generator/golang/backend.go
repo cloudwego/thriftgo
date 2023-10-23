@@ -91,9 +91,9 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 		cfg := trim.ParseYamlConfig(wd)
 		var err error
 		if cfg == nil {
-			err = trim.TrimAST(req.AST, nil, false)
+			err = trim.TrimAST(req.AST, nil, false, nil)
 		} else {
-			err = trim.TrimAST(req.AST, cfg.Methods, !*cfg.Preserve)
+			err = trim.TrimAST(req.AST, cfg.Methods, !*cfg.Preserve, cfg.PreservedStructs)
 		}
 
 		if err != nil {

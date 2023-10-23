@@ -26,3 +26,6 @@ service TestService{
     another.AnotherStruct func2()
     void func3()
 }
+
+union useless{
+}

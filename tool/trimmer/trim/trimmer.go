@@ -32,14 +32,15 @@ type Trimmer struct {
 	marks  map[string]map[interface{}]bool
 	outDir string
 	// use -m
-	trimMethods     []string
-	trimMethodValid []bool
-	preserveRegex   *regexp.Regexp
-	forceTrimming   bool
+	trimMethods      []string
+	trimMethodValid  []bool
+	preserveRegex    *regexp.Regexp
+	forceTrimming    bool
+	preservedStructs []string
 }
 
 // TrimAST trim the single AST, pass method names if -m specified
-func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool) error {
+func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, preservedStructs []string) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
@@ -59,6 +60,7 @@ func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool) error
 			}
 		}
 	}
+	trimmer.preservedStructs = preservedStructs
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
