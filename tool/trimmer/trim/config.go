@@ -25,8 +25,9 @@ import (
 var DefaultYamlFileName = "trim_config.yaml"
 
 type YamlArguments struct {
-	Methods  []string `yaml:"methods,omitempty"`
-	Preserve *bool    `yaml:"preserve,omitempty"`
+	Methods          []string `yaml:"methods,omitempty"`
+	Preserve         *bool    `yaml:"preserve,omitempty"`
+	PreservedStructs []string `yaml:"preserved_structs,omitempty"`
 }
 
 func ParseYamlConfig(path string) *YamlArguments {

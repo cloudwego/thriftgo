@@ -14,4 +14,6 @@
 methods:
   - "TestService.func1"
   - "TestService.func3"
-preserve: false
+preserve: true
+preserved_structs:
+  - "useless"

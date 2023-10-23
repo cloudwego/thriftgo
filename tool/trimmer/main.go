@@ -74,6 +74,7 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// try parse yaml config
+	var preservedStructs []string
 	if wd, err := os.Getwd(); err == nil {
 		cfg := trim.ParseYamlConfig(wd)
 		if cfg != nil {
@@ -83,11 +84,12 @@ func main() {
 			if a.Preserve == "" && !(*cfg.Preserve) {
 				preserve = false
 			}
+			preservedStructs = cfg.PreservedStructs
 		}
 	}
 
 	// trim ast
-	check(trim.TrimAST(ast, a.Methods, !preserve))
+	check(trim.TrimAST(ast, a.Methods, !preserve, preservedStructs))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
