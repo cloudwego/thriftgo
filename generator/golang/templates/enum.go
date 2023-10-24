@@ -53,11 +53,15 @@ func {{$EnumType}}FromString(s string) ({{$EnumType}}, error) {
 
 func {{$EnumType}}Ptr(v {{$EnumType}} ) *{{$EnumType}}  { return &v }
 
-{{- if Features.MarshalEnumToText}}
+{{- if or Features.MarshalEnumToText Features.MarshalEnum}}
 
 func (p {{$EnumType}}) MarshalText() ([]byte, error) {
 	return []byte(p.String()), nil
 }
+
+{{end}}{{/* if or Features.MarshalEnumToText Features.MarshalEnum */}}
+
+{{- if or Features.MarshalEnumToText Features.UnmarshalEnum}}
 
 func (p *{{$EnumType}}) UnmarshalText(text []byte) error {
 	q, err := {{$EnumType}}FromString(string(text))
@@ -67,7 +71,7 @@ func (p *{{$EnumType}}) UnmarshalText(text []byte) error {
 	*p = q
 	return nil
 }
-{{- end}}{{/* if Features.MarshalEnumToText */}}
+{{end}}{{/* if or Features.MarshalEnumToText Features.UnmarshalEnum */}}
 
 {{- if Features.ScanValueForEnum}}
 {{- UseStdLibrary "sql" "driver"}}
