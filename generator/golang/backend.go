@@ -17,7 +17,6 @@ package golang
 import (
 	"fmt"
 	"go/format"
-	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -87,15 +86,7 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		wd, _ := os.Getwd()
-		cfg := trim.ParseYamlConfig(wd)
-		var err error
-		if cfg == nil {
-			err = trim.TrimAST(req.AST, nil, false, nil)
-		} else {
-			err = trim.TrimAST(req.AST, cfg.Methods, !*cfg.Preserve, cfg.PreservedStructs)
-		}
-
+		err := trim.TrimAST(&trim.TrimASTArg{Ast: req.AST, TrimMethods: nil, Preserve: nil})
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
 		}

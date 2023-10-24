@@ -53,13 +53,14 @@ func main() {
 		os.Exit(0)
 	}
 
-	preserve := true
+	var preserveInput *bool
 	if a.Preserve != "" {
-		preserve, err = strconv.ParseBool(a.Preserve)
+		preserve, err := strconv.ParseBool(a.Preserve)
 		if err != nil {
 			help()
 			os.Exit(2)
 		}
+		preserveInput = &preserve
 	}
 
 	// parse file to ast
@@ -73,23 +74,10 @@ func main() {
 	check(err)
 	check(semantic.ResolveSymbols(ast))
 
-	// try parse yaml config
-	var preservedStructs []string
-	if wd, err := os.Getwd(); err == nil {
-		cfg := trim.ParseYamlConfig(wd)
-		if cfg != nil {
-			if len(a.Methods) == 0 && len(cfg.Methods) > 0 {
-				a.Methods = cfg.Methods
-			}
-			if a.Preserve == "" && !(*cfg.Preserve) {
-				preserve = false
-			}
-			preservedStructs = cfg.PreservedStructs
-		}
-	}
-
 	// trim ast
-	check(trim.TrimAST(ast, a.Methods, !preserve, preservedStructs))
+	check(trim.TrimAST(&trim.TrimASTArg{
+		Ast: ast, TrimMethods: a.Methods, Preserve: preserveInput,
+	}))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
