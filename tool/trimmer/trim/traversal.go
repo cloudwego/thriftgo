@@ -40,7 +40,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listUnion []*parser.StructLike
 	for i := range ast.Unions {
-		if t.marks[filename][ast.Unions[i]] {
+		if t.marks[filename][ast.Unions[i]] || t.checkPreserve(ast.Unions[i]) {
 			listUnion = append(listUnion, ast.Unions[i])
 		}
 	}
@@ -48,7 +48,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listException []*parser.StructLike
 	for i := range ast.Exceptions {
-		if t.marks[filename][ast.Exceptions[i]] {
+		if t.marks[filename][ast.Exceptions[i]] || t.checkPreserve(ast.Exceptions[i]) {
 			listException = append(listException, ast.Exceptions[i])
 		}
 	}

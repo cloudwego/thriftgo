@@ -12,20 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-include "../../../sample1.thrift"
-include "../dir3/dir4/another.thrift"
-
-// @preserve
-struct TestStruct{
-    1: sample1.Person person
-    2: another.AnotherStruct another
-}
-
-service TestService{
-    void func1()
-    another.AnotherStruct func2()
-    void func3()
-}
-
-union useless{
+struct AnotherStruct{
 }

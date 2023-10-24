@@ -32,14 +32,44 @@ type Trimmer struct {
 	marks  map[string]map[interface{}]bool
 	outDir string
 	// use -m
-	trimMethods     []string
-	trimMethodValid []bool
-	preserveRegex   *regexp.Regexp
-	forceTrimming   bool
+	trimMethods      []string
+	trimMethodValid  []bool
+	preserveRegex    *regexp.Regexp
+	forceTrimming    bool
+	preservedStructs []string
 }
 
-// TrimAST trim the single AST, pass method names if -m specified
-func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool) error {
+type TrimASTArg struct {
+	Ast         *parser.Thrift
+	TrimMethods []string
+	Preserve    *bool
+}
+
+// TrimAST parse the cfg and trim the single AST
+func TrimAST(arg *TrimASTArg) error {
+	var preservedStructs []string
+	if wd, err := os.Getwd(); err == nil {
+		cfg := ParseYamlConfig(wd)
+		if cfg != nil {
+			if len(arg.TrimMethods) == 0 && len(cfg.Methods) > 0 {
+				arg.TrimMethods = cfg.Methods
+			}
+			if arg.Preserve == nil && !(*cfg.Preserve) {
+				preserve := false
+				arg.Preserve = &preserve
+			}
+			preservedStructs = cfg.PreservedStructs
+		}
+	}
+	forceTrim := false
+	if arg.Preserve != nil {
+		forceTrim = !*arg.Preserve
+	}
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, preservedStructs)
+}
+
+// doTrimAST trim the single AST, pass method names if -m specified
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, preservedStructs []string) error {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return err
@@ -59,6 +89,7 @@ func TrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool) error
 			}
 		}
 	}
+	trimmer.preservedStructs = preservedStructs
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
