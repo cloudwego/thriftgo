@@ -24,7 +24,9 @@ import (
 
 // Features controls the behavior of CodeUtils.
 type Features struct {
-	MarshalEnumToText      bool `json_enum_as_text:"Generate MarshalText for enum values"`
+	MarshalEnumToText      bool `json_enum_as_text:"Generate MarshalText and UnmarshalText for enum values"`
+	MarshalEnum            bool `enum_marshal:"Generate MarshalText for enum values"`
+	UnmarshalEnum          bool `enum_unmarshal:"Generate UnmarshalText for enum values"`
 	GenerateSetter         bool `gen_setter:"Generate Set* methods for fields"`
 	GenDatabaseTag         bool `gen_db_tag:"Generate 'db:$field' tag"`
 	GenOmitEmptyTag        bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields."`
@@ -56,6 +58,8 @@ type Features struct {
 
 var defaultFeatures = Features{
 	MarshalEnumToText:      false,
+	MarshalEnum:            false,
+	UnmarshalEnum:          false,
 	GenerateSetter:         false,
 	GenDatabaseTag:         false,
 	GenOmitEmptyTag:        true,
