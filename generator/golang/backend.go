@@ -86,7 +86,7 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		err := trim.TrimAST(req.AST, nil, false)
+		err := trim.TrimAST(&trim.TrimASTArg{Ast: req.AST, TrimMethods: nil, Preserve: nil})
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
 		}

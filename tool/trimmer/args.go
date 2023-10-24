@@ -63,8 +63,8 @@ func (a *Arguments) BuildFlags() *flag.FlagSet {
 	f.Var(&a.Methods, "m", "")
 	f.Var(&a.Methods, "method", "")
 
-	f.StringVar(&a.Preserve, "p", "true", "")
-	f.StringVar(&a.Preserve, "preserve", "true", "")
+	f.StringVar(&a.Preserve, "p", "", "")
+	f.StringVar(&a.Preserve, "preserve", "", "")
 
 	f.Usage = help
 	return f

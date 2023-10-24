@@ -85,3 +85,50 @@ func TestInclude(t *testing.T) {
 	test.Assert(t, len(ast.Includes) == 1)
 	test.Assert(t, ast.Includes[0].Used == nil)
 }
+
+func TestTrimMethod(t *testing.T) {
+	filename := filepath.Join("..", "test_cases", "tests", "dir", "dir2", "test.thrift")
+	ast, err := parser.ParseFile(filename, nil, true)
+	check(err)
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+
+	methods := make([]string, 1)
+	methods[0] = "func1"
+
+	err = TrimAST(&TrimASTArg{
+		Ast:         ast,
+		TrimMethods: methods,
+		Preserve:    nil,
+	})
+	check(err)
+	test.Assert(t, len(ast.Services[0].Functions) == 1)
+}
+
+func TestPreserve(t *testing.T) {
+	filename := filepath.Join("..", "test_cases", "tests", "dir", "dir2", "test.thrift")
+	ast, err := parser.ParseFile(filename, nil, true)
+	check(err)
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+
+	preserve := false
+
+	err = TrimAST(&TrimASTArg{
+		Ast:         ast,
+		TrimMethods: nil,
+		Preserve:    &preserve,
+	})
+	check(err)
+	test.Assert(t, len(ast.Structs) == 0)
+}

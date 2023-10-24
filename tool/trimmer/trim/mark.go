@@ -261,5 +261,10 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	if t.forceTrimming {
 		return false
 	}
+	for _, name := range t.preservedStructs {
+		if name == theStruct.Name {
+			return true
+		}
+	}
 	return t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments))
 }
