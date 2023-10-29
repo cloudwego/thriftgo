@@ -22,6 +22,45 @@ import (
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
+func (cur *FieldMask) setPath(path string, curDesc *thrift_reflection.StructDescriptor) {
+	// vertical traversal...
+	iterPath(path, func(name string, path string) bool {
+		// find the field desc
+		f := curDesc.GetFieldByName(name)
+		if f == nil {
+			panic("path '" + name + "' doesn't exist in current struct " + curDesc.GetName())
+		}
+
+		// set the field's mask
+		cur.flat.Set(fieldID(f.GetID()))
+
+		// no left path, return
+		if path == "" {
+			return false
+		}
+
+		if !f.GetType().IsStruct() {
+			panic("not support path '" + name + "." + path + "' for struct " + curDesc.GetName())
+		}
+		curDesc, _ = f.GetType().GetStructDescriptor()
+		if curDesc == nil {
+			panic("too deep path '" + name + "." + path + "' for struct " + curDesc.GetName())
+		}
+
+		// check current FieldMaskMap if it is allocated
+		if !cur.next.IsInitialized() {
+			next := makeFieldMaskMap(curDesc.GetFields())
+			cur.next = &next
+		}
+
+		// deep down to the next fieldmask
+		cur = cur.next.GetOrAlloc(fieldID(f.GetID()))
+
+		// continue next layer
+		return true
+	})
+}
+
 func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_reflection.StructDescriptor) {
 	for _, f := range desc.GetFields() {
 		if !self.InMask(int16(f.GetID())) {
