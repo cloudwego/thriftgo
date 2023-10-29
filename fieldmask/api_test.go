@@ -129,7 +129,12 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 			}()
 
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
-			got := NewFieldMaskFromNames(st, tt.args.paths...)
+			got, err := GetFieldMask(st, tt.args.paths...)
+			if err != nil {
+				if tt.args.err == nil || err.Error() != tt.args.err {
+					t.Fatal("panic: ", err.Error())
+				}
+			}
 
 			if !reflect.DeepEqual(got.flat, tt.want.flat) {
 				t.Fatal("not expected flat, ", tt.want.flat, got.flat)
@@ -168,7 +173,7 @@ func BenchmarkNewFieldMask(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		fm := NewFieldMaskFromNames(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
+		fm, _ := GetFieldMask(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
 		fm.Recycle()
 	}
 }
@@ -183,7 +188,7 @@ func BenchmarkFieldMask_InMask(b *testing.B) {
 	if st == nil {
 		b.Fail()
 	}
-	fm := NewFieldMaskFromNames(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
+	fm, _ := GetFieldMask(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if !fm.InMask(5) {

@@ -22,7 +22,7 @@ import (
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
-func (cur *FieldMask) setPath(path string, curDesc *thrift_reflection.StructDescriptor) {
+func (cur *FieldMask) setPath(path string, curDesc *thrift_reflection.TypeDescriptor) {
 	// vertical traversal...
 	iterPath(path, func(name string, path string) bool {
 		// find the field desc

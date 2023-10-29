@@ -113,7 +113,7 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 		buf := thrift.NewTMemoryBufferLen(1024)
 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		fm := fieldmask.NewFieldMaskFromNames(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
+		fm := fieldmask.GetFieldMask(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
 
 		for i := 0; i < b.N; i++ {
 			obj.SetFieldMask(fm)
@@ -174,7 +174,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		data := []byte(string(buf.Bytes()))
 		obj = nbase.NewBase()
 
-		fm := fieldmask.NewFieldMaskFromNames(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
+		fm := fieldmask.GetFieldMask(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
 
 		for i := 0; i < b.N; i++ {
 			buf.Reset()

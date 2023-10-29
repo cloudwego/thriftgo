@@ -22,6 +22,12 @@ type fieldID int32
 
 const _MaxFieldIDHead = 128
 
+type fieldMaskStorage struct {
+	typ pathType
+	im  map[int]FieldMask
+	sm  map[string]FieldMask
+}
+
 type fieldMaskMap struct {
 	head [_MaxFieldIDHead + 1]FieldMask
 	tail []FieldMask

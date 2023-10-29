@@ -41,12 +41,24 @@ var fmsPool = sync.Pool{
 	},
 }
 
-// NewFieldMaskFromNames make a new FieldMask from paths and root descriptor,
+func NewFieldMask(desc *thrift_reflection.TypeDescriptor, pathes ...string) (*FieldMask, error) {
+	ret := FieldMask{}
+	err := ret.init(desc, pathes...)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
+}
+
+// GetFieldMask make a new FieldMask from paths and root descriptor,
 // each path is the combination of field names from root struct to any layer of its children, separated with PathSep
-func NewFieldMaskFromNames(desc *thrift_reflection.StructDescriptor, paths ...string) *FieldMask {
+func GetFieldMask(desc *thrift_reflection.StructDescriptor, paths ...string) (*FieldMask, error) {
 	ret := fmsPool.Get().(*FieldMask)
-	ret.Init(desc, paths...)
-	return ret
+	err := ret.init(desc, paths...)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (self *FieldMask) Recycle() {
@@ -62,11 +74,12 @@ func (self *FieldMask) Reset() {
 	self.next.Reset()
 }
 
-func (self *FieldMask) Init(desc *thrift_reflection.StructDescriptor, paths ...string) {
+func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...string) error {
 	// horizontal traversal...
 	for _, path := range paths {
 		self.setPath(path, desc)
 	}
+	return nil
 }
 
 // String pretty prints the structure a FieldMask represents
