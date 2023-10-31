@@ -504,6 +504,18 @@ func (s *StructDescriptor) GetFieldByName(name string) *FieldDescriptor {
 	return nil
 }
 
+func (s *StructDescriptor) GetFieldById(id int32) *FieldDescriptor {
+	if s == nil {
+		return nil
+	}
+	for _, f := range s.Fields {
+		if f.ID == id {
+			return f
+		}
+	}
+	return nil
+}
+
 func (s *ConstValueDescriptor) GetValueAsString() string {
 	t := s.GetType()
 	if t == ConstValueType_INT {

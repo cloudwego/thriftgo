@@ -22,21 +22,15 @@ type fieldID int32
 
 const _MaxFieldIDHead = 128
 
-type fieldMaskStorage struct {
-	typ pathType
-	im  map[int]FieldMask
-	sm  map[string]FieldMask
-}
-
-type fieldMaskMap struct {
+type fieldMap struct {
 	head [_MaxFieldIDHead + 1]FieldMask
 	tail []FieldMask
 }
 
-func makeFieldMaskMap(fields []*thrift_reflection.FieldDescriptor) fieldMaskMap {
+func makeFieldMaskMap(st *thrift_reflection.StructDescriptor) fieldMap {
 	max := 0
 	count := 0
-	for _, f := range fields {
+	for _, f := range st.GetFields() {
 		if max < int(f.GetID()) {
 			max = int(f.GetID())
 			count = 0
@@ -44,23 +38,23 @@ func makeFieldMaskMap(fields []*thrift_reflection.FieldDescriptor) fieldMaskMap 
 			count += 1
 		}
 	}
-	return fieldMaskMap{
+	return fieldMap{
 		tail: make([]FieldMask, 0, count),
 	}
 }
 
-func (self *fieldMaskMap) IsInitialized() bool {
+func (self *fieldMap) IsInitialized() bool {
 	return self != nil && self.tail != nil
 }
 
-func (self *fieldMaskMap) Reset() {
+func (self *fieldMap) Reset() {
 	if self == nil {
 		return
 	}
 	self.tail = self.tail[:0]
 }
 
-func (self *fieldMaskMap) GetOrAlloc(f fieldID) *FieldMask {
+func (self *fieldMap) GetOrAlloc(f fieldID) *FieldMask {
 	if f <= _MaxFieldIDHead {
 		return &self.head[f]
 	} else {
@@ -76,7 +70,7 @@ func (self *fieldMaskMap) GetOrAlloc(f fieldID) *FieldMask {
 	}
 }
 
-func (self *fieldMaskMap) Get(f fieldID) *FieldMask {
+func (self *fieldMap) Get(f fieldID) *FieldMask {
 	if f <= _MaxFieldIDHead {
 		return &self.head[f]
 	} else {
@@ -113,4 +107,32 @@ func (self *fieldMaskBitmap) Get(f fieldID) bool {
 	}
 	i := int(f % _BucketBit)
 	return ((*self)[b] & byte(1<<i)) != 0
+}
+
+type intMap map[int]bool
+
+func (im intMap) Get(i int) bool {
+	return im[i]
+}
+
+func (im intMap) Set(i int) {
+	im[i] = true
+}
+
+func (im intMap) Unset(i int) {
+	delete(im, i)
+}
+
+type strMap map[string]bool
+
+func (im strMap) Get(i string) bool {
+	return im[i]
+}
+
+func (im strMap) Set(i string) {
+	im[i] = true
+}
+
+func (im strMap) Unset(i string) {
+	delete(im, i)
 }

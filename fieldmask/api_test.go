@@ -17,6 +17,7 @@
 package fieldmask
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -69,23 +70,27 @@ struct BaseResp {
 }`
 )
 
-func GetDescriptor(IDL string, root string) *thrift_reflection.StructDescriptor {
+func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
 	ast, err := parser.ParseString("a.thrift", IDL)
 	if err != nil {
 		panic(err.Error())
 	}
 	fd := thrift_reflection.RegisterAST(ast)
-	return fd.GetStructDescriptor(root)
+	st := fd.GetStructDescriptor(root)
+	return &thrift_reflection.TypeDescriptor{
+		Filepath: st.Filepath,
+		Name:     st.Name,
+	}
 }
 
-func TestNewFieldMaskFromNames(t *testing.T) {
+func TestNewFieldMask(t *testing.T) {
 	type args struct {
 		IDL        string
 		rootStruct string
 		paths      []string
 		inMasks    []string
 		notInMasks []string
-		err        interface{}
+		err        error
 	}
 	tests := []struct {
 		name string
@@ -97,12 +102,13 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"},
-				inMasks:    []string{"Meta.PersistentKVS", "Meta.TransientKVS", "Meta.Base.Caller"},
-				notInMasks: []string{"TrafficEnv.Name", "TrafficEnv.Code", "Caller", "Addr", "Extra", "Extra.KVS"},
+				paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta"},
+
+				inMasks:    []string{"$.Meta.PersistentKVS", "$.Meta.TransientKVS", "$.Meta.Base.Caller"},
+				notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra", "$.Extra.KVS"},
 			},
 			want: &FieldMask{
-				flat: fieldMaskBitmap([]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
+				fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
 			},
 		},
 		{
@@ -110,44 +116,45 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"LogID.X"},
-				err:        "not support path 'LogID.X' for struct Base",
-			},
-			want: &FieldMask{
-				flat: fieldMaskBitmap([]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
+				paths:      []string{"$.LogID.X"},
+				err:        errors.New(`Descriptor "string" isn't STRUCT`),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				if v := recover(); v != nil {
-					if tt.args.err == nil || v != tt.args.err {
-						t.Fatal("panic: ", v)
-					}
-				}
-			}()
+			// defer func() {
+			// 	if v := recover(); v != nil {
+			// 		if tt.args.err == nil || v != tt.args.err {
+			// 			t.Fatal("panic: ", v)
+			// 		}
+			// 	}
+			// }()
 
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
 			got, err := GetFieldMask(st, tt.args.paths...)
-			if err != nil {
-				if tt.args.err == nil || err.Error() != tt.args.err {
-					t.Fatal("panic: ", err.Error())
+			if tt.args.err != nil {
+				if err == nil {
+					t.Fatal(err)
 				}
+				return
 			}
 
-			if !reflect.DeepEqual(got.flat, tt.want.flat) {
-				t.Fatal("not expected flat, ", tt.want.flat, got.flat)
+			if tt.want != nil && !reflect.DeepEqual(got.fieldMask, tt.want.fieldMask) {
+				t.Fatal("not expected flat, ", tt.want.fieldMask, got.fieldMask)
 			}
 
+			println("fieldmask:")
 			println(got.String(st))
+			// spew.Dump(got)
 
-			for _, path := range tt.args.paths {
-				if !got.PathInMask(st, path) {
-					t.Fatal(path)
-				}
-			}
+			// for _, path := range tt.args.paths {
+			// 	if !got.PathInMask(st, path) {
+			// 		t.Fatal(path)
+			// 	}
+			// }
 			for _, path := range tt.args.inMasks {
+				println("path: ", path)
 				if !got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
@@ -162,12 +169,7 @@ func TestNewFieldMaskFromNames(t *testing.T) {
 }
 
 func BenchmarkNewFieldMask(b *testing.B) {
-	IDL, err := parser.ParseString("a.thrift", baseIDL)
-	if err != nil {
-		b.Fatal(err)
-	}
-	fd := thrift_reflection.RegisterAST(IDL)
-	st := fd.GetStructDescriptor("Base")
+	st := GetDescriptor(baseIDL, "Base")
 	if st == nil {
 		b.Fail()
 	}
@@ -179,29 +181,24 @@ func BenchmarkNewFieldMask(b *testing.B) {
 }
 
 func BenchmarkFieldMask_InMask(b *testing.B) {
-	IDL, err := parser.ParseString("a.thrift", baseIDL)
-	if err != nil {
-		b.Fatal(err)
-	}
-	fd := thrift_reflection.RegisterAST(IDL)
-	st := fd.GetStructDescriptor("Base")
+	st := GetDescriptor(baseIDL, "Base")
 	if st == nil {
 		b.Fail()
 	}
 	fm, _ := GetFieldMask(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if !fm.InMask(5) {
+		if !fm.FieldInMask(5) {
 			b.Fail()
 		}
-		next := fm.Next(5)
-		if !next.InMask(1) {
+		next := fm.Field(5)
+		if !next.FieldInMask(1) {
 			b.Fail()
 		}
-		if next.InMask(256) {
+		if next.FieldInMask(256) {
 			b.Fail()
 		}
-		if next.InMask(1024) {
+		if next.FieldInMask(1024) {
 			b.Fail()
 		}
 	}

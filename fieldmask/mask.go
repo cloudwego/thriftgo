@@ -23,16 +23,29 @@ import (
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
-// PathSep is the separator of field names in a path
-const PathSep = '.'
+type fieldMaskType uint8
+
+const (
+	ftInvalid fieldMaskType = iota
+	ftScalar
+	ftArray
+	ftStruct
+	ftStrMap
+	ftIntMap
+)
 
 // FieldMask represents a collection of field paths
 type FieldMask struct {
-	// current layer of mask
-	flat fieldMaskBitmap
-	// for lookup next layer of fieldmasks
-	next *fieldMaskMap
-	// desc *parser.StructLike
+	typ fieldMaskType
+
+	fieldMask *fieldMaskBitmap
+	fields    *fieldMap
+
+	strMask strMap
+
+	intMask intMap
+
+	elem *FieldMask
 }
 
 var fmsPool = sync.Pool{
@@ -52,7 +65,7 @@ func NewFieldMask(desc *thrift_reflection.TypeDescriptor, pathes ...string) (*Fi
 
 // GetFieldMask make a new FieldMask from paths and root descriptor,
 // each path is the combination of field names from root struct to any layer of its children, separated with PathSep
-func GetFieldMask(desc *thrift_reflection.StructDescriptor, paths ...string) (*FieldMask, error) {
+func GetFieldMask(desc *thrift_reflection.TypeDescriptor, paths ...string) (*FieldMask, error) {
 	ret := fmsPool.Get().(*FieldMask)
 	err := ret.init(desc, paths...)
 	if err != nil {
@@ -70,20 +83,22 @@ func (self *FieldMask) Reset() {
 	if self == nil {
 		return
 	}
-	self.flat = self.flat[:0]
-	self.next.Reset()
+	*self.fieldMask = (*self.fieldMask)[:0]
+	self.fields.Reset()
 }
 
 func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...string) error {
 	// horizontal traversal...
 	for _, path := range paths {
-		self.setPath(path, desc)
+		if err := self.setPath(path, desc); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // String pretty prints the structure a FieldMask represents
-func (self FieldMask) String(desc *thrift_reflection.StructDescriptor) string {
+func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {
 	buf := strings.Builder{}
 	buf.WriteString("(")
 	buf.WriteString(desc.GetName())
@@ -92,51 +107,65 @@ func (self FieldMask) String(desc *thrift_reflection.StructDescriptor) string {
 	return buf.String()
 }
 
-func (self *FieldMask) InMask(id int16) bool {
-	return self == nil || self.flat == nil || self.flat.Get(fieldID(id))
+func (self *FieldMask) FieldInMask(id int32) bool {
+	return self == nil || self.fieldMask == nil || self.fieldMask.Get(fieldID(id))
 }
 
-func (self *FieldMask) Next(id int16) *FieldMask {
-	if self == nil || self.next == nil {
+func (self *FieldMask) IntInMask(id int) bool {
+	return self == nil || self.intMask == nil || self.intMask.Get(id)
+}
+
+func (self *FieldMask) StrInMask(id string) bool {
+	return self == nil || self.strMask == nil || self.strMask.Get(id)
+}
+
+func (self *FieldMask) Field(id int32) *FieldMask {
+	if self == nil || self.fields == nil {
 		return nil
 	}
-	return self.next.Get(fieldID(id))
+	return self.fields.Get(fieldID(id))
 }
 
-func (self *FieldMask) PathInMask(desc *thrift_reflection.StructDescriptor, path string) bool {
-	in := true
-	iterPath(path, func(name, path string) bool {
-		// empty fm or path means **IN MASK**
-		if self == nil || name == "" {
-			return false
-		}
+func (self *FieldMask) Elem() *FieldMask {
+	if self == nil {
+		return nil
+	}
+	return self.elem
+}
 
-		// check if name exist
-		f := desc.GetFieldByName(name)
-		if f == nil {
-			in = false
-			return false
-		}
+func (self *FieldMask) setFieldID(f fieldID) {
+	if self.fieldMask == nil {
+		m := make(fieldMaskBitmap, 0)
+		self.fieldMask = &m
+	}
+	self.fieldMask.Set(f)
+}
 
-		// check if name set mask
-		if !self.InMask(int16(f.GetID())) {
-			in = false
-			return false
-		}
+func (self *FieldMask) setInt(v int) {
+	if self.intMask == nil {
+		self.intMask = make(intMap)
+	}
+	self.intMask.Set(v)
+}
 
-		// deep to next desc
-		var err error
-		desc, err = f.GetType().GetStructDescriptor()
-		if err != nil {
-			if path != "" {
-				in = false
-			}
-			return false
-		}
+func (self *FieldMask) setStr(v string) {
+	if self.strMask == nil {
+		self.strMask = make(strMap)
+	}
+	self.strMask.Set(v)
+}
 
-		self = self.Next(int16(f.GetID()))
-		return true
-	})
+func (self *FieldMask) getField(f fieldID, st *thrift_reflection.StructDescriptor) *FieldMask {
+	if self.fields == nil {
+		m := makeFieldMaskMap(st)
+		self.fields = &m
+	}
+	return self.fields.GetOrAlloc(f)
+}
 
-	return in
+func (self *FieldMask) getElem() *FieldMask {
+	if self.elem == nil {
+		self.elem = &FieldMask{}
+	}
+	return self.elem
 }
