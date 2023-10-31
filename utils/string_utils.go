@@ -83,7 +83,7 @@ func ParseArr(str string) ([]string, error) {
 	if sb == 0 && cb == 0 && dq && sq {
 		kend = len(str)
 		if kstart >= kend {
-			return nil, errors.New("grammar error")
+			return nil, errors.New("grammar error for:" + str)
 		}
 		key = str[kstart:kend]
 		result = append(result, key)
@@ -164,7 +164,7 @@ func ParseKV(str string) (map[string]string, error) {
 			if sb == 0 && cb == 0 && dq && sq {
 				vend = i
 				if vstart >= vend {
-					return nil, errors.New("grammar error")
+					return nil, errors.New("grammar error for:" + str)
 				}
 				kstart = i + 1
 				value = strings.TrimSpace(str[vstart:vend])
@@ -179,10 +179,10 @@ func ParseKV(str string) (map[string]string, error) {
 	if sb == 0 && cb == 0 && dq && sq {
 		vend = len(str)
 		if vstart >= vend {
-			return nil, errors.New("grammar error")
+			return nil, errors.New("grammar error for:" + str)
 		}
 		if kstart >= kend {
-			return nil, errors.New("grammar error")
+			return nil, errors.New("grammar error for:" + str)
 		}
 		value = str[vstart:vend]
 		value = strings.TrimSpace(str[vstart:vend])
