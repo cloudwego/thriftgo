@@ -20,6 +20,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dlclark/regexp2"
+
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/semantic"
 )
@@ -32,7 +34,7 @@ type Trimmer struct {
 	marks  map[string]map[interface{}]bool
 	outDir string
 	// use -m
-	trimMethods      []string
+	trimMethods      []*regexp2.Regexp
 	trimMethodValid  []bool
 	preserveRegex    *regexp.Regexp
 	forceTrimming    bool
@@ -75,7 +77,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 		return err
 	}
 	trimmer.asts[ast.Filename] = ast
-	trimmer.trimMethods = trimMethods
+	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	trimmer.forceTrimming = forceTrimming
 	for i, method := range trimMethods {
@@ -88,6 +90,8 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 				os.Exit(2)
 			}
 		}
+		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
+		check(err)
 	}
 	trimmer.preservedStructs = preservedStructs
 	trimmer.markAST(ast)

@@ -44,7 +44,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		if t.trimMethods != nil {
 			funcName := svc.Name + "." + function.Name
 			for i, method := range t.trimMethods {
-				if funcName == method {
+				if ok, _ := method.MatchString(funcName); ok {
 					t.marks[filename][svc] = true
 					t.markFunction(function, ast, filename)
 					t.trimMethodValid[i] = true
@@ -216,7 +216,7 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 	for _, function := range svc.Functions {
 		funcName := father.Name + "." + function.Name
 		for i, method := range t.trimMethods {
-			if funcName == method {
+			if ok, _ := method.MatchString(funcName); ok {
 				t.marks[filename][svc] = true
 				t.markFunction(function, ast, filename)
 				t.trimMethodValid[i] = true
