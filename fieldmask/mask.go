@@ -17,6 +17,7 @@
 package fieldmask
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -44,6 +45,8 @@ type FieldMask struct {
 	strMask strMap
 
 	intMask intMap
+
+	all *FieldMask
 }
 
 var fmsPool = sync.Pool{
@@ -88,8 +91,8 @@ func (self *FieldMask) Reset() {
 func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...string) error {
 	// horizontal traversal...
 	for _, path := range paths {
-		if err := self.setPath(path, desc); err != nil {
-			return err
+		if err := self.SetPath(path, desc); err != nil {
+			return fmt.Errorf("Parsing path %q  error: %v", path, err)
 		}
 	}
 	return nil
@@ -110,11 +113,11 @@ func (self *FieldMask) FieldInMask(id int32) bool {
 }
 
 func (self *FieldMask) IntInMask(id int) bool {
-	return self == nil || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask == nil || self.intMask.Get(id) != nil))
+	return self == nil || self.all != nil || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask == nil || self.intMask.Get(id) != nil))
 }
 
 func (self *FieldMask) StrInMask(id string) bool {
-	return self == nil || (self.typ == ftStrMap && (self.strMask == nil || self.strMask.Get(id) != nil))
+	return self == nil || self.all != nil || (self.typ == ftStrMap && (self.strMask == nil || self.strMask.Get(id) != nil))
 }
 
 func (self *FieldMask) Field(id int32) *FieldMask {
@@ -138,6 +141,7 @@ func (self *FieldMask) Str(id string) *FieldMask {
 	return self.strMask[id]
 }
 
+// setFieldID ensure a fieldmask slot for f
 func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescriptor) *FieldMask {
 	if self.fieldMask == nil {
 		m := make(fieldMaskBitmap, 0)
@@ -151,18 +155,34 @@ func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescrip
 	return self.fields.GetOrAlloc(f)
 }
 
-func (self *FieldMask) setInt(v int, n *FieldMask) {
+func (self *FieldMask) setInt(v int) *FieldMask {
 	if self.intMask == nil {
 		self.intMask = make(intMap)
 	}
+
+	n := self.intMask.Get(v)
+	if n != nil {
+		return n
+	}
+
+	n = &FieldMask{}
 	self.intMask.Set(v, n)
-	return
+
+	return n
 }
 
-func (self *FieldMask) setStr(v string, n *FieldMask) {
+func (self *FieldMask) setStr(v string) *FieldMask {
 	if self.strMask == nil {
 		self.strMask = make(strMap)
 	}
+
+	n := self.strMask.Get(v)
+	if n != nil {
+		return n
+	}
+
+	n = &FieldMask{}
 	self.strMask.Set(v, n)
-	return
+
+	return n
 }

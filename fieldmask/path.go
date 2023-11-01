@@ -164,6 +164,13 @@ func (p *pathIterator) Pos() int {
 	return p.pos
 }
 
+func (p *pathIterator) LeftPath() string {
+	if p.pos >= len(p.src) {
+		return ""
+	}
+	return p.src[p.pos:]
+}
+
 func (p *pathIterator) HasNext() bool {
 	return p.pos < len(p.src)
 }

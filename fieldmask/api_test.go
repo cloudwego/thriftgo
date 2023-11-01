@@ -17,7 +17,6 @@
 package fieldmask
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
@@ -46,9 +45,10 @@ struct Base {
 }
 
 struct ExtraInfo {
-	1: map<i32,Val> Map
-	2: list<Val> List
-	3: set<Val> Set
+	1: map<i32,Val> IntMap
+	2: map<string,Val> StrMap
+	3: list<Val> List
+	4: set<Val> Set
 }
 
 struct Val {
@@ -98,7 +98,7 @@ func TestNewFieldMask(t *testing.T) {
 		want *FieldMask
 	}{
 		{
-			name: "Struct",
+			name: "struct",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
@@ -116,21 +116,31 @@ func TestNewFieldMask(t *testing.T) {
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"$.Extra[0]", "$.Extra[1].List", "$.Extra[2].Set[0]"},
+				paths:      []string{"$.Extra", "$.Extra[0]", "$.Extra[0].List", "$.Extra[1].IntMap", "$.Extra[2].List[0]"},
 
-				inMasks:    []string{"$.Extra[0].Map", "$.Extra[1].List[0]", "$.Extra[2].Set[0].A"},
-				notInMasks: []string{"$.Extra[3]", "$.Extra[1].Map", "$.Extra[1].Set", "$.Extra[2].List", "$.Extra[2].Map", "$.Extra[2].Set[1]"},
+				inMasks:    []string{"$.Extra[0].List[0]", "$.Extra[2].List[0].A"},
+				notInMasks: []string{"$.Extra[0].Set", "$.Extra[0].IntMap", "$.Extra[1].List", "$.Extra[1].Set", "$.Extra[2].List[1]", "$.Extra[3]"},
 			},
 		},
 		{
-			name: "not struct err",
+			name: "Map",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"$.LogID.X"},
-				err:        errors.New(`Descriptor "string" isn't STRUCT`),
+				paths:      []string{"$.Extra[0].IntMap", "$.Extra[0].IntMap{0}", "$.Extra[0].IntMap{0}.A", "$.Extra[0].IntMap{1}.B", "$.Extra[0].IntMap{2}"},
+				inMasks:    []string{"$.Extra[0].IntMap{2}.A", "$.Extra[0].IntMap{2}.B"},
+				notInMasks: []string{"$.Extra[0].IntMap{0}.B", "$.Extra[0].IntMap{1}.A", "$.Extra[0].IntMap{3}"},
 			},
 		},
+		// {
+		// 	name: "not struct",
+		// 	args: args{
+		// 		IDL:        baseIDL,
+		// 		rootStruct: "Base",
+		// 		paths:      []string{"$.LogID.X"},
+		// 		err:        errors.New(`Descriptor "string" isn't STRUCT`),
+		// 	},
+		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -150,6 +160,9 @@ func TestNewFieldMask(t *testing.T) {
 				}
 				return
 			}
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if tt.want != nil && !reflect.DeepEqual(got.fieldMask, tt.want.fieldMask) {
 				t.Fatal("not expected flat, ", tt.want.fieldMask, got.fieldMask)
@@ -159,18 +172,20 @@ func TestNewFieldMask(t *testing.T) {
 			println(got.String(st))
 			// spew.Dump(got)
 
-			// for _, path := range tt.args.paths {
-			// 	if !got.PathInMask(st, path) {
-			// 		t.Fatal(path)
-			// 	}
-			// }
+			for _, path := range tt.args.paths {
+				println("[paths] ", path)
+				if !got.PathInMask(st, path) {
+					t.Fatal(path)
+				}
+			}
 			for _, path := range tt.args.inMasks {
-				println("path: ", path)
+				println("[inMasks] ", path)
 				if !got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
 			}
 			for _, path := range tt.args.notInMasks {
+				println("[notInMasks] ", path)
 				if got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
