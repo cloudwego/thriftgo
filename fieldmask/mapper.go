@@ -23,10 +23,10 @@ type ValueMapper struct {
 	AllowRecurse bool
 
 	//mapping functions
-	OnInt    func(isNil bool, val int) (int, error)
-	OnFloat  func(isNil bool, val float64) (int, error)
-	OnBool   func(isNil bool, val bool) (bool, error)
-	OnString func(isNil bool, val string) (string, error)
+	OnInt    func(isNil bool, val int) (int, bool)
+	OnFloat  func(isNil bool, val float64) (int, bool)
+	OnBool   func(isNil bool, val bool) (bool, bool)
+	OnString func(isNil bool, val string) (string, bool)
 }
 
 // PathNapper is the definition of a ValueMapper for specific path

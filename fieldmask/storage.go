@@ -109,28 +109,28 @@ func (self *fieldMaskBitmap) Get(f fieldID) bool {
 	return ((*self)[b] & byte(1<<i)) != 0
 }
 
-type intMap map[int]bool
+type intMap map[int]*FieldMask
 
-func (im intMap) Get(i int) bool {
+func (im intMap) Get(i int) *FieldMask {
 	return im[i]
 }
 
-func (im intMap) Set(i int) {
-	im[i] = true
+func (im intMap) Set(i int, v *FieldMask) {
+	im[i] = v
 }
 
 func (im intMap) Unset(i int) {
 	delete(im, i)
 }
 
-type strMap map[string]bool
+type strMap map[string]*FieldMask
 
-func (im strMap) Get(i string) bool {
+func (im strMap) Get(i string) *FieldMask {
 	return im[i]
 }
 
-func (im strMap) Set(i string) {
-	im[i] = true
+func (im strMap) Set(i string, v *FieldMask) {
+	im[i] = v
 }
 
 func (im strMap) Unset(i string) {

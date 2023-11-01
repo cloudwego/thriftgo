@@ -41,26 +41,26 @@ struct Base {
 	1: string LogID = "",
 	2: string Caller = "",
 	5: optional TrafficEnv TrafficEnv,
-	255: optional ExtraInfo Extra,
+	255: optional list<ExtraInfo> Extra,
 	256: MetaInfo Meta,
 }
 
 struct ExtraInfo {
-	1: map<string, string> KVS
-}
-
-struct MetaInfo {
-	1: map<string, string> PersistentKVS,
-	2: map<Key, Val> TransientKVS,
-	3: Base Base,
-}
-
-struct Key {
-	1: string id
+	1: map<i32,Val> Map
+	2: list<Val> List
+	3: set<Val> Set
 }
 
 struct Val {
-	1: string id
+	1: string A,
+	2: string B,
+}
+
+struct MetaInfo {
+	1: map<string, Base> F1,
+	2: map<i8, Base> F2,
+	3: list<Base> F3,
+	3: Base Base,
 }
 
 struct BaseResp {
@@ -98,17 +98,28 @@ func TestNewFieldMask(t *testing.T) {
 		want *FieldMask
 	}{
 		{
-			name: "base",
+			name: "Struct",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
 				paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta"},
 
-				inMasks:    []string{"$.Meta.PersistentKVS", "$.Meta.TransientKVS", "$.Meta.Base.Caller"},
-				notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra", "$.Extra.KVS"},
+				inMasks:    []string{"$.Meta.F1", "$.Meta.F2", "$.Meta.Base.Caller"},
+				notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra"},
 			},
 			want: &FieldMask{
 				fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
+			},
+		},
+		{
+			name: "List/Set",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths:      []string{"$.Extra[0]", "$.Extra[1].List", "$.Extra[2].Set[0]"},
+
+				inMasks:    []string{"$.Extra[0].Map", "$.Extra[1].List[0]", "$.Extra[2].Set[0].A"},
+				notInMasks: []string{"$.Extra[3]", "$.Extra[1].Map", "$.Extra[1].Set", "$.Extra[2].List", "$.Extra[2].Map", "$.Extra[2].Set[1]"},
 			},
 		},
 		{

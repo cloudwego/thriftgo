@@ -44,8 +44,6 @@ type FieldMask struct {
 	strMask strMap
 
 	intMask intMap
-
-	elem *FieldMask
 }
 
 var fmsPool = sync.Pool{
@@ -108,15 +106,15 @@ func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {
 }
 
 func (self *FieldMask) FieldInMask(id int32) bool {
-	return self == nil || self.fieldMask == nil || self.fieldMask.Get(fieldID(id))
+	return self == nil || (self.typ == ftStruct && (self.fieldMask == nil || self.fieldMask.Get(fieldID(id))))
 }
 
 func (self *FieldMask) IntInMask(id int) bool {
-	return self == nil || self.intMask == nil || self.intMask.Get(id)
+	return self == nil || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask == nil || self.intMask.Get(id) != nil))
 }
 
 func (self *FieldMask) StrInMask(id string) bool {
-	return self == nil || self.strMask == nil || self.strMask.Get(id)
+	return self == nil || (self.typ == ftStrMap && (self.strMask == nil || self.strMask.Get(id) != nil))
 }
 
 func (self *FieldMask) Field(id int32) *FieldMask {
@@ -126,36 +124,26 @@ func (self *FieldMask) Field(id int32) *FieldMask {
 	return self.fields.Get(fieldID(id))
 }
 
-func (self *FieldMask) Elem() *FieldMask {
-	if self == nil {
+func (self *FieldMask) Int(id int) *FieldMask {
+	if self == nil || self.intMask == nil {
 		return nil
 	}
-	return self.elem
+	return self.intMask[id]
 }
 
-func (self *FieldMask) setFieldID(f fieldID) {
+func (self *FieldMask) Str(id string) *FieldMask {
+	if self == nil || self.strMask == nil {
+		return nil
+	}
+	return self.strMask[id]
+}
+
+func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescriptor) *FieldMask {
 	if self.fieldMask == nil {
 		m := make(fieldMaskBitmap, 0)
 		self.fieldMask = &m
 	}
 	self.fieldMask.Set(f)
-}
-
-func (self *FieldMask) setInt(v int) {
-	if self.intMask == nil {
-		self.intMask = make(intMap)
-	}
-	self.intMask.Set(v)
-}
-
-func (self *FieldMask) setStr(v string) {
-	if self.strMask == nil {
-		self.strMask = make(strMap)
-	}
-	self.strMask.Set(v)
-}
-
-func (self *FieldMask) getField(f fieldID, st *thrift_reflection.StructDescriptor) *FieldMask {
 	if self.fields == nil {
 		m := makeFieldMaskMap(st)
 		self.fields = &m
@@ -163,9 +151,18 @@ func (self *FieldMask) getField(f fieldID, st *thrift_reflection.StructDescripto
 	return self.fields.GetOrAlloc(f)
 }
 
-func (self *FieldMask) getElem() *FieldMask {
-	if self.elem == nil {
-		self.elem = &FieldMask{}
+func (self *FieldMask) setInt(v int, n *FieldMask) {
+	if self.intMask == nil {
+		self.intMask = make(intMap)
 	}
-	return self.elem
+	self.intMask.Set(v, n)
+	return
+}
+
+func (self *FieldMask) setStr(v string, n *FieldMask) {
+	if self.strMask == nil {
+		self.strMask = make(strMap)
+	}
+	self.strMask.Set(v, n)
+	return
 }
