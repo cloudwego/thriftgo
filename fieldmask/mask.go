@@ -39,14 +39,15 @@ const (
 type FieldMask struct {
 	typ fieldMaskType
 
+	isAll bool
+	all   *FieldMask
+
 	fieldMask *fieldMaskBitmap
 	fields    *fieldMap
 
 	strMask strMap
 
 	intMask intMap
-
-	all *FieldMask
 }
 
 var fmsPool = sync.Pool{
@@ -88,6 +89,13 @@ func (self *FieldMask) Reset() {
 	self.fields.Reset()
 }
 
+func (self *FieldMask) getAll(ft fieldMaskType) *FieldMask {
+	if self.all == nil {
+		self.all = newFieldMask(ft)
+	}
+	return self.all
+}
+
 func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...string) error {
 	// horizontal traversal...
 	for _, path := range paths {
@@ -109,29 +117,39 @@ func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {
 }
 
 func (self *FieldMask) FieldInMask(id int32) bool {
-	return self == nil || (self.typ == ftStruct && (self.fieldMask == nil || self.fieldMask.Get(fieldID(id))))
+	return self == nil || self.isAll || (self.typ == ftStruct && self.fieldMask.Get(fieldID(id)))
 }
 
 func (self *FieldMask) IntInMask(id int) bool {
-	return self == nil || self.all != nil || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask == nil || self.intMask.Get(id) != nil))
+	return self == nil || self.isAll || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask.Get(id) != nil))
 }
 
 func (self *FieldMask) StrInMask(id string) bool {
-	return self == nil || self.all != nil || (self.typ == ftStrMap && (self.strMask == nil || self.strMask.Get(id) != nil))
+	return self == nil || self.isAll || (self.typ == ftStrMap && (self.strMask.Get(id) != nil))
 }
 
 func (self *FieldMask) Field(id int32) *FieldMask {
-	if self == nil || self.fields == nil {
+	if self == nil {
 		return nil
 	}
+	if self.isAll {
+		return self.all
+	}
 	return self.fields.Get(fieldID(id))
+}
+
+func newFieldMask(ft fieldMaskType) *FieldMask {
+	ret := &FieldMask{
+		typ: ft,
+	}
+	return ret
 }
 
 func (self *FieldMask) Int(id int) *FieldMask {
 	if self == nil {
 		return nil
 	}
-	if self.all != nil {
+	if self.isAll {
 		return self.all
 	}
 	return self.intMask[id]
@@ -141,10 +159,22 @@ func (self *FieldMask) Str(id string) *FieldMask {
 	if self == nil {
 		return nil
 	}
-	if self.all != nil {
+	if self.isAll {
 		return self.all
 	}
 	return self.strMask[id]
+}
+
+func (self *FieldMask) All() bool {
+	if self == nil {
+		return true
+	}
+	switch self.typ {
+	case ftStruct, ftArray, ftIntMap, ftStrMap:
+		return self.isAll
+	default:
+		return true
+	}
 }
 
 // setFieldID ensure a fieldmask slot for f
@@ -158,10 +188,14 @@ func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescrip
 		m := makeFieldMaskMap(st)
 		self.fields = &m
 	}
-	return self.fields.GetOrAlloc(f)
+	ret := self.fields.GetOrAlloc(f)
+	if ret.typ == 0 {
+		*ret = *newFieldMask(switchFt(st.GetFieldById(int32(f)).GetType()))
+	}
+	return ret
 }
 
-func (self *FieldMask) setInt(v int) *FieldMask {
+func (self *FieldMask) setInt(v int, ft fieldMaskType) *FieldMask {
 	if self.intMask == nil {
 		self.intMask = make(intMap)
 	}
@@ -171,13 +205,13 @@ func (self *FieldMask) setInt(v int) *FieldMask {
 		return n
 	}
 
-	n = &FieldMask{}
+	n = newFieldMask(ft)
 	self.intMask.Set(v, n)
 
 	return n
 }
 
-func (self *FieldMask) setStr(v string) *FieldMask {
+func (self *FieldMask) setStr(v string, ft fieldMaskType) *FieldMask {
 	if self.strMask == nil {
 		self.strMask = make(strMap)
 	}
@@ -187,7 +221,7 @@ func (self *FieldMask) setStr(v string) *FieldMask {
 		return n
 	}
 
-	n = &FieldMask{}
+	n = newFieldMask(ft)
 	self.strMask.Set(v, n)
 
 	return n

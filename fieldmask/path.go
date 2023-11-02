@@ -328,10 +328,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			}
 
 			// for any * directive
-			if cur.fieldMask == nil {
-				println("nil fields")
-				return true
-			}
+			all := cur.all != nil
 
 			tok := it.Next()
 			if tok.Err() != nil {
@@ -371,12 +368,8 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			}
 
 			// check if name set mask
-			if !cur.FieldInMask(int32(f.GetID())) {
+			if !all && !cur.FieldInMask(int32(f.GetID())) {
 				return false
-			}
-
-			if !it.HasNext() {
-				return true
 			}
 
 			// deep to next desc

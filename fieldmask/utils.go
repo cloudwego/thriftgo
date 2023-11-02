@@ -79,17 +79,14 @@ func unwrapDesc(desc *thrift_reflection.TypeDescriptor) *thrift_reflection.TypeD
 }
 
 func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescriptor) error {
-	println("[SetPath]:", path)
-	if path == "" {
-		return nil
-	}
+	println("[SetPath]: ", path)
 
-	it := newPathIter(path)
 	curDesc = unwrapDesc(curDesc)
 	if curDesc == nil {
 		return errors.New("nil descriptor")
 	}
 
+	it := newPathIter(path)
 	for it.HasNext() {
 		println("desc: ", curDesc.Name)
 
@@ -102,9 +99,6 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 
 		if styp == pathTypeRoot {
 			cur.typ = switchFt(curDesc)
-			if cur.typ == ftInvalid {
-				return errDesc(curDesc, "unsupported")
-			}
 			continue
 
 		} else if styp == pathTypeField {
@@ -126,6 +120,11 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			typ := tok.Type()
 			println("token: ", tok.String())
 
+			all := cur.All()
+			if all {
+				return errPath(tok, "conflicts with previously-set all (*) fields")
+			}
+
 			var f *thrift_reflection.FieldDescriptor
 			if typ == pathTypeLit {
 				id, ok := tok.ToInt()
@@ -144,31 +143,35 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 						return errDesc(curDesc, "field '"+name+"' doesn't exist")
 					}
 				}
+
 			} else if typ == pathTypeAny {
-				if it.HasNext() {
-					return errPath(tok, "* for STRUCT should end here")
-				}
-				// NOTICE: .fields == nil means all
 				cur.fields = nil
 				cur.fieldMask = nil
-				return nil
+				cur.isAll = true
+				all = true
+
 			} else {
 				return errPath(stok, "isn't field-name or field-id")
 			}
-			println("field: ", f.Name, f.ID)
 
-			// deep down to the next fieldmask
-			curDesc = unwrapDesc(f.GetType())
-			if curDesc == nil {
-				return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
+			if all {
+				println("all for struct")
+				// NOTICE: for *, just pick first field desc for next loop
+				fs := st.GetFields()
+				if len(fs) == 0 || fs[0].GetType() == nil {
+					return errDesc(curDesc, "doesn't have children fields")
+				}
+				cur = cur.getAll(switchFt(fs[0].GetType()))
+			} else {
+				println("field: ", f.Name, f.ID)
+				// deep down to the next fieldmask
+				curDesc = unwrapDesc(f.GetType())
+				if curDesc == nil {
+					return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
+				}
+				cur = cur.setFieldID(fieldID(f.GetID()), st)
 			}
-			println("field type: ", curDesc.GetName())
-
-			cur = cur.setFieldID(fieldID(f.GetID()), st)
-			cur.typ = switchFt(curDesc)
-			if cur.typ == ftInvalid {
-				return errDesc(curDesc, "unspported type for fieldmask")
-			}
+			// continue for deeper path..
 
 		} else if styp == pathTypeIndexL {
 			// get element desc
@@ -190,10 +193,11 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errDesc(et, "unspported type for fieldmask")
 			}
 
-			var all = false
-			if cur.all != nil {
-				return errPath(stok, "is overlapped with * setted before")
+			var all = cur.All()
+			if all {
+				return errPath(stok, "conflicts with previously-set all (*) index")
 			}
+
 			var ids = []int{}
 			// iter indexies...
 			for it.HasNext() {
@@ -207,19 +211,18 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				if typ == pathTypeIndexR {
 					break
 				}
-				if typ == pathTypeElem {
+
+				if all || typ == pathTypeElem {
 					continue
 				}
-				if all {
-					continue
-				}
+
 				if typ == pathTypeAny {
-					all = true
 					cur.intMask = nil
-					cur.all = &FieldMask{}
-					cur.all.typ = nextFt
+					cur.isAll = true
+					all = true
 					continue
 				}
+
 				if typ != pathTypeLit {
 					return errPath(tok, "isn't literal")
 				}
@@ -232,20 +235,23 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 
 			if all {
+				println("all for list")
 				curDesc = et
-				cur = cur.all
+				cur = cur.getAll(nextFt)
 				continue
 			}
 
 			nextPath := it.LeftPath()
 			for _, id := range ids {
-				next := cur.setInt(id)
-				next.typ = nextFt
+				println("setInt ", id, nextFt)
+				next := cur.setInt(id, nextFt)
 				if err := next.SetPath(nextPath, et); err != nil {
 					return err
 				}
 			}
+			// stop since all children has been set
 			return nil
+
 		} else if styp == pathTypeMapL {
 			// get element and key desc
 			if !curDesc.IsMap() {
@@ -265,14 +271,14 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 			println("et: ", et.GetName())
 
-			var all = false
-			if cur.all != nil {
-				return errPath(stok, "is overlapped with * setted before")
-			}
-
 			nextFt := switchFt(et)
 			if nextFt == ftInvalid {
 				return errDesc(et, "unspported type for fieldmask")
+			}
+
+			var all = cur.All()
+			if all {
+				return errPath(stok, "conflicts with previously-set all (*) keys")
 			}
 
 			isInt := cur.typ == ftIntMap
@@ -280,7 +286,6 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			ids := []int{}
 			strs := []string{}
 			for it.HasNext() {
-
 				tok := it.Next()
 				typ := tok.Type()
 				if tok.Err() != nil {
@@ -291,20 +296,17 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				if typ == pathTypeMapR {
 					break
 				}
-				if typ == pathTypeElem {
-					continue
-				}
-				if all {
+
+				if all || typ == pathTypeElem {
 					continue
 				}
 
 				if typ == pathTypeAny {
 					println("* for ", curDesc.KeyType.Name, ", path:", it.LeftPath())
-					all = true
 					cur.intMask = nil
 					cur.strMask = nil
-					cur.all = &FieldMask{}
-					cur.all.typ = nextFt
+					cur.isAll = true
+					all = true
 					continue
 				}
 
@@ -334,8 +336,9 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			println("all:", all, "ids:", ids, "strs:", strs, isInt, isStr)
 
 			if all {
+				println("all for map")
 				curDesc = et
-				cur = cur.all
+				cur = cur.getAll(nextFt)
 				continue
 			}
 
@@ -345,33 +348,35 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errDesc(et, "should be integer-key map")
 				}
 				for _, id := range ids {
-					next := cur.setInt(id)
-					next.typ = nextFt
+					next := cur.setInt(id, nextFt)
 					if err := next.SetPath(nextPath, et); err != nil {
 						return err
 					}
 				}
-				return nil
+
 			} else if isStr {
 				if cur.typ != ftStrMap {
 					return errDesc(et, "should be string-key map")
 				}
 				for _, id := range strs {
-					next := cur.setStr(id)
-					next.typ = nextFt
+					next := cur.setStr(id, nextFt)
 					if err := next.SetPath(nextPath, et); err != nil {
 						return err
 					}
 				}
-				return nil
+
 			} else {
 				return errPath(stok, "unexpected path "+nextPath)
 			}
+			// stop since all children has been set
+			return nil
+
 		} else {
 			return errPath(stok, "unexpected token")
 		}
 	}
 
+	cur.isAll = true
 	return nil
 }
 
@@ -384,15 +389,19 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 		if err != nil {
 			panic(err)
 		}
-		for _, f := range st.GetFields() {
-			if !self.FieldInMask(int32(f.GetID())) {
-				continue
+		if self.All() {
+			printIndent(buf, indent+2, "*\n")
+		} else {
+			for _, f := range st.GetFields() {
+				if !self.FieldInMask(int32(f.GetID())) {
+					continue
+				}
+				self.printField(buf, indent+2, f)
 			}
-			self.printField(buf, indent+2, f)
 		}
 	} else if self.typ == ftArray {
 		printIndent(buf, indent, "[\n")
-		if self.intMask == nil {
+		if self.All() {
 			printIndent(buf, indent+2, "*\n")
 		} else {
 			for k := range self.intMask {
@@ -402,7 +411,7 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 		printIndent(buf, indent, "]\n")
 	} else if self.typ == ftIntMap || self.typ == ftStrMap {
 		printIndent(buf, indent, "{\n")
-		if (self.typ == ftIntMap && self.intMask == nil) || (self.typ == ftStrMap && self.strMask == nil) {
+		if self.All() {
 			printIndent(buf, indent+2, "*\n")
 		} else {
 			for k := range self.intMask {
@@ -410,6 +419,8 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 			}
 		}
 		printIndent(buf, indent, "}\n")
+	} else {
+		printIndent(buf, indent, "Unknown Fieldmask")
 	}
 }
 
@@ -442,8 +453,6 @@ func (self FieldMask) printField(buf *strings.Builder, indent int, field *thrift
 	next := self.Field(int32(field.GetID()))
 	if next != nil {
 		next.print(buf, indent, nd)
-	} else {
-		printIndent(buf, indent+2, "...\n")
 	}
 }
 
@@ -461,7 +470,5 @@ func (self FieldMask) printElem(buf *strings.Builder, indent int, id interface{}
 	buf.WriteString("\n")
 	if next != nil {
 		next.print(buf, indent, desc)
-	} else {
-		printIndent(buf, indent+2, "...\n")
 	}
 }

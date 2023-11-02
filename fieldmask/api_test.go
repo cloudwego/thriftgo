@@ -18,6 +18,7 @@ package fieldmask
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -90,67 +91,58 @@ func TestNewFieldMask(t *testing.T) {
 		paths      []string
 		inMasks    []string
 		notInMasks []string
-		err        error
+		err        []error
 	}
 	tests := []struct {
 		name string
 		args args
 		want *FieldMask
 	}{
-		// {
-		// 	name: "Struct",
-		// 	args: args{
-		// 		IDL:        baseIDL,
-		// 		rootStruct: "Base",
-		// 		paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta.*"},
+		{
+			name: "Struct",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta.*"},
 
-		// 		inMasks:    []string{"$.Meta.F1", "$.Meta.F2", "$.Meta.Base.Caller"},
-		// 		notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra"},
-		// 	},
-		// 	// want: &FieldMask{
-		// 	// 	fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
-		// 	// },
-		// },
-		// {
-		// 	name: "List/Set",
-		// 	args: args{
-		// 		IDL:        baseIDL,
-		// 		rootStruct: "Base",
-		// 		paths:      []string{"$.Extra", "$.Extra[0]", "$.Extra[0].List", "$.Extra[1].IntMap", "$.Extra[2].List[0]", "$.Extra[4,5].Set", "$.Extra[6].List[*]"},
+				inMasks:    []string{"$.Meta.F1", "$.Meta.F2", "$.Meta.Base.Caller"},
+				notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra"},
+			},
+			// want: &FieldMask{
+			// 	fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
+			// },
+		},
+		{
+			name: "List/Set",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths:      []string{"$.Extra[0]", "$.Extra[1].List", "$.Extra[2].Set[0,1]", "$.Extra[4,5].List[*]"},
 
-		// 		inMasks:    []string{"$.Extra[0].List[0]", "$.Extra[2].List[0].A", "$.Extra[4].Set", "$.Extra[5].Set", "$.Extra[6].List[0]", "$.Extra[6].List[1]"},
-		// 		notInMasks: []string{"$.Extra[0].Set", "$.Extra[0].IntMap", "$.Extra[1].List", "$.Extra[1].Set", "$.Extra[2].List[1]", "$.Extra[3]", "$.Extra[4,5].List", "$.Extra[4].IntMap", "$.Extra[5].IntMap", "$.Extra[6].Set"},
-		// 	},
-		// },
+				inMasks:    []string{"$.Extra[0].List", "$.Extra[2].Set[0].A", "$.Extra[2].Set[1].A", "$.Extra[4].List[0]", "$.Extra[4,5].List[0]", "$.Extra[1,4,5].List"},
+				notInMasks: []string{"$.Extra[1].Set", "$.Extra[1].IntMap", "$.Extra[3]", "$.Extra[3,4].Set"},
+			},
+		},
 		{
 			name: "Int Map",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"$.Extra[0].IntMap", "$.Extra[0].IntMap{0}", "$.Extra[0].IntMap{0}.A", "$.Extra[0].IntMap{1}.B", "$.Extra[0].IntMap{2}", "$.Extra[0].IntMap{4,5}.A", "$.Meta.F2{*}.TrafficEnv"},
-				inMasks:    []string{"$.Extra[0].IntMap{2}.A", "$.Extra[0].IntMap{2}.B", "$.Extra[0].IntMap{4}.A", "$.Extra[0].IntMap{5}.A", "$.Meta.F2{0}.TrafficEnv.Env", "$.Meta.F2{*}.TrafficEnv.Env"},
-				notInMasks: []string{"$.Extra[0].IntMap{0}.B", "$.Extra[0].IntMap{1}.A", "$.Extra[0].IntMap{3}", "$.Extra[0].IntMap{4}.B", "$.Extra[0].IntMap{5}.B", "$.Meta.F2{0}.Addr", "$.Meta.F2{*}.Addr"},
+				paths:      []string{"$.Extra[0].IntMap{0}", "$.Extra[0].IntMap{1}.A", "$.Extra[0].IntMap{1}.B", "$.Extra[0].IntMap{2}.A", "$.Extra[0].IntMap{4,5}.A", "$.Meta.F2{*}.TrafficEnv"},
+				inMasks:    []string{"$.Extra[0].IntMap{0}.A", "$.Extra[0].IntMap{0}.B", "$.Extra[0].IntMap{4}.A", "$.Extra[0].IntMap{5}.A", "$.Meta.F2{0}.TrafficEnv.Env", "$.Meta.F2{*}.TrafficEnv.Env"},
+				notInMasks: []string{"$.Extra[0].IntMap{2}.B", "$.Extra[0].IntMap{3}", "$.Extra[0].IntMap{4}.B", "$.Extra[0].IntMap{5}.B", "$.Meta.F2{0}.Addr", "$.Meta.F2{*}.Addr"},
 			},
 		},
-		// {
-		// 	name: "String Map",
-		// 	args: args{
-		// 		IDL:        baseIDL,
-		// 		rootStruct: "Base",
-		// 		paths:      []string{"$.Extra[0].StrMap", "$.Extra[0].StrMap{\"x\"}", "$.Extra[0].StrMap{\"x\"}.A", "$.Extra[0].StrMap{\"y\"}.B", "$.Extra[0].StrMap{\"z\"}"},
-		// 		inMasks:    []string{"$.Extra[0].StrMap{\"z\"}.A", "$.Extra[0].StrMap{\"z\"}.B"},
-		// 		notInMasks: []string{"$.Extra[0].StrMap{\"x\"}.B", "$.Extra[0].StrMap{\"y\"}.A", "$.Extra[0].StrMap{\"s\"}"},
-		// 	},
-		// },
-		// {
-		// 	name: "not struct",
-		// 	args: args{
-		// 		IDL:        baseIDL,
-		// 		rootStruct: "Base",
-		// 		paths:      []string{"$.LogID.X"},
-		// 		err:        errors.New(`Descriptor "string" isn't STRUCT`),
-		// 	},
-		// },
+		{
+			name: "String Map",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths:      []string{"$.Extra[0].StrMap{\"x\"}", "$.Extra[0].StrMap{\"a\"}.A", "$.Extra[0].StrMap{\"b\"}.B", "$.Extra[0].StrMap{\"c\",\"d\"}", "$.Extra[0].StrMap{\"e\",\"f\"}.A"},
+				inMasks:    []string{"$.Extra[0].StrMap{\"x\"}.A", "$.Extra[0].StrMap{\"x\"}.B", "$.Extra[0].StrMap{\"c\"}.A", "$.Extra[0].StrMap{\"c\",\"d\",\"e\",\"f\"}.A"},
+				notInMasks: []string{"$.Extra[0].StrMap{\"a\"}.B", "$.Extra[0].StrMap{\"b\"}.A", "$.Extra[0].StrMap{\"s\"}", "$.Extra[0].StrMap{\"s\",\"c\"}", "$.Extra[0].StrMap{\"d\",\"e\"}.B"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -199,6 +191,112 @@ func TestNewFieldMask(t *testing.T) {
 				if got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
+			}
+		})
+	}
+}
+
+func TestErrors(t *testing.T) {
+	type args struct {
+		IDL        string
+		rootStruct string
+		path       []string
+		err        string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *FieldMask
+	}{
+		{
+			name: "desc struct",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				path:       []string{"$.LogID.X"},
+				err:        `Descriptor "string" isn't STRUCT`,
+			},
+		},
+		{
+			name: "desc list",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				path:       []string{"$.LogID[1]"},
+				err:        `Descriptor "string" isn't LIST or SET`,
+			},
+		},
+		{
+			name: "desc map",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				path:       []string{"$.LogID{1}"},
+				err:        `Descriptor "string" isn't MAP`,
+			},
+		},
+		{
+			name: "desc map key",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "ExtraInfo",
+				path:       []string{"$.IntMap{\"a\"}"},
+				err:        `expect integer but got string`,
+			},
+		},
+		{
+			name: "desc map key",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "ExtraInfo",
+				path:       []string{"$.StrMap{1}"},
+				err:        `expect string but got integer`,
+			},
+		},
+		{
+			name: "syntax index",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "ExtraInfo",
+				path:       []string{"$.List[\"1\"]"},
+				err:        `isn't literal`,
+			},
+		},
+		{
+			name: "fields conflict",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				path:       []string{"$.TrafficEnv", "$.TrafficEnv.Env"},
+				err:        `onflicts with previously-set all (*) fields`,
+			},
+		},
+		{
+			name: "index conflict",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				path:       []string{"$.Extra[*]", "$.Extra[1]"},
+				err:        `onflicts with previously-set all (*) index`,
+			},
+		},
+		{
+			name: "key conflict",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "ExtraInfo",
+				path:       []string{"$.IntMap{*}", "$.IntMap{1}"},
+				err:        `onflicts with previously-set all (*) keys`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
+			_, err := GetFieldMask(st, tt.args.path...)
+			if err == nil || !strings.Contains(err.Error(), tt.args.err) {
+				t.Fatal(err)
 			}
 		})
 	}
