@@ -26,7 +26,6 @@ import (
 	{{end}}
 	"reflect"
 
-	{{.RefPackage}} "{{.RefPath}}"
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
