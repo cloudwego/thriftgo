@@ -16,59 +16,70 @@ package thrift_reflection
 
 import "reflect"
 
-var (
-	structDes2goType  = map[*StructDescriptor]reflect.Type{}
-	enumDes2goType    = map[*EnumDescriptor]reflect.Type{}
-	typedefDes2goType = map[*TypedefDescriptor]reflect.Type{}
-
-	goType2StructDes  = map[reflect.Type]*StructDescriptor{}
-	goType2EnumDes    = map[reflect.Type]*EnumDescriptor{}
-	goType2TypedefDes = map[reflect.Type]*TypedefDescriptor{}
-)
-
 func getReflect(in interface{}) reflect.Type {
 	return reflect.TypeOf(in).Elem()
 }
 
-func registerGoTypes(fd *FileDescriptor, goTypes []interface{}) {
+func (gd *GlobalDescriptor) registerGoTypes(fd *FileDescriptor, goTypes []interface{}) {
 	structList := []*StructDescriptor{}
 	structList = append(structList, fd.Structs...)
 	structList = append(structList, fd.Unions...)
 	structList = append(structList, fd.Exceptions...)
 	for idx, s := range structList {
-		registerStructGoType(s, getReflect(goTypes[idx]))
+		gd.registerStructGoType(s, getReflect(goTypes[idx]))
 	}
 	for idx, e := range fd.Enums {
-		registerEnumGoType(e, getReflect(goTypes[len(structList)+idx]))
+		gd.registerEnumGoType(e, getReflect(goTypes[len(structList)+idx]))
 	}
 	for idx, t := range fd.Typedefs {
-		registerTypedefGoType(t, getReflect(goTypes[len(structList)+len(fd.Enums)+idx]))
+		gd.registerTypedefGoType(t, getReflect(goTypes[len(structList)+len(fd.Enums)+idx]))
 	}
 }
 
-func registerStructGoType(s *StructDescriptor, t reflect.Type) {
-	structDes2goType[s] = t
-	goType2StructDes[t] = s
+func (gd *GlobalDescriptor) registerStructGoType(s *StructDescriptor, t reflect.Type) {
+	gd.structDes2goType[s] = t
+	gd.goType2StructDes[t] = s
 }
 
-func registerEnumGoType(s *EnumDescriptor, t reflect.Type) {
-	enumDes2goType[s] = t
-	goType2EnumDes[t] = s
+func (gd *GlobalDescriptor) registerEnumGoType(s *EnumDescriptor, t reflect.Type) {
+	gd.enumDes2goType[s] = t
+	gd.goType2EnumDes[t] = s
 }
 
-func registerTypedefGoType(s *TypedefDescriptor, t reflect.Type) {
-	typedefDes2goType[s] = t
-	goType2TypedefDes[t] = s
+func (gd *GlobalDescriptor) registerTypedefGoType(s *TypedefDescriptor, t reflect.Type) {
+	gd.typedefDes2goType[s] = t
+	gd.goType2TypedefDes[t] = s
+}
+
+func (gd *GlobalDescriptor) GetStructDescriptorByGoType(in interface{}) *StructDescriptor {
+	if gd.goType2StructDes == nil {
+		return nil
+	}
+	return gd.goType2StructDes[getReflect(in)]
+}
+
+func (gd *GlobalDescriptor) GetEnumDescriptorByGoType(in interface{}) *EnumDescriptor {
+	if gd.goType2EnumDes == nil {
+		return nil
+	}
+	return gd.goType2EnumDes[getReflect(in)]
+}
+
+func (gd *GlobalDescriptor) GetTypedefDescriptorByGoType(in interface{}) *TypedefDescriptor {
+	if gd.goType2TypedefDes == nil {
+		return nil
+	}
+	return gd.goType2TypedefDes[getReflect(in)]
 }
 
 func GetStructDescriptorByGoType(in interface{}) *StructDescriptor {
-	return goType2StructDes[getReflect(in)]
+	return defaultGlobalDescriptor.GetStructDescriptorByGoType(in)
 }
 
 func GetEnumDescriptorByGoType(in interface{}) *EnumDescriptor {
-	return goType2EnumDes[getReflect(in)]
+	return defaultGlobalDescriptor.GetEnumDescriptorByGoType(in)
 }
 
 func GetTypedefDescriptorByGoType(in interface{}) *TypedefDescriptor {
-	return goType2TypedefDes[getReflect(in)]
+	return defaultGlobalDescriptor.GetTypedefDescriptorByGoType(in)
 }

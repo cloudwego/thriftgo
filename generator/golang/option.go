@@ -54,6 +54,7 @@ type Features struct {
 	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
+	UseOption              bool `use_option:"Parse specific Thrift annotations into struct-style option fields. If key not match, thriftgo will just ignore it."`
 }
 
 var defaultFeatures = Features{
