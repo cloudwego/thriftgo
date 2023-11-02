@@ -1,0 +1,1 @@
+go run ../../../. -g go:with_reflection,use_option -o . -r ../option_idl/test.thrift

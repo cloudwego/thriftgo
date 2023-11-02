@@ -32,7 +32,7 @@ func (f *FileDescriptor) GetIncludeFD(alias string) *FileDescriptor {
 	}
 	includePath := f.Includes[alias]
 	if includePath != "" {
-		return LookupFD(includePath)
+		return GetGlobalDescriptor(f).LookupFD(includePath)
 	}
 	return nil
 }
@@ -249,7 +249,11 @@ func (sd *ServiceDescriptor) GetMethodByName(name string) *MethodDescriptor {
 }
 
 func (ed *EnumDescriptor) GetGoType() reflect.Type {
-	return enumDes2goType[ed]
+	gd := GetGlobalDescriptor(ed)
+	if gd != nil && gd.enumDes2goType != nil {
+		return gd.enumDes2goType[ed]
+	}
+	return nil
 }
 
 func (td *TypeDescriptor) IsBasic() bool {
@@ -272,7 +276,7 @@ func (td *TypeDescriptor) GetExceptionDescriptor() (*StructDescriptor, error) {
 	if td.IsContainer() || td.IsBasic() {
 		return nil, errors.New("not exception")
 	}
-	stDesc := LookupFD(td.Filepath).GetExceptionDescriptor(td.GetName())
+	stDesc := GetGlobalDescriptor(td).LookupFD(td.Filepath).GetExceptionDescriptor(td.GetName())
 	if stDesc != nil {
 		return stDesc, nil
 	}
@@ -283,7 +287,7 @@ func (td *TypeDescriptor) GetUnionDescriptor() (*StructDescriptor, error) {
 	if td.IsContainer() || td.IsBasic() {
 		return nil, errors.New("not union")
 	}
-	stDesc := LookupFD(td.Filepath).GetUnionDescriptor(td.GetName())
+	stDesc := GetGlobalDescriptor(td).LookupFD(td.Filepath).GetUnionDescriptor(td.GetName())
 	if stDesc != nil {
 		return stDesc, nil
 	}
@@ -294,7 +298,7 @@ func (td *TypeDescriptor) GetStructDescriptor() (*StructDescriptor, error) {
 	if td.IsContainer() || td.IsBasic() {
 		return nil, errors.New("not struct")
 	}
-	stDesc := LookupFD(td.Filepath).GetStructDescriptor(td.GetName())
+	stDesc := GetGlobalDescriptor(td).LookupFD(td.Filepath).GetStructDescriptor(td.GetName())
 	if stDesc != nil {
 		return stDesc, nil
 	}
@@ -370,7 +374,7 @@ func (td *TypeDescriptor) GetEnumDescriptor() (*EnumDescriptor, error) {
 		return nil, errors.New("not enum")
 	}
 	prefix, name := utils.ParseAlias(td.GetName())
-	fd := LookupFD(td.Filepath)
+	fd := GetGlobalDescriptor(td).LookupFD(td.Filepath)
 	if fd != nil {
 		targetFd := fd.GetIncludeFD(prefix)
 		if targetFd != nil {
@@ -401,7 +405,7 @@ func (td *TypeDescriptor) GetTypedefDescriptor() (*TypedefDescriptor, error) {
 		return nil, errors.New("not typedef")
 	}
 	prefix, name := utils.ParseAlias(td.GetName())
-	fd := LookupFD(td.Filepath)
+	fd := GetGlobalDescriptor(td).LookupFD(td.Filepath)
 	if fd != nil {
 		targetFd := fd.GetIncludeFD(prefix)
 		if targetFd != nil {
@@ -485,11 +489,19 @@ func (td *TypeDescriptor) GetGoType() (reflect.Type, error) {
 }
 
 func (s *StructDescriptor) GetGoType() reflect.Type {
-	return structDes2goType[s]
+	gd := GetGlobalDescriptor(s)
+	if gd != nil && gd.structDes2goType != nil {
+		return gd.structDes2goType[s]
+	}
+	return nil
 }
 
 func (s *TypedefDescriptor) GetGoType() reflect.Type {
-	return typedefDes2goType[s]
+	gd := GetGlobalDescriptor(s)
+	if gd != nil && gd.typedefDes2goType != nil {
+		return gd.typedefDes2goType[s]
+	}
+	return nil
 }
 
 func (s *StructDescriptor) GetFieldByName(name string) *FieldDescriptor {
@@ -533,10 +545,54 @@ func (s *ConstValueDescriptor) GetValueAsString() string {
 		return fmt.Sprintf("[%v]", strings.Join(valueList, ","))
 	}
 	if t == ConstValueType_IDENTIFIER {
-		targetConst := LookupConst(s.GetValueIdentifier(), "")
+		targetConst := GetGlobalDescriptor(s).LookupConst(s.GetValueIdentifier(), "")
 		if targetConst != nil {
 			return targetConst.GetValue().GetValueAsString()
 		}
 	}
 	return ""
+}
+
+func (d *ServiceDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *MethodDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *FieldDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *StructDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *EnumDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *FileDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *TypedefDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *EnumValueDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *ConstDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *ConstValueDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
+}
+
+func (d *TypeDescriptor) setExtra(m map[string]string) {
+	d.Extra = m
 }

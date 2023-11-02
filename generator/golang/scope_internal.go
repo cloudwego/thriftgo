@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 
+	thrift_option "github.com/cloudwego/thriftgo/extension/thrift_option"
+
 	"github.com/cloudwego/thriftgo/generator/golang/common"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
@@ -47,6 +49,16 @@ func (s *Scope) init(cu *CodeUtils) (err error) {
 			err = x
 		}
 	}()
+
+	if cu.Features().UseOption {
+		for ast := range s.AST().DepthFirstSearch() {
+			er := thrift_option.CheckOptionGrammar(ast)
+			if er != nil {
+				return er
+			}
+		}
+	}
+
 	if cu.Features().ReorderFields {
 		for _, x := range s.ast.GetStructLikes() {
 			diff := reorderFields(x)
