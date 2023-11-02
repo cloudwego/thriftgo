@@ -21,13 +21,15 @@ import (
 	"io"
 	"strconv"
 	"unsafe"
+
+	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 type pathType int
 
 const (
-	pathTypeLitInt pathType = 1 + iota
-	pathTypeLitStr
+	pathTypeLit pathType = 1 + iota
+	pathTypeStr
 	pathTypeRoot
 	pathTypeField
 	pathTypeIndexL
@@ -38,6 +40,7 @@ const (
 	pathTypeAny
 
 	pathTypeEOF pathType = -1
+	pathTypeERR pathType = -2
 )
 
 type pathSep byte
@@ -51,6 +54,8 @@ const (
 	pathSepMapRight   = '}'
 	pathSepElem       = ','
 	pathSepAny        = '*'
+	pathSepQuote      = '"'
+	pathSepSlash      = '\\'
 )
 
 type pathValue struct {
@@ -88,8 +93,24 @@ func (p pathToken) Type() pathType {
 	return p.typ
 }
 
-func (p pathToken) Val() pathValue {
-	return p.val
+func (p pathToken) ToInt() (int, bool) {
+	if p.typ == pathTypeLit || p.typ == pathTypeStr {
+		i, e := strconv.Atoi(p.val.Str())
+		if e != nil {
+			return 0, false
+		}
+		return i, true
+	} else {
+		return 0, false
+	}
+}
+
+func (p pathToken) ToStr() (string, bool) {
+	if p.typ == pathTypeLit || p.typ == pathTypeStr {
+		return p.val.Str(), true
+	} else {
+		return "", false
+	}
 }
 
 func (p pathToken) Pos() (int, int) {
@@ -108,29 +129,33 @@ func (p pathToken) Err() error {
 func (p pathToken) String() string {
 	switch p.typ {
 	case pathTypeEOF:
-		return fmt.Sprintf("EOF(%d)", p.loc[0])
+		return fmt.Sprintf("EOF at %d", p.loc[0])
 	case pathTypeAny:
-		return fmt.Sprintf("*(%d)", p.loc[0])
+		return fmt.Sprintf("* at %d", p.loc[0])
 	case pathTypeElem:
-		return fmt.Sprintf(",(%d)", p.loc[0])
+		return fmt.Sprintf(", at %d", p.loc[0])
 	case pathTypeField:
-		return fmt.Sprintf(".(%d)", p.loc[0])
+		return fmt.Sprintf(". at %d", p.loc[0])
 	case pathTypeRoot:
-		return fmt.Sprintf("$(%d)", p.loc[0])
+		return fmt.Sprintf("$ at %d", p.loc[0])
 	case pathTypeIndexL:
-		return fmt.Sprintf("[(%d)", p.loc[0])
+		return fmt.Sprintf("[ at %d", p.loc[0])
 	case pathTypeIndexR:
-		return fmt.Sprintf("](%d)", p.loc[0])
+		return fmt.Sprintf("] at %d", p.loc[0])
 	case pathTypeMapL:
-		return fmt.Sprintf("{(%d)", p.loc[0])
+		return fmt.Sprintf("{ at %d", p.loc[0])
 	case pathTypeMapR:
-		return fmt.Sprintf("}(%d)", p.loc[0])
-	case pathTypeLitInt:
-		return fmt.Sprintf("%d(%d:%d)", p.val.Int(), p.loc[0], p.loc[1])
-	case pathTypeLitStr:
-		return fmt.Sprintf("%s(%d:%d)", p.val.Str(), p.loc[0], p.loc[1])
+		return fmt.Sprintf("} at%d", p.loc[0])
+	// case pathTypeLitInt:
+	// 	return fmt.Sprintf("%d(%d:%d)", p.val.Int(), p.loc[0], p.loc[1])
+	case pathTypeLit:
+		return fmt.Sprintf("Lit %s at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
+	case pathTypeStr:
+		return fmt.Sprintf("Str %q at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
+	case pathTypeERR:
+		return fmt.Sprintf("Err %s(%d:%d)", p.val.Str(), p.loc[0], p.loc[1])
 	default:
-		return fmt.Sprintf("unknown token %d(%d:%d) ", p.typ, p.loc[0], p.loc[1])
+		return fmt.Sprintf("UnknownToken %d at %d:%d", p.typ, p.loc[0], p.loc[1])
 	}
 }
 
@@ -138,14 +163,14 @@ func newPathToken(typ pathType, val string, s, e int) pathToken {
 	switch typ {
 	case pathTypeEOF:
 		return pathToken{typ: typ}
-	case pathTypeAny, pathTypeElem, pathTypeField, pathTypeIndexL, pathTypeIndexR, pathTypeLitStr, pathTypeMapR, pathTypeMapL, pathTypeRoot:
+	case pathTypeStr, pathTypeAny, pathTypeElem, pathTypeField, pathTypeIndexL, pathTypeIndexR, pathTypeLit, pathTypeMapR, pathTypeMapL, pathTypeRoot:
 		return pathToken{typ: typ, val: newPathValueStr(val), loc: [2]int{s, e}}
-	case pathTypeLitInt:
-		i, err := strconv.Atoi(val)
-		if err != nil {
-			panic(err)
-		}
-		return pathToken{typ: typ, val: newPathValueInt(i), loc: [2]int{s, e}}
+	// case pathTypeLitInt:
+	// 	i, err := strconv.Atoi(val)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	return pathToken{typ: typ, val: newPathValueInt(i), loc: [2]int{s, e}}
 	default:
 		panic("unspported pathType " + val)
 	}
@@ -198,14 +223,16 @@ func (p *pathIterator) Next() pathToken {
 		return newPathToken(pathTypeElem, string(c), s, p.Pos())
 	case pathSepAny:
 		return newPathToken(pathTypeAny, string(c), s, p.Pos())
+	case pathSepQuote:
+		p.Unwind(s)
+		v, e := p.str()
+		if e != nil {
+			return newPathToken(pathTypeERR, "invalid quote string", s, p.Pos())
+		}
+		return newPathToken(pathTypeStr, v, s, p.Pos())
 	default:
 		p.Unwind(s)
-		val, isInt := p.lit()
-		if isInt {
-			return newPathToken(pathTypeLitInt, val, s, p.Pos())
-		} else {
-			return newPathToken(pathTypeLitStr, val, s, p.Pos())
-		}
+		return newPathToken(pathTypeLit, p.lit(), s, p.Pos())
 	}
 }
 
@@ -219,25 +246,281 @@ func (p *pathIterator) Unwind(pos int) {
 	p.pos = pos
 }
 
-func (p *pathIterator) lit() (string, bool) {
+func (p *pathIterator) lit() string {
 	var i = p.pos
-	var isInt bool
 	for ; i < len(p.src); i++ {
 		switch cc := p.src[i]; cc {
-		case pathSepElem, pathSepAny, pathSepRoot, pathSepField, pathSepIndexLeft, pathSepIndexRight, pathSepMapLeft, pathSepMapRight:
+		case pathSepElem, pathSepAny, pathSepRoot, pathSepField, pathSepIndexLeft, pathSepIndexRight, pathSepMapLeft, pathSepMapRight, pathSepQuote, pathSepSlash:
 			goto ret
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			if i == p.pos {
-				isInt = true
-			} else {
-				isInt = isInt && true
-			}
-		default:
-			isInt = false
+			// case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			// 	if i == p.pos {
+			// 		isInt = true
+			// 	} else {
+			// 		isInt = isInt && true
+			// 	}
+			// default:
+			// 	isInt = false
 		}
 	}
 ret:
 	val := p.src[p.pos:i]
 	p.pos = i
-	return val, isInt
+	return val
+}
+
+func (p *pathIterator) str() (string, error) {
+	var i = p.pos
+	var open = false
+	for ; i < len(p.src); i++ {
+		switch cc := p.src[i]; cc {
+		case pathSepSlash:
+			i += 1
+		case pathSepQuote:
+			open = !open
+			if !open {
+				i += 1
+				goto ret
+			}
+		}
+	}
+ret:
+	val := p.src[p.pos:i]
+	p.pos = i
+	val, err := strconv.Unquote(val)
+	if err != nil {
+		return "", err
+	}
+	return val, nil
+}
+
+func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path string) bool {
+	it := newPathIter(path)
+	println("[PathInMask]")
+	for it.HasNext() {
+		//NOTICE: desc shoudn't empty here
+		println("desc: ", curDesc.Name)
+
+		//NOTICE: empty fm for path means **IN MASK**
+		if cur == nil {
+			return true
+		}
+
+		stok := it.Next()
+		if stok.Err() != nil {
+			return false
+		}
+		styp := stok.Type()
+		println("stoken: ", stok.String())
+
+		if styp == pathTypeRoot {
+			continue
+
+		} else if styp == pathTypeField {
+			// get struct descriptor
+			st, err := curDesc.GetStructDescriptor()
+			if err != nil {
+				return false
+			}
+			println("struct: ", st.Name)
+
+			if cur.typ != ftStruct {
+				return false
+			}
+
+			// for any * directive
+			if cur.fieldMask == nil {
+				println("nil fields")
+				return true
+			}
+
+			tok := it.Next()
+			if tok.Err() != nil {
+				return false
+			}
+			typ := tok.Type()
+			println("token", tok.String())
+
+			var f *thrift_reflection.FieldDescriptor
+			if typ == pathTypeLit {
+				id, ok := tok.ToInt()
+				if ok {
+					f = st.GetFieldById(int32(id))
+					if f == nil {
+						return false
+					}
+				} else {
+					name, ok := tok.ToStr()
+					if !ok {
+						return false
+					}
+					f = st.GetFieldByName(name)
+					if f == nil {
+						return false
+					}
+				}
+			} else if typ == pathTypeAny {
+				if cur.fields != nil {
+					return false
+				}
+				if it.HasNext() {
+					return false
+				}
+				return true
+			} else {
+				return false
+			}
+
+			// check if name set mask
+			if !cur.FieldInMask(int32(f.GetID())) {
+				return false
+			}
+
+			if !it.HasNext() {
+				return true
+			}
+
+			// deep to next desc
+			curDesc = f.GetType()
+			if curDesc == nil {
+				return false
+			}
+			cur = cur.Field(int32(f.GetID()))
+
+		} else if styp == pathTypeIndexL {
+
+			// get element desc
+			if !curDesc.IsList() {
+				return false
+			}
+			et := curDesc.GetValueType()
+			if et == nil {
+				return false
+			}
+
+			if cur.typ != ftArray {
+				return false
+			}
+
+			var all = cur.all != nil || cur.intMask == nil
+			var next = cur.all
+			// iter indexies...
+			for it.HasNext() {
+				tok := it.Next()
+				typ := tok.Type()
+				println("token", tok.String())
+				if tok.Err() != nil {
+					return false
+				}
+
+				if typ == pathTypeIndexR {
+					break
+				}
+				if all || typ == pathTypeElem {
+					continue
+				}
+				if typ == pathTypeAny {
+					return false
+				}
+				if typ != pathTypeLit {
+					return false
+				}
+
+				// check mask
+				v, ok := tok.ToInt()
+				if !ok {
+					return false
+				}
+				if !cur.IntInMask(v) {
+					return false
+				}
+
+				//NOTICE: always use last elem's fieldmask
+				next = cur.Int(v)
+			}
+
+			// next fieldmask
+			curDesc = et
+			cur = next
+
+		} else if styp == pathTypeMapL {
+			// get element and key desc
+			if !curDesc.IsMap() {
+				return false
+			}
+			et := curDesc.GetValueType()
+			if et == nil {
+				return false
+			}
+			kt := curDesc.GetKeyType()
+			if kt == nil {
+				return false
+			}
+
+			println("cur.typ::", cur.typ, "cur::", cur.String(curDesc))
+
+			if cur.typ != ftIntMap && cur.typ != ftStrMap {
+				return false
+			}
+
+			var all = cur.all != nil || (cur.typ == ftIntMap && cur.intMask == nil) || (cur.typ == ftStrMap && cur.strMask == nil)
+			var next = cur.all
+			// iter indexies...
+			for it.HasNext() {
+				tok := it.Next()
+				typ := tok.Type()
+				if tok.Err() != nil {
+					return false
+				}
+				println("token", tok.String())
+
+				if typ == pathTypeMapR {
+					break
+				}
+				if all || typ == pathTypeElem {
+					continue
+				}
+				if typ == pathTypeAny {
+					return false
+				}
+
+				if typ == pathTypeLit {
+					if cur.typ != ftIntMap {
+						return false
+					}
+					v, ok := tok.ToInt()
+					if !ok {
+						return false
+					}
+					if !cur.IntInMask(v) {
+						return false
+					}
+					//NOTICE: always use last elem's fieldmask
+					next = cur.Int(v)
+				} else if typ == pathTypeStr {
+					if cur.typ != ftStrMap {
+						return false
+					}
+					v, ok := tok.ToStr()
+					if !ok {
+						return false
+					}
+					if !cur.StrInMask(v) {
+						return false
+					}
+					//NOTICE: always use last elem's fieldmask
+					next = cur.Str(v)
+				} else {
+					return false
+				}
+			}
+
+			// next fieldmask
+			curDesc = et
+			cur = next
+		} else {
+			return false
+		}
+	}
+
+	return !it.HasNext()
 }

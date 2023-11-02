@@ -128,15 +128,21 @@ func (self *FieldMask) Field(id int32) *FieldMask {
 }
 
 func (self *FieldMask) Int(id int) *FieldMask {
-	if self == nil || self.intMask == nil {
+	if self == nil {
 		return nil
+	}
+	if self.all != nil {
+		return self.all
 	}
 	return self.intMask[id]
 }
 
 func (self *FieldMask) Str(id string) *FieldMask {
-	if self == nil || self.strMask == nil {
+	if self == nil {
 		return nil
+	}
+	if self.all != nil {
+		return self.all
 	}
 	return self.strMask[id]
 }

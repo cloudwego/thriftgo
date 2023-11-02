@@ -127,18 +127,22 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			println("token: ", tok.String())
 
 			var f *thrift_reflection.FieldDescriptor
-			if typ == pathTypeLitStr {
-				// find the field desc
-				name := tok.Val().Str()
-				f = st.GetFieldByName(name)
-				if f == nil {
-					return errDesc(curDesc, "field '"+name+"' doesn't exist")
-				}
-			} else if typ == pathTypeLitInt {
-				id := tok.Val().Int()
-				f = st.GetFieldById(int32(id))
-				if f == nil {
-					return errDesc(curDesc, "field "+strconv.Itoa(id)+" doesn't exist")
+			if typ == pathTypeLit {
+				id, ok := tok.ToInt()
+				if ok {
+					f = st.GetFieldById(int32(id))
+					if f == nil {
+						return errDesc(curDesc, "field "+strconv.Itoa(id)+" doesn't exist")
+					}
+				} else {
+					name, ok := tok.ToStr()
+					if !ok {
+						return errPath(tok, "isn't string")
+					}
+					f = st.GetFieldByName(name)
+					if f == nil {
+						return errDesc(curDesc, "field '"+name+"' doesn't exist")
+					}
 				}
 			} else if typ == pathTypeAny {
 				if it.HasNext() {
@@ -156,7 +160,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			// deep down to the next fieldmask
 			curDesc = unwrapDesc(f.GetType())
 			if curDesc == nil {
-				return errDesc(curDesc, "nil field '"+f.GetName()+"' type descriptor")
+				return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
 			}
 			println("field type: ", curDesc.GetName())
 
@@ -181,7 +185,15 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 			println("et: ", et.GetName())
 
+			nextFt := switchFt(et)
+			if nextFt == ftInvalid {
+				return errDesc(et, "unspported type for fieldmask")
+			}
+
 			var all = false
+			if cur.all != nil {
+				return errPath(stok, "is overlapped with * setted before")
+			}
 			var ids = []int{}
 			// iter indexies...
 			for it.HasNext() {
@@ -204,23 +216,23 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				if typ == pathTypeAny {
 					all = true
 					cur.intMask = nil
+					cur.all = &FieldMask{}
+					cur.all.typ = nextFt
 					continue
 				}
-				if typ != pathTypeLitInt {
+				if typ != pathTypeLit {
+					return errPath(tok, "isn't literal")
+				}
+				id, ok := tok.ToInt()
+				if !ok {
 					return errPath(tok, "isn't integer")
 				}
 
-				ids = append(ids, tok.Val().Int())
-			}
-
-			nextFt := switchFt(et)
-			if nextFt == ftInvalid {
-				return errDesc(et, "unspported type for fieldmask")
+				ids = append(ids, id)
 			}
 
 			if all {
-				cur.all = &FieldMask{}
-				cur.all.typ = nextFt
+				curDesc = et
 				cur = cur.all
 				continue
 			}
@@ -253,10 +265,18 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 			println("et: ", et.GetName())
 
-			// iter indexies...
-			isInt := false
-			isStr := false
-			all := false
+			var all = false
+			if cur.all != nil {
+				return errPath(stok, "is overlapped with * setted before")
+			}
+
+			nextFt := switchFt(et)
+			if nextFt == ftInvalid {
+				return errDesc(et, "unspported type for fieldmask")
+			}
+
+			isInt := cur.typ == ftIntMap
+			isStr := cur.typ == ftStrMap
 			ids := []int{}
 			strs := []string{}
 			for it.HasNext() {
@@ -277,38 +297,44 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				if all {
 					continue
 				}
+
 				if typ == pathTypeAny {
+					println("* for ", curDesc.KeyType.Name, ", path:", it.LeftPath())
 					all = true
 					cur.intMask = nil
 					cur.strMask = nil
+					cur.all = &FieldMask{}
+					cur.all.typ = nextFt
 					continue
 				}
 
-				if typ == pathTypeLitInt {
-					if isStr {
+				if typ == pathTypeLit {
+					id, ok := tok.ToInt()
+					if !ok {
 						return errPath(tok, "isn't integer")
 					}
-					isInt = true
-					ids = append(ids, tok.Val().Int())
-				} else if typ == pathTypeLitStr {
-					if isInt {
+					if isStr {
+						return errPath(tok, "expect string but got integer")
+					}
+					ids = append(ids, id)
+				} else if typ == pathTypeStr {
+					id, ok := tok.ToStr()
+					if !ok {
 						return errPath(tok, "isn't string")
 					}
-					isStr = true
-					strs = append(strs, tok.Val().Str())
+					if isInt {
+						return errPath(tok, "expect integer but got string")
+					}
+					strs = append(strs, id)
 				} else {
 					return errPath(tok, "expect integer or string element")
 				}
 			}
 
-			nextFt := switchFt(et)
-			if nextFt == ftInvalid {
-				return errDesc(et, "unspported type for fieldmask")
-			}
+			println("all:", all, "ids:", ids, "strs:", strs, isInt, isStr)
 
 			if all {
-				cur.all = &FieldMask{}
-				cur.all.typ = nextFt
+				curDesc = et
 				cur = cur.all
 				continue
 			}
@@ -318,7 +344,6 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				if cur.typ != ftIntMap {
 					return errDesc(et, "should be integer-key map")
 				}
-
 				for _, id := range ids {
 					next := cur.setInt(id)
 					next.typ = nextFt
@@ -326,12 +351,11 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 						return err
 					}
 				}
-
+				return nil
 			} else if isStr {
 				if cur.typ != ftStrMap {
 					return errDesc(et, "should be string-key map")
 				}
-
 				for _, id := range strs {
 					next := cur.setStr(id)
 					next.typ = nextFt
@@ -339,8 +363,10 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 						return err
 					}
 				}
+				return nil
+			} else {
+				return errPath(stok, "unexpected path "+nextPath)
 			}
-			return nil
 		} else {
 			return errPath(stok, "unexpected token")
 		}
@@ -438,231 +464,4 @@ func (self FieldMask) printElem(buf *strings.Builder, indent int, id interface{}
 	} else {
 		printIndent(buf, indent+2, "...\n")
 	}
-}
-
-func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path string) bool {
-	it := newPathIter(path)
-	println("[PathInMask]")
-	for it.HasNext() {
-		//NOTICE: desc shoudn't empty here
-		println("desc: ", curDesc.Name)
-
-		//NOTICE: empty fm for path means **IN MASK**
-		if cur == nil {
-			return true
-		}
-
-		stok := it.Next()
-		if stok.Err() != nil {
-			return false
-		}
-		styp := stok.Type()
-		println("stoken: ", stok.String())
-
-		if styp == pathTypeRoot {
-			continue
-
-		} else if styp == pathTypeField {
-			// get struct descriptor
-			st, err := curDesc.GetStructDescriptor()
-			if err != nil {
-				return false
-			}
-			println("struct: ", st.Name)
-
-			if cur.typ != ftStruct {
-				return false
-			}
-
-			// for any * directive
-			if cur.fieldMask == nil {
-				println("nil fields")
-				return true
-			}
-
-			tok := it.Next()
-			if tok.Err() != nil {
-				return false
-			}
-			typ := tok.Type()
-			println("token", tok.String())
-
-			var f *thrift_reflection.FieldDescriptor
-			if typ == pathTypeLitStr {
-				// find the field desc
-				name := tok.Val().Str()
-				f = st.GetFieldByName(name)
-				if f == nil {
-					return false
-				}
-			} else if typ == pathTypeLitInt {
-				id := tok.Val().Int()
-				f = st.GetFieldById(int32(id))
-				if f == nil {
-					return false
-				}
-			} else if typ == pathTypeAny {
-				if cur.fields != nil {
-					return false
-				}
-				if it.HasNext() {
-					return false
-				}
-				return true
-			} else {
-				return false
-			}
-
-			// check if name set mask
-			if !cur.FieldInMask(int32(f.GetID())) {
-				return false
-			}
-
-			if !it.HasNext() {
-				return true
-			}
-
-			// deep to next desc
-			curDesc = f.GetType()
-			if curDesc == nil {
-				return false
-			}
-			cur = cur.Field(int32(f.GetID()))
-
-		} else if styp == pathTypeIndexL {
-
-			// get element desc
-			if !curDesc.IsList() {
-				return false
-			}
-			et := curDesc.GetValueType()
-			if et == nil {
-				return false
-			}
-
-			if cur.typ != ftArray {
-				return false
-			}
-
-			// for any * directive or not specify any sub path
-			if cur.intMask == nil {
-				return true
-			}
-
-			var all = cur.all != nil
-			var next = cur.all
-			// iter indexies...
-			for it.HasNext() {
-				tok := it.Next()
-				typ := tok.Type()
-				println("token", tok.String())
-				if tok.Err() != nil {
-					return false
-				}
-
-				if typ == pathTypeIndexR {
-					break
-				}
-				if all || typ == pathTypeElem {
-					continue
-				}
-				if typ == pathTypeAny {
-					return all
-				}
-				if typ != pathTypeLitInt {
-					return false
-				}
-
-				// check mask
-				v := tok.Val().Int()
-				if !cur.IntInMask(v) {
-					return false
-				}
-
-				//NOTICE: always use last elem's fieldmask
-				next = cur.Int(v)
-			}
-
-			// next fieldmask
-			curDesc = et
-			cur = next
-
-		} else if styp == pathTypeMapL {
-			// get element and key desc
-			if !curDesc.IsMap() {
-				return false
-			}
-			et := curDesc.GetValueType()
-			if et == nil {
-				return false
-			}
-			kt := curDesc.GetKeyType()
-			if kt == nil {
-				return false
-			}
-
-			if cur.typ != ftIntMap && cur.typ != ftStrMap {
-				return false
-			}
-
-			// for not specify any sub path
-			if (cur.typ == ftIntMap && cur.intMask == nil) || (cur.typ == ftStrMap && cur.strMask == nil) {
-				return true
-			}
-
-			var all = cur.all != nil
-			var next = cur.all
-			// iter indexies...
-			for it.HasNext() {
-				tok := it.Next()
-				typ := tok.Type()
-				if tok.Err() != nil {
-					return false
-				}
-				println("token", tok.String())
-
-				if typ == pathTypeMapR {
-					break
-				}
-				if all || typ == pathTypeElem {
-					continue
-				}
-				if typ == pathTypeAny {
-					return all
-				}
-
-				if typ == pathTypeLitInt {
-					if cur.typ != ftIntMap {
-						return false
-					}
-					v := tok.Val().Int()
-					if !cur.IntInMask(v) {
-						return false
-					}
-					//NOTICE: always use last elem's fieldmask
-					next = cur.Int(v)
-				} else if typ == pathTypeLitStr {
-					if cur.typ != ftStrMap {
-						return false
-					}
-					v := tok.val.Str()
-					if !cur.StrInMask(v) {
-						return false
-					}
-					//NOTICE: always use last elem's fieldmask
-					next = cur.Str(v)
-				} else {
-					return false
-				}
-			}
-
-			// next fieldmask
-			curDesc = et
-			cur = next
-		} else {
-			return false
-		}
-	}
-
-	return !it.HasNext()
 }

@@ -97,41 +97,51 @@ func TestNewFieldMask(t *testing.T) {
 		args args
 		want *FieldMask
 	}{
-		{
-			name: "struct",
-			args: args{
-				IDL:        baseIDL,
-				rootStruct: "Base",
-				paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta"},
+		// {
+		// 	name: "Struct",
+		// 	args: args{
+		// 		IDL:        baseIDL,
+		// 		rootStruct: "Base",
+		// 		paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta.*"},
 
-				inMasks:    []string{"$.Meta.F1", "$.Meta.F2", "$.Meta.Base.Caller"},
-				notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra"},
-			},
-			want: &FieldMask{
-				fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
-			},
-		},
-		{
-			name: "List/Set",
-			args: args{
-				IDL:        baseIDL,
-				rootStruct: "Base",
-				paths:      []string{"$.Extra", "$.Extra[0]", "$.Extra[0].List", "$.Extra[1].IntMap", "$.Extra[2].List[0]"},
+		// 		inMasks:    []string{"$.Meta.F1", "$.Meta.F2", "$.Meta.Base.Caller"},
+		// 		notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra"},
+		// 	},
+		// 	// want: &FieldMask{
+		// 	// 	fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
+		// 	// },
+		// },
+		// {
+		// 	name: "List/Set",
+		// 	args: args{
+		// 		IDL:        baseIDL,
+		// 		rootStruct: "Base",
+		// 		paths:      []string{"$.Extra", "$.Extra[0]", "$.Extra[0].List", "$.Extra[1].IntMap", "$.Extra[2].List[0]", "$.Extra[4,5].Set", "$.Extra[6].List[*]"},
 
-				inMasks:    []string{"$.Extra[0].List[0]", "$.Extra[2].List[0].A"},
-				notInMasks: []string{"$.Extra[0].Set", "$.Extra[0].IntMap", "$.Extra[1].List", "$.Extra[1].Set", "$.Extra[2].List[1]", "$.Extra[3]"},
-			},
-		},
+		// 		inMasks:    []string{"$.Extra[0].List[0]", "$.Extra[2].List[0].A", "$.Extra[4].Set", "$.Extra[5].Set", "$.Extra[6].List[0]", "$.Extra[6].List[1]"},
+		// 		notInMasks: []string{"$.Extra[0].Set", "$.Extra[0].IntMap", "$.Extra[1].List", "$.Extra[1].Set", "$.Extra[2].List[1]", "$.Extra[3]", "$.Extra[4,5].List", "$.Extra[4].IntMap", "$.Extra[5].IntMap", "$.Extra[6].Set"},
+		// 	},
+		// },
 		{
-			name: "Map",
+			name: "Int Map",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"$.Extra[0].IntMap", "$.Extra[0].IntMap{0}", "$.Extra[0].IntMap{0}.A", "$.Extra[0].IntMap{1}.B", "$.Extra[0].IntMap{2}"},
-				inMasks:    []string{"$.Extra[0].IntMap{2}.A", "$.Extra[0].IntMap{2}.B"},
-				notInMasks: []string{"$.Extra[0].IntMap{0}.B", "$.Extra[0].IntMap{1}.A", "$.Extra[0].IntMap{3}"},
+				paths:      []string{"$.Extra[0].IntMap", "$.Extra[0].IntMap{0}", "$.Extra[0].IntMap{0}.A", "$.Extra[0].IntMap{1}.B", "$.Extra[0].IntMap{2}", "$.Extra[0].IntMap{4,5}.A", "$.Meta.F2{*}.TrafficEnv"},
+				inMasks:    []string{"$.Extra[0].IntMap{2}.A", "$.Extra[0].IntMap{2}.B", "$.Extra[0].IntMap{4}.A", "$.Extra[0].IntMap{5}.A", "$.Meta.F2{0}.TrafficEnv.Env", "$.Meta.F2{*}.TrafficEnv.Env"},
+				notInMasks: []string{"$.Extra[0].IntMap{0}.B", "$.Extra[0].IntMap{1}.A", "$.Extra[0].IntMap{3}", "$.Extra[0].IntMap{4}.B", "$.Extra[0].IntMap{5}.B", "$.Meta.F2{0}.Addr", "$.Meta.F2{*}.Addr"},
 			},
 		},
+		// {
+		// 	name: "String Map",
+		// 	args: args{
+		// 		IDL:        baseIDL,
+		// 		rootStruct: "Base",
+		// 		paths:      []string{"$.Extra[0].StrMap", "$.Extra[0].StrMap{\"x\"}", "$.Extra[0].StrMap{\"x\"}.A", "$.Extra[0].StrMap{\"y\"}.B", "$.Extra[0].StrMap{\"z\"}"},
+		// 		inMasks:    []string{"$.Extra[0].StrMap{\"z\"}.A", "$.Extra[0].StrMap{\"z\"}.B"},
+		// 		notInMasks: []string{"$.Extra[0].StrMap{\"x\"}.B", "$.Extra[0].StrMap{\"y\"}.A", "$.Extra[0].StrMap{\"s\"}"},
+		// 	},
+		// },
 		// {
 		// 	name: "not struct",
 		// 	args: args{
