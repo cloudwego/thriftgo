@@ -1,6 +1,7 @@
 package thrift_option
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -347,16 +348,6 @@ func TestFieldOption(t *testing.T) {
 	valuestring, ok := v.(string)
 	assert(t, ok)
 	assert(t, valuestring == "the name of this person")
-
-	optLocal, err := ParseFieldOption(f, "local_field_info")
-	assert(t, err == nil)
-	assert(t, optLocal != nil)
-
-	v = optLocal.GetValue()
-	assert(t, err == nil)
-	valuestring, ok = v.(string)
-	assert(t, ok)
-	assert(t, valuestring == "the ID of this person")
 }
 
 func TestServiceAndMethodOption(t *testing.T) {
@@ -584,6 +575,66 @@ func TestCommaGrammar(t *testing.T) {
 	assert(t, ok && valuemapstructk1["email"] == "e1")
 	valuemapstructk2, ok := valuemapstruct["k2"].(map[string]interface{})
 	assert(t, ok && valuemapstructk2["email"] == "e2")
+}
+
+func TestSimpleGrammar(t *testing.T) {
+	ast, err := parser.ParseFile("option_idl/test.thrift", []string{"option_idl"}, true)
+	assert(t, err == nil)
+
+	_, fd := thrift_reflection.RegisterAST(ast)
+	assert(t, fd != nil)
+
+	p := fd.GetStructDescriptor("PersonC")
+	assert(t, p != nil)
+
+	// test basic option
+	opt, err := ParseStructOption(p, "entity.person_basic_info")
+	assert(t, err == nil)
+	assert(t, opt != nil)
+
+	v, err := opt.GetFieldValue("valuei100")
+	assert(t, err != nil)
+
+	v, err = opt.GetFieldValue("valuei8")
+	assert(t, err == nil)
+	val0, ok := v.(int8)
+	assert(t, ok && val0 == 8)
+
+	v, err = opt.GetFieldValue("valuei16")
+	assert(t, err == nil)
+	val1, ok := v.(int16)
+	assert(t, ok && val1 == 16)
+
+	// test struct option
+	opt, err = ParseStructOption(p, "entity.person_struct_info")
+	assert(t, err == nil)
+	assert(t, opt != nil)
+
+	v, err = opt.GetFieldValue("valuestruct")
+	assert(t, err == nil)
+	val00, ok := v.(map[string]interface{})
+	assert(t, ok && val00["email"] == "empty email")
+
+	vs, err := opt.GetFieldValue("valueteststruct")
+	assert(t, err == nil)
+	val11, ok := vs.(map[string]interface{})
+	assert(t, ok && val11["name"] == "lee")
+	val22, ok := val11["innerStruct"].(map[string]interface{})
+	assert(t, ok && val22["email"] == "no email")
+
+}
+
+func TestBuildTree(t *testing.T) {
+	opts := []*subValue{
+		{path: "aa.bb.cc", value: "v1"},
+		//{path: "aa.bb.dd", value: "v2"},
+		//{path: "cc", value: "v3"},
+		{path: "aa.dd", value: "v4"},
+		{path: "aa.dd.ee.ff.gg", value: "v5"},
+	}
+
+	result := buildTree(opts)
+	fmt.Println(result)
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {

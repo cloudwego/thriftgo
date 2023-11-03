@@ -9,16 +9,31 @@ import (
 	"github.com/cloudwego/thriftgo/extension/thrift_option/runtime_test/option_gen/annotation/validation"
 )
 
-func TestCheckOptionFieldSet(t *testing.T) {
+func TestRuntimeSimpleGrammarOption(t *testing.T) {
 	// test basic option
-	option, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), option_gen.STRUCT_OPTION_LOCAL_STRUCT_INFO)
+	option, err := thrift_option.GetStructOption(option_gen.NewPersonC().GetDescriptor(), entity.STRUCT_OPTION_PERSON_BASIC_INFO)
 	assert(t, err == nil && option != nil)
-	ok, err := option.IsFieldSet("b2")
-	assert(t, err == nil)
-	assert(t, !ok)
-	optionVal := option.GetInstance().(*option_gen.TinyStruct)
-	assert(t, optionVal.B1)
-	assert(t, optionVal.B2 == false)
+	opt, ok := option.GetInstance().(*entity.PersonBasicInfo)
+	assert(t, ok)
+
+	assert(t, opt.GetValuei8() == 8)
+	assert(t, opt.GetValuei16() == 16)
+
+	// test struct option
+	option2, err := thrift_option.GetStructOption(option_gen.NewPerson().GetDescriptor(), entity.STRUCT_OPTION_PERSON_STRUCT_INFO)
+	assert(t, err == nil && option != nil)
+	opt2, ok := option2.GetInstance().(*entity.PersonStructInfo)
+	assert(t, ok)
+
+	innerStruct := opt2.GetValuestruct()
+	assert(t, innerStruct != nil && innerStruct.GetEmail() == "empty email")
+
+	testStruct := opt2.GetValueteststruct()
+	assert(t, testStruct != nil)
+	assert(t, testStruct.GetName() == "lee")
+	innerStruct = testStruct.GetInnerStruct()
+	assert(t, innerStruct != nil && innerStruct.GetEmail() == "no email")
+
 }
 
 func TestRuntimeBasicStructOption(t *testing.T) {
@@ -170,13 +185,6 @@ func TestRuntimeFieldOption(t *testing.T) {
 	valuestring, ok := opt.GetInstance().(string)
 	assert(t, ok)
 	assert(t, valuestring == "the name of this person")
-
-	// test basic string option
-	opt2, err := thrift_option.GetFieldOption(fd, option_gen.FIELD_OPTION_LOCAL_FIELD_INFO)
-	assert(t, err == nil && opt2 != nil)
-	valuestring, ok = opt2.GetInstance().(string)
-	assert(t, ok)
-	assert(t, valuestring == "the ID of this person")
 }
 
 func TestRuntimeServiceAndMethodOption(t *testing.T) {

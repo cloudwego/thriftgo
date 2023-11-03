@@ -3,15 +3,25 @@ package thrift_option
 import (
 	"encoding/hex"
 	"errors"
+	"github.com/cloudwego/thriftgo/thrift_reflection"
+	"github.com/cloudwego/thriftgo/utils"
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/cloudwego/thriftgo/thrift_reflection"
-	"github.com/cloudwego/thriftgo/utils"
 )
 
+func trimQuote(value string) string {
+	if strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'") {
+		value = value[1 : len(value)-1]
+	}
+	if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"") {
+		value = value[1 : len(value)-1]
+	}
+	return value
+}
+
 func createInstance(td *thrift_reflection.TypeDescriptor, content string, mapMode bool) (mapVal, instanceVal interface{}, e error) {
+	content = trimQuote(content)
 	if td.IsBasic() {
 		val, err := createBasic(td.GetName(), content)
 		return val, val, err
@@ -181,14 +191,7 @@ func createBasic(name, value string) (interface{}, error) {
 		}
 		return i, nil
 	case "string":
-		valueStr := value
-		if strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'") {
-			valueStr = value[1 : len(value)-1]
-		}
-		if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"") {
-			valueStr = value[1 : len(value)-1]
-		}
-		return valueStr, nil
+		return value, nil
 	default:
 		return nil, errors.New("unsupported basic type: " + name)
 	}

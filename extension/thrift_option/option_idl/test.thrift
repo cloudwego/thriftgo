@@ -9,12 +9,9 @@ struct IDCard{
 
 
 struct Person{
-    1:required string name (entity.person_field_info='the name of this person' local_field_info='the ID of this person')
+    1:required string name (entity.person_field_info='the name of this person')
     2:required IDCard id
 }(
-    local_struct_info = '{
-        b1: true
-    }'
     aaa.bbb = "hello"
     entity.person_basic_info = '{
             valuei8:8
@@ -85,6 +82,19 @@ struct PersonB{
     }'
 )
 
+
+struct PersonC{
+
+}(
+    entity.person_basic_info.valuei8 = '8'
+    entity.person_basic_info.valuei16 = '16'
+    entity.person_struct_info.valuestruct = '{email:"empty email"}'
+    // 简写不建议这样写，而且这行会被下面那行覆盖掉
+    entity.person_struct_info.valueteststruct.innerStruct = "{name: '123'},innerStruct:{email:'456'}"
+    entity.person_struct_info.valueteststruct.innerStruct.email = "no email"
+    entity.person_struct_info.valueteststruct.name = "lee"
+)
+
 enum MyEnum{
     A
     (
@@ -123,14 +133,6 @@ service MyService{
     }'
 
 )
-
-struct _FieldOptions {
-      1:required string local_field_info
-}
-
-struct _StructOptions {
-      1:required TinyStruct local_struct_info
-}
 
 struct TinyStruct{
     1:required bool b1

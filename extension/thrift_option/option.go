@@ -70,8 +70,8 @@ func parseOption(gd *thrift_reflection.GlobalDescriptor, anno *AnnotationMeta, o
 		return nil, NotIncludedError(optionName)
 	}
 
-	_, opt, ok := getOptionContent(gd, anno, optionMeta)
-	if !ok {
+	content := getOptionContent(gd, anno, optionMeta)
+	if content == "" {
 		// 传入的 Option 并不能在 Annotation 里找到
 		return nil, KeyNotMatchError(optionMeta.GetName())
 	}
@@ -87,42 +87,122 @@ func parseOption(gd *thrift_reflection.GlobalDescriptor, anno *AnnotationMeta, o
 
 	typeDesc := fieldDesc.GetType()
 
-	// format option content
-	opt = strings.ReplaceAll(opt, "\n", " ")
-	opt = strings.ReplaceAll(opt, "\t", " ")
-	opt = strings.TrimSpace(opt)
-
-	mapVal, instanceVal, er := createInstance(typeDesc, opt, mapMode)
+	content = strings.ReplaceAll(content, "\n", " ")
+	content = strings.ReplaceAll(content, "\t", " ")
+	content = strings.TrimSpace(content)
+	mapVal, instanceVal, er := createInstance(typeDesc, content, mapMode)
 	if er != nil {
 		return nil, ParseFailedError(optionName, er)
 	}
+
 	return &OptionData{optionName, typeDesc, mapVal, instanceVal}, nil
 }
 
-func getOptionContent(gd *thrift_reflection.GlobalDescriptor, annotation *AnnotationMeta, optionMeta OptionGetter) (string, string, bool) {
-	for annotationKey, values := range annotation.annotations {
-		if len(values) > 0 {
-			prefix, expectedOptionName := utils.ParseAlias(annotationKey)
-			// check name
-			if expectedOptionName == optionMeta.GetName() {
+type subValue struct {
+	path  string
+	value string
+}
 
-				match := false
-				if prefix == "" {
-					// option and current struct are in the same idl
-					// double check their idl filepath
-					match = optionMeta.GetFilepath() == annotation.filepath
-				} else {
-					// option and current struct are not in the same idl
-					currentFD := gd.LookupFD(annotation.filepath)
-					// check if current struct idl include the option's idl
-					match = optionMeta.GetFilepath() == currentFD.Includes[prefix]
+func getOptionContent(gd *thrift_reflection.GlobalDescriptor, annotation *AnnotationMeta, optionMeta OptionGetter) string {
+
+	opts := []*subValue{}
+	for annotationKey, vals := range annotation.annotations {
+		if len(vals) < 1 {
+			continue
+		}
+		value := vals[len(vals)-1]
+		prefix, expectedOptionName, subpath, ok := parseOptionName(annotationKey)
+		if !ok {
+			continue
+		}
+		// check name
+		if expectedOptionName == optionMeta.GetName() {
+			match := false
+			if prefix == "" {
+				// option and current struct are in the same idl
+				// double check their idl filepath
+				match = optionMeta.GetFilepath() == annotation.filepath
+			} else {
+				// option and current struct are not in the same idl
+				currentFD := gd.LookupFD(annotation.filepath)
+				// check if current struct idl include the option's idl
+				match = optionMeta.GetFilepath() == currentFD.Includes[prefix]
+			}
+			if match {
+				if subpath == "" {
+					return value
 				}
+				opts = append(opts, &subValue{
+					path:  subpath,
+					value: value,
+				})
+			}
+		}
+	}
 
-				if match {
-					return annotationKey, values[len(values)-1], true
+	if len(opts) == 0 {
+		return ""
+	}
+	// todo 一个 prefix 的时候 panic
+	return buildTree(opts)
+}
+
+func parseOptionName(tname string) (prefix, name, subpath string, ok bool) {
+	arr := strings.Split(tname, ".")
+	if len(arr) == 1 {
+		return "", tname, "", false
+	}
+	if len(arr) == 2 {
+		return arr[0], arr[1], "", true
+	}
+	return arr[0], arr[1], strings.Join(arr[2:], "."), true
+}
+
+func buildTree(opts []*subValue) string {
+	tree := make(map[string]interface{})
+
+	for _, opt := range opts {
+		path := strings.Split(opt.path, ".")
+		value := opt.value
+
+		current := tree
+		for i, comp := range path {
+			if i == len(path)-1 {
+				current[comp] = value
+			} else {
+				if _, ok := current[comp]; !ok {
+					current[comp] = make(map[string]interface{})
+				}
+				if _, ok := current[comp].(map[string]interface{}); ok {
+					current = current[comp].(map[string]interface{})
+				} else {
+					current[comp] = make(map[string]interface{})
+					current = current[comp].(map[string]interface{})
 				}
 			}
 		}
 	}
-	return "", "", false
+
+	return formatTree(tree)
+}
+
+func formatTree(tree map[string]interface{}) string {
+	output := "{"
+	for key, value := range tree {
+		output += key + ":"
+
+		switch v := value.(type) {
+		case string:
+			output += `"` + v + `"`
+		case map[string]interface{}:
+			output += formatTree(v)
+		}
+
+		output += ","
+	}
+
+	output = strings.TrimSuffix(output, ",")
+	output += "}"
+
+	return output
 }

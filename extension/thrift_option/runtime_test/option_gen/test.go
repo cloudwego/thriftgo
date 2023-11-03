@@ -8,7 +8,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/cloudwego/thriftgo/extension/thrift_option"
 )
 
 type MyEnum int64
@@ -457,27 +456,19 @@ func (p *Person) String() string {
 	return fmt.Sprintf("Person(%+v)", *p)
 }
 
-type _FieldOptions struct {
-	LocalFieldInfo string `thrift:"local_field_info,1,required" json:"local_field_info"`
+type PersonB struct {
 }
 
-func New_FieldOptions() *_FieldOptions {
-	return &_FieldOptions{}
+func NewPersonB() *PersonB {
+	return &PersonB{}
 }
 
-func (p *_FieldOptions) GetLocalFieldInfo() (v string) {
-	return p.LocalFieldInfo
-}
+var fieldIDToName_PersonB = map[int16]string{}
 
-var fieldIDToName__FieldOptions = map[int16]string{
-	1: "local_field_info",
-}
-
-func (p *_FieldOptions) Read(iprot thrift.TProtocol) (err error) {
+func (p *PersonB) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
-	var issetLocalFieldInfo bool = false
 
 	if _, err = iprot.ReadStructBegin(); err != nil {
 		goto ReadStructBeginError
@@ -491,23 +482,8 @@ func (p *_FieldOptions) Read(iprot thrift.TProtocol) (err error) {
 		if fieldTypeId == thrift.STOP {
 			break
 		}
-
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.STRING {
-				if err = p.ReadField1(iprot); err != nil {
-					goto ReadFieldError
-				}
-				issetLocalFieldInfo = true
-			} else {
-				if err = iprot.Skip(fieldTypeId); err != nil {
-					goto SkipFieldError
-				}
-			}
-		default:
-			if err = iprot.Skip(fieldTypeId); err != nil {
-				goto SkipFieldError
-			}
+		if err = iprot.Skip(fieldTypeId); err != nil {
+			goto SkipFieldTypeError
 		}
 
 		if err = iprot.ReadFieldEnd(); err != nil {
@@ -518,47 +494,25 @@ func (p *_FieldOptions) Read(iprot thrift.TProtocol) (err error) {
 		goto ReadStructEndError
 	}
 
-	if !issetLocalFieldInfo {
-		fieldId = 1
-		goto RequiredFieldNotSetError
-	}
 	return nil
 ReadStructBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
-ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName__FieldOptions[fieldId]), err)
-SkipFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+SkipFieldTypeError:
+	return thrift.PrependError(fmt.Sprintf("%T skip field type %d error", p, fieldTypeId), err)
 
 ReadFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
 ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-RequiredFieldNotSetError:
-	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("required field %s is not set", fieldIDToName__FieldOptions[fieldId]))
 }
 
-func (p *_FieldOptions) ReadField1(iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadString(); err != nil {
-		return err
-	} else {
-		p.LocalFieldInfo = v
-	}
-	return nil
-}
-
-func (p *_FieldOptions) Write(oprot thrift.TProtocol) (err error) {
-	var fieldId int16
-	if err = oprot.WriteStructBegin("_FieldOptions"); err != nil {
+func (p *PersonB) Write(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteStructBegin("PersonB"); err != nil {
 		goto WriteStructBeginError
 	}
 	if p != nil {
-		if err = p.writeField1(oprot); err != nil {
-			fieldId = 1
-			goto WriteFieldError
-		}
 
 	}
 	if err = oprot.WriteFieldStop(); err != nil {
@@ -570,68 +524,32 @@ func (p *_FieldOptions) Write(oprot thrift.TProtocol) (err error) {
 	return nil
 WriteStructBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
-WriteFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
 WriteFieldStopError:
 	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
 WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *_FieldOptions) writeField1(oprot thrift.TProtocol) (err error) {
-	if err = oprot.WriteFieldBegin("local_field_info", thrift.STRING, 1); err != nil {
-		goto WriteFieldBeginError
-	}
-	if err := oprot.WriteString(p.LocalFieldInfo); err != nil {
-		return err
-	}
-	if err = oprot.WriteFieldEnd(); err != nil {
-		goto WriteFieldEndError
-	}
-	return nil
-WriteFieldBeginError:
-	return thrift.PrependError(fmt.Sprintf("%T write field 1 begin error: ", p), err)
-WriteFieldEndError:
-	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
-}
-
-func (p *_FieldOptions) String() string {
+func (p *PersonB) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("_FieldOptions(%+v)", *p)
+	return fmt.Sprintf("PersonB(%+v)", *p)
 }
 
-type _StructOptions struct {
-	LocalStructInfo *TinyStruct `thrift:"local_struct_info,1,required" json:"local_struct_info"`
+type PersonC struct {
 }
 
-func New_StructOptions() *_StructOptions {
-	return &_StructOptions{}
+func NewPersonC() *PersonC {
+	return &PersonC{}
 }
 
-var _StructOptions_LocalStructInfo_DEFAULT *TinyStruct
+var fieldIDToName_PersonC = map[int16]string{}
 
-func (p *_StructOptions) GetLocalStructInfo() (v *TinyStruct) {
-	if !p.IsSetLocalStructInfo() {
-		return _StructOptions_LocalStructInfo_DEFAULT
-	}
-	return p.LocalStructInfo
-}
-
-var fieldIDToName__StructOptions = map[int16]string{
-	1: "local_struct_info",
-}
-
-func (p *_StructOptions) IsSetLocalStructInfo() bool {
-	return p.LocalStructInfo != nil
-}
-
-func (p *_StructOptions) Read(iprot thrift.TProtocol) (err error) {
+func (p *PersonC) Read(iprot thrift.TProtocol) (err error) {
 
 	var fieldTypeId thrift.TType
 	var fieldId int16
-	var issetLocalStructInfo bool = false
 
 	if _, err = iprot.ReadStructBegin(); err != nil {
 		goto ReadStructBeginError
@@ -645,23 +563,8 @@ func (p *_StructOptions) Read(iprot thrift.TProtocol) (err error) {
 		if fieldTypeId == thrift.STOP {
 			break
 		}
-
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.STRUCT {
-				if err = p.ReadField1(iprot); err != nil {
-					goto ReadFieldError
-				}
-				issetLocalStructInfo = true
-			} else {
-				if err = iprot.Skip(fieldTypeId); err != nil {
-					goto SkipFieldError
-				}
-			}
-		default:
-			if err = iprot.Skip(fieldTypeId); err != nil {
-				goto SkipFieldError
-			}
+		if err = iprot.Skip(fieldTypeId); err != nil {
+			goto SkipFieldTypeError
 		}
 
 		if err = iprot.ReadFieldEnd(); err != nil {
@@ -672,46 +575,25 @@ func (p *_StructOptions) Read(iprot thrift.TProtocol) (err error) {
 		goto ReadStructEndError
 	}
 
-	if !issetLocalStructInfo {
-		fieldId = 1
-		goto RequiredFieldNotSetError
-	}
 	return nil
 ReadStructBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
 ReadFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
-ReadFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName__StructOptions[fieldId]), err)
-SkipFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+SkipFieldTypeError:
+	return thrift.PrependError(fmt.Sprintf("%T skip field type %d error", p, fieldTypeId), err)
 
 ReadFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
 ReadStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-RequiredFieldNotSetError:
-	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("required field %s is not set", fieldIDToName__StructOptions[fieldId]))
 }
 
-func (p *_StructOptions) ReadField1(iprot thrift.TProtocol) error {
-	p.LocalStructInfo = NewTinyStruct()
-	if err := p.LocalStructInfo.Read(iprot); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (p *_StructOptions) Write(oprot thrift.TProtocol) (err error) {
-	var fieldId int16
-	if err = oprot.WriteStructBegin("_StructOptions"); err != nil {
+func (p *PersonC) Write(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteStructBegin("PersonC"); err != nil {
 		goto WriteStructBeginError
 	}
 	if p != nil {
-		if err = p.writeField1(oprot); err != nil {
-			fieldId = 1
-			goto WriteFieldError
-		}
 
 	}
 	if err = oprot.WriteFieldStop(); err != nil {
@@ -723,36 +605,17 @@ func (p *_StructOptions) Write(oprot thrift.TProtocol) (err error) {
 	return nil
 WriteStructBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
-WriteFieldError:
-	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
 WriteFieldStopError:
 	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
 WriteStructEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
 }
 
-func (p *_StructOptions) writeField1(oprot thrift.TProtocol) (err error) {
-	if err = oprot.WriteFieldBegin("local_struct_info", thrift.STRUCT, 1); err != nil {
-		goto WriteFieldBeginError
-	}
-	if err := p.LocalStructInfo.Write(oprot); err != nil {
-		return err
-	}
-	if err = oprot.WriteFieldEnd(); err != nil {
-		goto WriteFieldEndError
-	}
-	return nil
-WriteFieldBeginError:
-	return thrift.PrependError(fmt.Sprintf("%T write field 1 begin error: ", p), err)
-WriteFieldEndError:
-	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
-}
-
-func (p *_StructOptions) String() string {
+func (p *PersonC) String() string {
 	if p == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("_StructOptions(%+v)", *p)
+	return fmt.Sprintf("PersonC(%+v)", *p)
 }
 
 type TinyStruct struct {
@@ -1597,8 +1460,3 @@ func (p *MyServiceM2Result) String() string {
 	}
 	return fmt.Sprintf("MyServiceM2Result(%+v)", *p)
 }
-
-var (
-	FIELD_OPTION_LOCAL_FIELD_INFO   = thrift_option.NewFieldOption("../option_idl/test.thrift", "local_field_info")
-	STRUCT_OPTION_LOCAL_STRUCT_INFO = thrift_option.NewStructOption("../option_idl/test.thrift", "local_struct_info")
-)
