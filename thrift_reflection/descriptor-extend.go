@@ -388,12 +388,23 @@ func (td *TypeDescriptor) IsTypedef() bool {
 	if ok {
 		return cacheType == "typedef"
 	}
-	sd, err := td.GetTypedefDescriptor()
-	isStruct := err == nil && sd != nil
-	if isStruct {
-		td.Extra["type"] = "typedef"
+	if td.IsContainer() || td.IsBasic() {
+		return false
 	}
-	return isStruct
+	prefix, name := utils.ParseAlias(td.GetName())
+	fd := LookupFD(td.Filepath)
+	if fd == nil {
+		return false
+	}
+	targetFd := fd.GetIncludeFD(prefix)
+	if targetFd == nil {
+		return false
+	}
+	if targetFd.GetTypedefDescriptor(name) == nil {
+		return false
+	}
+	td.Extra["type"] = "typedef"
+	return true
 }
 
 func (td *TypeDescriptor) GetTypedefDescriptor() (*TypedefDescriptor, error) {

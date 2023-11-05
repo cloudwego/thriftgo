@@ -16,15 +16,17 @@
 
 package fieldmask
 
-import "github.com/cloudwego/thriftgo/thrift_reflection"
+import (
+	"github.com/cloudwego/thriftgo/thrift_reflection"
+)
 
 type fieldID int32
 
-const _MaxFieldIDHead = 128
+const _MaxFieldIDHead = 127
 
 type fieldMap struct {
-	head [_MaxFieldIDHead + 1]FieldMask
-	tail []FieldMask
+	head [_MaxFieldIDHead + 1]*FieldMask
+	tail map[fieldID]*FieldMask
 }
 
 func makeFieldMaskMap(st *thrift_reflection.StructDescriptor) fieldMap {
@@ -39,100 +41,203 @@ func makeFieldMaskMap(st *thrift_reflection.StructDescriptor) fieldMap {
 		}
 	}
 	return fieldMap{
-		tail: make([]FieldMask, 0, count),
+		tail: make(map[fieldID]*FieldMask, count),
 	}
 }
 
-func (self *fieldMap) IsInitialized() bool {
-	return self != nil && self.tail != nil
-}
-
-func (self *fieldMap) Reset() {
-	if self == nil {
+func (fm *fieldMap) Reset() {
+	if fm == nil {
 		return
 	}
-	self.tail = self.tail[:0]
+	for _, v := range fm.tail {
+		v.Reset()
+	}
+	// memclrNoHeapPointers(unsafe.Pointer(&fm.head), 8*(_MaxFieldIDHead+1))
+	for _, v := range fm.head {
+		v.Reset()
+	}
 }
 
-func (self *fieldMap) GetOrAlloc(f fieldID) *FieldMask {
+// func (self *fieldMap) Reset() {
+// 	if self == nil {
+// 		return
+// 	}
+// 	self.tail = self.tail[:0]
+// }
+
+func (self *fieldMap) SetIfNotExist(f fieldID, ft fieldMaskType) (s *FieldMask) {
 	if f <= _MaxFieldIDHead {
-		return &self.head[f]
+		s = self.head[f]
+		if s == nil {
+			fm := newFieldMask(ft)
+			self.head[f] = &fm
+			return &fm
+		}
+
 	} else {
-		if int(f) >= cap(self.tail) {
-			tmp := make([]FieldMask, len(self.tail), int(f)+cap(self.tail)>>1+1)
-			copy(tmp, self.tail)
-			self.tail = tmp
+		s = self.tail[f]
+		if s == nil {
+			fm := newFieldMask(ft)
+			self.tail[f] = &fm
+			return &fm
 		}
-		if int(f) >= len(self.tail) {
-			self.tail = self.tail[:f+1]
-		}
-		return &self.tail[f]
 	}
+	if s.typ == 0 {
+		s.assign(ft)
+	}
+	return s
 }
 
-func (self *fieldMap) Get(f fieldID) *FieldMask {
+func (self *fieldMap) Get(f fieldID) (ret *FieldMask) {
 	if f <= _MaxFieldIDHead {
-		return &self.head[f]
+		ret = self.head[f]
 	} else {
-		if int(f) >= len(self.tail) {
-			return nil
-		}
-		return &self.tail[f]
+		ret = self.tail[f]
 	}
+	if ret.Exist() {
+		return ret
+	}
+	return nil
 }
 
-type fieldMaskBitmap []byte
-
-const _BucketBit = 8
-
-func (self *fieldMaskBitmap) Set(f fieldID) {
-	b := int(f / _BucketBit)
-	i := int(f % _BucketBit)
-	c := cap(*self)
-	if c <= b+1 {
-		tmp := make([]byte, len(*self), (c + b + 1))
-		copy(tmp, *self)
-		*self = tmp
+// setFieldID ensure a fieldmask slot for f
+func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescriptor) *FieldMask {
+	if self.fdMask == nil {
+		// println("new fdmask")
+		m := makeFieldMaskMap(st)
+		self.fdMask = &m
 	}
-	if len(*self) <= b {
-		*self = (*self)[:b+1]
-	}
-	(*self)[b] |= byte(1 << i)
+	return self.fdMask.SetIfNotExist(fieldID(f), switchFt(st.GetFieldById(int32(f)).GetType()))
 }
 
-func (self *fieldMaskBitmap) Get(f fieldID) bool {
-	b := int(f / _BucketBit)
-	if len(*self) <= b {
-		return false
+// type fieldMaskBitmap []byte
+
+// const _BucketBit = 8
+
+// func (self *fieldMaskBitmap) Set(f fieldID) {
+// 	b := int(f / _BucketBit)
+// 	i := int(f % _BucketBit)
+// 	c := cap(*self)
+// 	if c <= b+1 {
+// 		tmp := make([]byte, len(*self), (c + b + 1))
+// 		copy(tmp, *self)
+// 		*self = tmp
+// 	}
+// 	if len(*self) <= b {
+// 		*self = (*self)[:b+1]
+// 	}
+// 	(*self)[b] |= byte(1 << i)
+// }
+
+// func (self *fieldMaskBitmap) Get(f fieldID) bool {
+// 	b := int(f / _BucketBit)
+// 	if len(*self) <= b {
+// 		return false
+// 	}
+// 	i := int(f % _BucketBit)
+// 	return ((*self)[b] & byte(1<<i)) != 0
+// }
+
+func (self *FieldMask) setInt(v int, ft fieldMaskType) *FieldMask {
+	if self.intMask == nil {
+		// println("new intMask")
+		self.intMask = make(intMap)
 	}
-	i := int(f % _BucketBit)
-	return ((*self)[b] & byte(1<<i)) != 0
+	return self.intMask.SetIfNotExist(v, ft)
 }
 
 type intMap map[int]*FieldMask
 
-func (im intMap) Get(i int) *FieldMask {
-	return im[i]
+func (im intMap) Reset() {
+	for _, v := range im {
+		v.Reset()
+	}
 }
 
-func (im intMap) Set(i int, v *FieldMask) {
-	im[i] = v
+func (im intMap) Get(i int) (ret *FieldMask) {
+	ret = im[i]
+	if ret.Exist() {
+		return ret
+	}
+	return nil
+}
+
+func (im intMap) SetIfNotExist(i int, ft fieldMaskType) *FieldMask {
+	s := im[i]
+	if s == nil {
+		fm := newFieldMask(ft)
+		im[i] = &fm
+		return &fm
+	}
+	if s.typ == 0 {
+		s.assign(ft)
+	}
+	return s
 }
 
 func (im intMap) Unset(i int) {
 	delete(im, i)
 }
 
-type strMap map[string]*FieldMask
-
-func (im strMap) Get(i string) *FieldMask {
-	return im[i]
+func (self *FieldMask) setStr(v string, ft fieldMaskType) *FieldMask {
+	if self.strMask == nil {
+		// println("new setStr")
+		self.strMask = make(strMap)
+	}
+	return self.strMask.SetIfNotExist(v, ft)
 }
 
-func (im strMap) Set(i string, v *FieldMask) {
-	im[i] = v
+type strMap map[string]*FieldMask
+
+func (sm strMap) Reset() {
+	for _, v := range sm {
+		v.Reset()
+	}
+}
+
+func (im strMap) Get(i string) (ret *FieldMask) {
+	ret = im[i]
+	if ret.Exist() {
+		return ret
+	}
+	return nil
+}
+
+func (im strMap) SetIfNotExist(i string, ft fieldMaskType) *FieldMask {
+	s := im[i]
+	if s == nil {
+		fm := newFieldMask(ft)
+		im[i] = &fm
+		return &fm
+	}
+	if s.typ == 0 {
+		s.assign(ft)
+	}
+	return s
 }
 
 func (im strMap) Unset(i string) {
 	delete(im, i)
+}
+
+func (self *FieldMask) getAll(ft fieldMaskType) *FieldMask {
+	if self.all == nil {
+		fm := newFieldMask(ft)
+		self.all = &fm
+	} else if self.all.typ == 0 {
+		self.all.assign(ft)
+	}
+	return self.all
+}
+
+func newFieldMask(ft fieldMaskType) FieldMask {
+	return FieldMask{
+		typ:   ft,
+		isAll: false,
+	}
+}
+
+func (self *FieldMask) assign(ft fieldMaskType) {
+	self.typ = ft
+	self.isAll = false
 }

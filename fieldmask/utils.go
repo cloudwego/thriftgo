@@ -79,7 +79,7 @@ func unwrapDesc(desc *thrift_reflection.TypeDescriptor) *thrift_reflection.TypeD
 }
 
 func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescriptor) error {
-	println("[SetPath]: ", path)
+	// println("[SetPath]: ", path)
 
 	curDesc = unwrapDesc(curDesc)
 	if curDesc == nil {
@@ -88,14 +88,14 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 
 	it := newPathIter(path)
 	for it.HasNext() {
-		println("desc: ", curDesc.Name)
+		// println("desc: ", curDesc.Name)
 
 		stok := it.Next()
 		if stok.Err() != nil {
 			return errPath(stok, "")
 		}
 		styp := stok.Type()
-		println("stoken: ", stok.String())
+		// println("stoken: ", stok.String())
 
 		if styp == pathTypeRoot {
 			cur.typ = switchFt(curDesc)
@@ -110,7 +110,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			if cur.typ != ftStruct {
 				return errDesc(curDesc, "expect STRUCT")
 			}
-			println("struct: ", st.Name)
+			// println("struct: ", st.Name)
 
 			// get field name or field id
 			tok := it.Next()
@@ -118,7 +118,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errPath(tok, "isn't field-name or field-id")
 			}
 			typ := tok.Type()
-			println("token: ", tok.String())
+			// println("token: ", tok.String())
 
 			all := cur.All()
 			if all {
@@ -126,27 +126,21 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 
 			var f *thrift_reflection.FieldDescriptor
-			if typ == pathTypeLit {
-				id, ok := tok.ToInt()
-				if ok {
-					f = st.GetFieldById(int32(id))
-					if f == nil {
-						return errDesc(curDesc, "field "+strconv.Itoa(id)+" doesn't exist")
-					}
-				} else {
-					name, ok := tok.ToStr()
-					if !ok {
-						return errPath(tok, "isn't string")
-					}
-					f = st.GetFieldByName(name)
-					if f == nil {
-						return errDesc(curDesc, "field '"+name+"' doesn't exist")
-					}
+			if typ == pathTypeLitInt {
+				id := tok.val.Int()
+				f = st.GetFieldById(int32(id))
+				if f == nil {
+					return errDesc(curDesc, "field "+strconv.Itoa(id)+" doesn't exist")
 				}
 
+			} else if typ == pathTypeLitStr {
+				name := tok.val.Str()
+				f = st.GetFieldByName(name)
+				if f == nil {
+					return errDesc(curDesc, "field '"+name+"' doesn't exist")
+				}
 			} else if typ == pathTypeAny {
-				cur.fields = nil
-				cur.fieldMask = nil
+				cur.fdMask.Reset()
 				cur.isAll = true
 				all = true
 
@@ -155,7 +149,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 
 			if all {
-				println("all for struct")
+				// println("all for struct")
 				// NOTICE: for *, just pick first field desc for next loop
 				fs := st.GetFields()
 				if len(fs) == 0 || fs[0].GetType() == nil {
@@ -163,7 +157,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				cur = cur.getAll(switchFt(fs[0].GetType()))
 			} else {
-				println("field: ", f.Name, f.ID)
+				// println("field: ", f.Name, f.ID)
 				// deep down to the next fieldmask
 				curDesc = unwrapDesc(f.GetType())
 				if curDesc == nil {
@@ -186,7 +180,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			if et == nil {
 				return errDesc(curDesc, "nil element descriptor")
 			}
-			println("et: ", et.GetName())
+			// println("et: ", et.GetName())
 
 			nextFt := switchFt(et)
 			if nextFt == ftInvalid {
@@ -203,7 +197,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			for it.HasNext() {
 				tok := it.Next()
 				typ := tok.Type()
-				println("sub tok: ", tok.String())
+				// println("sub tok: ", tok.String())
 
 				if tok.Err() != nil {
 					return errPath(tok, "isn't integer", tok.Err().Error())
@@ -217,25 +211,21 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 
 				if typ == pathTypeAny {
-					cur.intMask = nil
+					cur.intMask.Reset()
 					cur.isAll = true
 					all = true
 					continue
 				}
 
-				if typ != pathTypeLit {
+				if typ != pathTypeLitInt {
 					return errPath(tok, "isn't literal")
 				}
-				id, ok := tok.ToInt()
-				if !ok {
-					return errPath(tok, "isn't integer")
-				}
-
+				id := tok.val.Int()
 				ids = append(ids, id)
 			}
 
 			if all {
-				println("all for list")
+				// println("all for list")
 				curDesc = et
 				cur = cur.getAll(nextFt)
 				continue
@@ -243,7 +233,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 
 			nextPath := it.LeftPath()
 			for _, id := range ids {
-				println("setInt ", id, nextFt)
+				// println("setInt ", id, nextFt)
 				next := cur.setInt(id, nextFt)
 				if err := next.SetPath(nextPath, et); err != nil {
 					return err
@@ -269,7 +259,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			if kt == nil {
 				return errDesc(curDesc, "nil key descriptor")
 			}
-			println("et: ", et.GetName())
+			// println("et: ", et.GetName())
 
 			nextFt := switchFt(et)
 			if nextFt == ftInvalid {
@@ -291,7 +281,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				if tok.Err() != nil {
 					return errPath(tok, tok.Err().Error())
 				}
-				println("sub tok: ", tok.String())
+				// println("sub tok: ", tok.String())
 
 				if typ == pathTypeMapR {
 					break
@@ -302,41 +292,35 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 
 				if typ == pathTypeAny {
-					println("* for ", curDesc.KeyType.Name, ", path:", it.LeftPath())
-					cur.intMask = nil
-					cur.strMask = nil
+					// println("* for ", curDesc.KeyType.Name, ", path:", it.LeftPath())
+					cur.intMask.Reset()
+					cur.strMask.Reset()
 					cur.isAll = true
 					all = true
 					continue
 				}
 
-				if typ == pathTypeLit {
-					id, ok := tok.ToInt()
-					if !ok {
-						return errPath(tok, "isn't integer")
-					}
+				if typ == pathTypeLitInt {
 					if isStr {
 						return errPath(tok, "expect string but got integer")
 					}
+					id := tok.val.Int()
 					ids = append(ids, id)
 				} else if typ == pathTypeStr {
-					id, ok := tok.ToStr()
-					if !ok {
-						return errPath(tok, "isn't string")
-					}
 					if isInt {
 						return errPath(tok, "expect integer but got string")
 					}
+					id := tok.val.Str()
 					strs = append(strs, id)
 				} else {
 					return errPath(tok, "expect integer or string element")
 				}
 			}
 
-			println("all:", all, "ids:", ids, "strs:", strs, isInt, isStr)
+			// println("all:", all, "ids:", ids, "strs:", strs, isInt, isStr)
 
 			if all {
-				println("all for map")
+				// println("all for map")
 				curDesc = et
 				cur = cur.getAll(nextFt)
 				continue
@@ -404,7 +388,10 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 		if self.All() {
 			printIndent(buf, indent+2, "*\n")
 		} else {
-			for k := range self.intMask {
+			for k, v := range self.intMask {
+				if v.typ == 0 {
+					continue
+				}
 				self.printElem(buf, indent+2, k, desc.GetValueType())
 			}
 		}
@@ -414,7 +401,10 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 		if self.All() {
 			printIndent(buf, indent+2, "*\n")
 		} else {
-			for k := range self.intMask {
+			for k, v := range self.intMask {
+				if v.typ == 0 {
+					continue
+				}
 				self.printElem(buf, indent+2, k, desc.GetValueType())
 			}
 		}

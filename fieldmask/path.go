@@ -28,7 +28,8 @@ import (
 type pathType int
 
 const (
-	pathTypeLit pathType = 1 + iota
+	pathTypeLitStr pathType = 1 + iota
+	pathTypeLitInt pathType = 1 + iota
 	pathTypeStr
 	pathTypeRoot
 	pathTypeField
@@ -93,25 +94,30 @@ func (p pathToken) Type() pathType {
 	return p.typ
 }
 
-func (p pathToken) ToInt() (int, bool) {
-	if p.typ == pathTypeLit || p.typ == pathTypeStr {
-		i, e := strconv.Atoi(p.val.Str())
-		if e != nil {
-			return 0, false
-		}
-		return i, true
-	} else {
-		return 0, false
-	}
-}
+// func (p pathToken) ToInt() (int, bool) {
+// 	if p.typ == pathTypeLitStr || p.typ == pathTypeStr {
+// 		i, e := strconv.ParseInt(p.val.Str(), 10, 64)
+// 		if e != nil {
+// 			return 0, false
+// 		}
+// 		return int(i), true
+// 	} else if p.typ == pathTypeLitInt {
+// 		return p.val.Int(), true
+// 	} else {
+// 		return 0, false
+// 	}
+// }
 
-func (p pathToken) ToStr() (string, bool) {
-	if p.typ == pathTypeLit || p.typ == pathTypeStr {
-		return p.val.Str(), true
-	} else {
-		return "", false
-	}
-}
+// func (p pathToken) ToStr() (string, bool) {
+// 	if p.typ == pathTypeLitStr || p.typ == pathTypeStr {
+// 		return p.val.Str(), true
+// 	} else if p.typ == pathTypeLitInt {
+// 		str := strconv.Itoa(p.val.Int())
+// 		return str, true
+// 	} else {
+// 		return "", false
+// 	}
+// }
 
 func (p pathToken) Pos() (int, int) {
 	return p.loc[0], p.loc[1]
@@ -145,17 +151,19 @@ func (p pathToken) String() string {
 	case pathTypeMapL:
 		return fmt.Sprintf("{ at %d", p.loc[0])
 	case pathTypeMapR:
-		return fmt.Sprintf("} at%d", p.loc[0])
+		return fmt.Sprintf("} at %d", p.loc[0])
 	// case pathTypeLitInt:
 	// 	return fmt.Sprintf("%d(%d:%d)", p.val.Int(), p.loc[0], p.loc[1])
-	case pathTypeLit:
-		return fmt.Sprintf("Lit %s at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
+	case pathTypeLitStr:
+		return fmt.Sprintf("Lit(%s) at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
+	case pathTypeLitInt:
+		return fmt.Sprintf("Lit(%d) at %d-%d", p.val.Int(), p.loc[0], p.loc[1])
 	case pathTypeStr:
-		return fmt.Sprintf("Str %q at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
+		return fmt.Sprintf("Str(%q) at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
 	case pathTypeERR:
-		return fmt.Sprintf("Err %s(%d:%d)", p.val.Str(), p.loc[0], p.loc[1])
+		return fmt.Sprintf("Err(%s) at %d-%d", p.val.Str(), p.loc[0], p.loc[1])
 	default:
-		return fmt.Sprintf("UnknownToken %d at %d:%d", p.typ, p.loc[0], p.loc[1])
+		return fmt.Sprintf("UnknownToken(%d) at %d:%d", p.typ, p.loc[0], p.loc[1])
 	}
 }
 
@@ -163,14 +171,14 @@ func newPathToken(typ pathType, val string, s, e int) pathToken {
 	switch typ {
 	case pathTypeEOF:
 		return pathToken{typ: typ}
-	case pathTypeStr, pathTypeAny, pathTypeElem, pathTypeField, pathTypeIndexL, pathTypeIndexR, pathTypeLit, pathTypeMapR, pathTypeMapL, pathTypeRoot:
+	case pathTypeStr, pathTypeAny, pathTypeElem, pathTypeField, pathTypeIndexL, pathTypeIndexR, pathTypeLitStr, pathTypeMapR, pathTypeMapL, pathTypeRoot:
 		return pathToken{typ: typ, val: newPathValueStr(val), loc: [2]int{s, e}}
-	// case pathTypeLitInt:
-	// 	i, err := strconv.Atoi(val)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	return pathToken{typ: typ, val: newPathValueInt(i), loc: [2]int{s, e}}
+	case pathTypeLitInt:
+		i, err := strconv.Atoi(val)
+		if err != nil {
+			panic(err)
+		}
+		return pathToken{typ: typ, val: newPathValueInt(i), loc: [2]int{s, e}}
 	default:
 		panic("unspported pathType " + val)
 	}
@@ -208,21 +216,21 @@ func (p *pathIterator) Next() pathToken {
 	c := p.char()
 	switch c {
 	case pathSepRoot:
-		return newPathToken(pathTypeRoot, string(c), s, p.Pos())
+		return newPathToken(pathTypeRoot, "", s, p.Pos())
 	case pathSepField:
-		return newPathToken(pathTypeField, string(c), s, p.Pos())
+		return newPathToken(pathTypeField, "", s, p.Pos())
 	case pathSepIndexLeft:
-		return newPathToken(pathTypeIndexL, string(c), s, p.Pos())
+		return newPathToken(pathTypeIndexL, "", s, p.Pos())
 	case pathSepIndexRight:
-		return newPathToken(pathTypeIndexR, string(c), s, p.Pos())
+		return newPathToken(pathTypeIndexR, "", s, p.Pos())
 	case pathSepMapLeft:
-		return newPathToken(pathTypeMapL, string(c), s, p.Pos())
+		return newPathToken(pathTypeMapL, "", s, p.Pos())
 	case pathSepMapRight:
-		return newPathToken(pathTypeMapR, string(c), s, p.Pos())
+		return newPathToken(pathTypeMapR, "", s, p.Pos())
 	case pathSepElem:
-		return newPathToken(pathTypeElem, string(c), s, p.Pos())
+		return newPathToken(pathTypeElem, "", s, p.Pos())
 	case pathSepAny:
-		return newPathToken(pathTypeAny, string(c), s, p.Pos())
+		return newPathToken(pathTypeAny, "", s, p.Pos())
 	case pathSepQuote:
 		p.Unwind(s)
 		v, e := p.str()
@@ -232,7 +240,11 @@ func (p *pathIterator) Next() pathToken {
 		return newPathToken(pathTypeStr, v, s, p.Pos())
 	default:
 		p.Unwind(s)
-		return newPathToken(pathTypeLit, p.lit(), s, p.Pos())
+		val, isInt := p.lit()
+		if isInt {
+			return newPathToken(pathTypeLitInt, val, s, p.Pos())
+		}
+		return newPathToken(pathTypeLitStr, val, s, p.Pos())
 	}
 }
 
@@ -246,26 +258,27 @@ func (p *pathIterator) Unwind(pos int) {
 	p.pos = pos
 }
 
-func (p *pathIterator) lit() string {
+func (p *pathIterator) lit() (string, bool) {
 	var i = p.pos
+	var isInt bool
 	for ; i < len(p.src); i++ {
 		switch cc := p.src[i]; cc {
 		case pathSepElem, pathSepAny, pathSepRoot, pathSepField, pathSepIndexLeft, pathSepIndexRight, pathSepMapLeft, pathSepMapRight, pathSepQuote, pathSepSlash:
 			goto ret
-			// case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			// 	if i == p.pos {
-			// 		isInt = true
-			// 	} else {
-			// 		isInt = isInt && true
-			// 	}
-			// default:
-			// 	isInt = false
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			if i == p.pos {
+				isInt = true
+			} else {
+				isInt = isInt && true
+			}
+		default:
+			isInt = false
 		}
 	}
 ret:
 	val := p.src[p.pos:i]
 	p.pos = i
-	return val
+	return val, isInt
 }
 
 func (p *pathIterator) str() (string, error) {
@@ -295,10 +308,10 @@ ret:
 
 func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path string) bool {
 	it := newPathIter(path)
-	println("[PathInMask]")
+	// println("[PathInMask]")
 	for it.HasNext() {
 		//NOTICE: desc shoudn't empty here
-		println("desc: ", curDesc.Name)
+		// println("desc: ", curDesc.Name)
 
 		//NOTICE: empty fm for path means **IN MASK**
 		if cur == nil {
@@ -310,7 +323,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			return false
 		}
 		styp := stok.Type()
-		println("stoken: ", stok.String())
+		// println("stoken: ", stok.String())
 
 		if styp == pathTypeRoot {
 			continue
@@ -321,52 +334,43 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			if err != nil {
 				return false
 			}
-			println("struct: ", st.Name)
-
+			// println("struct: ", st.Name)
 			if cur.typ != ftStruct {
 				return false
 			}
 
 			// for any * directive
-			all := cur.all != nil
+			all := cur.All()
 
 			tok := it.Next()
 			if tok.Err() != nil {
 				return false
 			}
 			typ := tok.Type()
-			println("token", tok.String())
+			// println("token", tok.String())
 
 			var f *thrift_reflection.FieldDescriptor
-			if typ == pathTypeLit {
-				id, ok := tok.ToInt()
-				if ok {
-					f = st.GetFieldById(int32(id))
-					if f == nil {
-						return false
-					}
-				} else {
-					name, ok := tok.ToStr()
-					if !ok {
-						return false
-					}
-					f = st.GetFieldByName(name)
-					if f == nil {
-						return false
-					}
+			if typ == pathTypeLitInt {
+				f = st.GetFieldById(int32(tok.val.Int()))
+				if f == nil {
+					return false
+				}
+
+			} else if typ == pathTypeLitStr {
+				name := tok.val.Str()
+				f = st.GetFieldByName(name)
+				if f == nil {
+					return false
 				}
 			} else if typ == pathTypeAny {
-				if cur.fields != nil {
+				if !all {
 					return false
 				}
-				if it.HasNext() {
-					return false
-				}
-				return true
 			} else {
 				return false
 			}
 
+			// println("all", all, "FieldInMask:", cur.FieldInMask(int32(f.GetID())))
 			// check if name set mask
 			if !all && !cur.FieldInMask(int32(f.GetID())) {
 				return false
@@ -394,13 +398,13 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			var all = cur.all != nil || cur.intMask == nil
+			var all = cur.All()
 			var next = cur.all
 			// iter indexies...
 			for it.HasNext() {
 				tok := it.Next()
 				typ := tok.Type()
-				println("token", tok.String())
+				// println("token", tok.String())
 				if tok.Err() != nil {
 					return false
 				}
@@ -414,15 +418,12 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				if typ == pathTypeAny {
 					return false
 				}
-				if typ != pathTypeLit {
+				if typ != pathTypeLitInt {
 					return false
 				}
 
 				// check mask
-				v, ok := tok.ToInt()
-				if !ok {
-					return false
-				}
+				v := tok.val.Int()
 				if !cur.IntInMask(v) {
 					return false
 				}
@@ -449,13 +450,12 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			println("cur.typ::", cur.typ, "cur::", cur.String(curDesc))
-
+			// println("cur.typ::", cur.typ, "cur::", cur.String(curDesc))
 			if cur.typ != ftIntMap && cur.typ != ftStrMap {
 				return false
 			}
 
-			var all = cur.all != nil || (cur.typ == ftIntMap && cur.intMask == nil) || (cur.typ == ftStrMap && cur.strMask == nil)
+			var all = cur.All()
 			var next = cur.all
 			// iter indexies...
 			for it.HasNext() {
@@ -464,7 +464,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				if tok.Err() != nil {
 					return false
 				}
-				println("token", tok.String())
+				// println("token", tok.String())
 
 				if typ == pathTypeMapR {
 					break
@@ -476,14 +476,11 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					return false
 				}
 
-				if typ == pathTypeLit {
+				if typ == pathTypeLitInt {
 					if cur.typ != ftIntMap {
 						return false
 					}
-					v, ok := tok.ToInt()
-					if !ok {
-						return false
-					}
+					v := tok.val.Int()
 					if !cur.IntInMask(v) {
 						return false
 					}
@@ -493,10 +490,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					if cur.typ != ftStrMap {
 						return false
 					}
-					v, ok := tok.ToStr()
-					if !ok {
-						return false
-					}
+					v := tok.val.Str()
 					if !cur.StrInMask(v) {
 						return false
 					}

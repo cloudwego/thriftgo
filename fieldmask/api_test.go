@@ -17,7 +17,6 @@
 package fieldmask
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
@@ -41,7 +40,7 @@ struct Base {
 	1: string LogID = "",
 	2: string Caller = "",
 	5: optional TrafficEnv TrafficEnv,
-	255: optional list<ExtraInfo> Extra,
+	6: optional list<ExtraInfo> Extra,
 	256: MetaInfo Meta,
 }
 
@@ -103,14 +102,11 @@ func TestNewFieldMask(t *testing.T) {
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "Base",
-				paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta.*"},
+				paths:      []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Meta"},
 
 				inMasks:    []string{"$.Meta.F1", "$.Meta.F2", "$.Meta.Base.Caller"},
 				notInMasks: []string{"$.TrafficEnv.Name", "$.TrafficEnv.Code", "$.Caller", "$.Addr", "$.Extra"},
 			},
-			// want: &FieldMask{
-			// 	fieldMask: (*fieldMaskBitmap)(&[]byte{0x22, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}),
-			// },
 		},
 		{
 			name: "List/Set",
@@ -131,6 +127,16 @@ func TestNewFieldMask(t *testing.T) {
 				paths:      []string{"$.Extra[0].IntMap{0}", "$.Extra[0].IntMap{1}.A", "$.Extra[0].IntMap{1}.B", "$.Extra[0].IntMap{2}.A", "$.Extra[0].IntMap{4,5}.A", "$.Meta.F2{*}.TrafficEnv"},
 				inMasks:    []string{"$.Extra[0].IntMap{0}.A", "$.Extra[0].IntMap{0}.B", "$.Extra[0].IntMap{4}.A", "$.Extra[0].IntMap{5}.A", "$.Meta.F2{0}.TrafficEnv.Env", "$.Meta.F2{*}.TrafficEnv.Env"},
 				notInMasks: []string{"$.Extra[0].IntMap{2}.B", "$.Extra[0].IntMap{3}", "$.Extra[0].IntMap{4}.B", "$.Extra[0].IntMap{5}.B", "$.Meta.F2{0}.Addr", "$.Meta.F2{*}.Addr"},
+			},
+		},
+		{
+			name: "Union",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths:      []string{"$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr"},
+				inMasks:    []string{"$.Extra[*].Set[0]", "$.Meta.F2{1}.Addr"},
+				notInMasks: []string{"$.Extra[0].List", "$.Meta.F2[0].LogID"},
 			},
 		},
 		{
@@ -155,7 +161,7 @@ func TestNewFieldMask(t *testing.T) {
 			// }()
 
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
-			got, err := GetFieldMask(st, tt.args.paths...)
+			got, err := NewFieldMask(st, tt.args.paths...)
 			if tt.args.err != nil {
 				if err == nil {
 					t.Fatal(err)
@@ -166,20 +172,22 @@ func TestNewFieldMask(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if tt.want != nil && !reflect.DeepEqual(got.fieldMask, tt.want.fieldMask) {
-				t.Fatal("not expected flat, ", tt.want.fieldMask, got.fieldMask)
-			}
+			var retry = true
+		begin:
 
 			println("fieldmask:")
 			println(got.String(st))
 			// spew.Dump(got)
 
-			for _, path := range tt.args.paths {
-				println("[paths] ", path)
-				if !got.PathInMask(st, path) {
-					t.Fatal(path)
+			if tt.name != "Union" {
+				for _, path := range tt.args.paths {
+					println("[paths] ", path)
+					if !got.PathInMask(st, path) {
+						t.Fatal(path)
+					}
 				}
 			}
+
 			for _, path := range tt.args.inMasks {
 				println("[inMasks] ", path)
 				if !got.PathInMask(st, path) {
@@ -191,6 +199,15 @@ func TestNewFieldMask(t *testing.T) {
 				if got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
+			}
+
+			if retry {
+				got.Reset()
+				if err := got.init(st, tt.args.paths...); err != nil {
+					t.Fatal(err)
+				}
+				retry = false
+				goto begin
 			}
 		})
 	}
@@ -307,11 +324,26 @@ func BenchmarkNewFieldMask(b *testing.B) {
 	if st == nil {
 		b.Fail()
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		fm, _ := GetFieldMask(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
-		fm.Recycle()
-	}
+	b.Run("new", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			fm, err := NewFieldMask(st, []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Extra[0]", "$.Extra[1].IntMap{0}", "$.Extra[2].StrMap{\"abcd\"}"}...)
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = fm
+		}
+	})
+	b.Run("reuse", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			fm, err := GetFieldMask(st, []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Extra[0]", "$.Extra[1].IntMap{0}", "$.Extra[2].StrMap{\"abcd\"}"}...)
+			if err != nil {
+				b.Fatal(err)
+			}
+			fm.Recycle()
+		}
+	})
 }
 
 func BenchmarkFieldMask_InMask(b *testing.B) {
@@ -319,21 +351,69 @@ func BenchmarkFieldMask_InMask(b *testing.B) {
 	if st == nil {
 		b.Fail()
 	}
-	fm, _ := GetFieldMask(st, []string{"LogID", "TrafficEnv.Open", "TrafficEnv.Env", "Meta"}...)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		if !fm.FieldInMask(5) {
-			b.Fail()
-		}
-		next := fm.Field(5)
-		if !next.FieldInMask(1) {
-			b.Fail()
-		}
-		if next.FieldInMask(256) {
-			b.Fail()
-		}
-		if next.FieldInMask(1024) {
-			b.Fail()
-		}
+	fm, err := NewFieldMask(st, []string{"$.Extra[0]", "$.Extra[1].IntMap{0}", "$.Extra[2].StrMap{\"abcdefghi\"}"}...)
+	if err != nil {
+		b.Fatal(err)
 	}
+	b.Run("Field", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if fm.Field(6) == nil {
+				b.Fail()
+			}
+		}
+	})
+
+	b.Run("Index", func(b *testing.B) {
+		var v *FieldMask
+		if ex := fm.Field(6); ex == nil {
+			b.Fail()
+		} else {
+			v = ex
+		}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if v.Int(0) == nil {
+				b.Fail()
+			}
+		}
+	})
+
+	b.Run("Int Map", func(b *testing.B) {
+		var v *FieldMask
+		if ex := fm.Field(6); ex == nil {
+			b.Fail()
+		} else if l := ex.Int(1); l == nil {
+			b.Fail()
+		} else if f := l.Field(1); f == nil {
+			b.Fail()
+		} else {
+			v = f
+		}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if v.Int(0) == nil {
+				b.Fail()
+			}
+		}
+	})
+
+	b.Run("Str Map", func(b *testing.B) {
+		var v *FieldMask
+		if ex := fm.Field(6); ex == nil {
+			b.Fail()
+		} else if l := ex.Int(2); l == nil {
+			b.Fail()
+		} else if f := l.Field(2); f == nil {
+			b.Fail()
+		} else {
+			v = f
+		}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			if v.Str("abcdefghi") == nil {
+				b.Fail()
+			}
+		}
+	})
 }
