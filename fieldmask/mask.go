@@ -116,7 +116,7 @@ func (self *FieldMask) Exist() bool {
 	return self != nil && self.typ != 0
 }
 
-func (self *FieldMask) FieldInMask(id int32) bool {
+func (self *FieldMask) FieldInMask(id int16) bool {
 	return !self.Exist() || self.isAll || (self.typ == ftStruct && self.fdMask.Get(fieldID(id)) != nil)
 }
 
@@ -128,7 +128,7 @@ func (self *FieldMask) StrInMask(id string) bool {
 	return !self.Exist() || self.isAll || (self.typ == ftStrMap && (self.strMask.Get(id) != nil))
 }
 
-func (self *FieldMask) Field(id int32) *FieldMask {
+func (self *FieldMask) Field(id int16) *FieldMask {
 	if self == nil || self.typ == 0 {
 		return nil
 	}

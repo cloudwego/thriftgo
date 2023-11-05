@@ -113,8 +113,10 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 		buf := thrift.NewTMemoryBufferLen(1024)
 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		fm := fieldmask.GetFieldMask(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
-
+		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.Meta.PersistentKVS", "$.TrafficEnv.Code", "$.TrafficEnv.Env")
+		if err != nil {
+			b.Fatal(err)
+		}
 		for i := 0; i < b.N; i++ {
 			obj.SetFieldMask(fm)
 			if err := obj.Write(t); err != nil {
@@ -122,6 +124,7 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 			}
 			buf.Reset()
 		}
+		fm.Recycle()
 	})
 }
 
@@ -133,7 +136,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		if err := obj.Write(t); err != nil {
 			b.Fatal(err)
 		}
-		data := []byte(string(buf.Bytes()))
+		data := []byte(buf.String())
 		obj = obase.NewBase()
 
 		for i := 0; i < b.N; i++ {
@@ -152,7 +155,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		if err := obj.Write(t); err != nil {
 			b.Fatal(err)
 		}
-		data := []byte(string(buf.Bytes()))
+		data := []byte(buf.String())
 		obj = nbase.NewBase()
 
 		for i := 0; i < b.N; i++ {
@@ -171,10 +174,13 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		if err := obj.Write(t); err != nil {
 			b.Fatal(err)
 		}
-		data := []byte(string(buf.Bytes()))
+		data := []byte(buf.String())
 		obj = nbase.NewBase()
 
-		fm := fieldmask.GetFieldMask(obj.GetDescriptor(), "Addr", "LogID", "Meta.PersistentKVS", "TrafficEnv.Code", "TrafficEnv.Env")
+		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.Meta.PersistentKVS", "$.TrafficEnv.Code", "$.TrafficEnv.Env")
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		for i := 0; i < b.N; i++ {
 			buf.Reset()
@@ -184,5 +190,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 				b.Fatal(err)
 			}
 		}
+
+		fm.Recycle()
 	})
 }

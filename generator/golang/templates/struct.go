@@ -170,8 +170,8 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 		switch fieldId {
 		{{- range .Fields}}
 		case {{.ID}}:
-			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }}{{if Features.WithFieldMask}} && p._fieldmask.InMask(fieldId){{end}} {
-				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask .Type.Category.IsComplex}}, p._fieldmask.Next(fieldId){{end}}); err != nil {
+			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }}{{if Features.WithFieldMask}} && p._fieldmask.FieldInMask(fieldId){{end}} {
+				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask .Type.Category.IsComplex}}, p._fieldmask.Field(fieldId){{end}}); err != nil {
 					goto ReadFieldError
 				}
 				{{- if .Requiredness.IsRequired}}
@@ -294,8 +294,8 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	if p != nil {
 		{{- range .Fields}}
 		{{- if Features.WithFieldMask}}
-		if p._fieldmask.InMask({{.ID}}) { {{- end}}
-		if err = p.{{.Writer}}(oprot); err != nil {
+		if p._fieldmask.FieldInMask({{.ID}}) { {{- end}}
+		if err = p.{{.Writer}}(oprot{{if and Features.WithFieldMask .Type.Category.IsComplex}}, p._fieldmask.Field({{.ID}}){{end}}); err != nil {
 			fieldId = {{.ID}}
 			goto WriteFieldError
 		}
@@ -345,7 +345,7 @@ var StructLikeWriteField = `
 {{- $FieldName := .GoName}}
 {{- $IsSetName := .IsSetter}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
-func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
+func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol{{if and Features.WithFieldMask .Type.Category.IsComplex}}, fm *fieldmask.FieldMask{{end}}) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
 	{{- end}}
@@ -629,6 +629,9 @@ var FieldWrite = `
 // FieldWriteStructLike .
 var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
+	{{if Features.WithFieldMask}}if {{.Target}} != nil {
+		{{.Target}}.SetFieldMask(fm)
+	}{{end}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err
 	}

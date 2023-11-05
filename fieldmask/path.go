@@ -372,7 +372,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 
 			// println("all", all, "FieldInMask:", cur.FieldInMask(int32(f.GetID())))
 			// check if name set mask
-			if !all && !cur.FieldInMask(int32(f.GetID())) {
+			if !all && !cur.FieldInMask(int16(f.GetID())) {
 				return false
 			}
 
@@ -381,7 +381,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			if curDesc == nil {
 				return false
 			}
-			cur = cur.Field(int32(f.GetID()))
+			cur = cur.Field(int16(f.GetID()))
 
 		} else if styp == pathTypeIndexL {
 

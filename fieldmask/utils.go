@@ -377,7 +377,7 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 			printIndent(buf, indent+2, "*\n")
 		} else {
 			for _, f := range st.GetFields() {
-				if !self.FieldInMask(int32(f.GetID())) {
+				if !self.FieldInMask(int16(f.GetID())) {
 					continue
 				}
 				self.printField(buf, indent+2, f)
@@ -440,7 +440,7 @@ func (self FieldMask) printField(buf *strings.Builder, indent int, field *thrift
 	}
 	buf.WriteString(")\n")
 	nd := field.GetType()
-	next := self.Field(int32(field.GetID()))
+	next := self.Field(int16(field.GetID()))
 	if next != nil {
 		next.print(buf, indent, nd)
 	}
