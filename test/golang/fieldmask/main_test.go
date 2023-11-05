@@ -17,11 +17,7 @@ package fieldmask
 import (
 	"testing"
 
-	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/cloudwego/thriftgo/fieldmask"
 	"github.com/cloudwego/thriftgo/plugin"
-	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/output/new/base"
-	obase "github.com/cloudwego/thriftgo/test/golang/fieldmask/output/old/base"
 	"github.com/cloudwego/thriftgo/test/golang/test_util"
 )
 
@@ -39,158 +35,158 @@ func TestGen(t *testing.T) {
 	}
 }
 
-func SampleNewBase() *nbase.Base {
-	obj := nbase.NewBase()
-	obj.Addr = "abcd"
-	obj.Caller = "abcd"
-	obj.LogID = "abcd"
-	obj.Meta = nbase.NewMetaInfo()
-	obj.Meta.PersistentKVS = map[string]string{
-		"abcd": "abcd",
-	}
-	obj.Meta.TransientKVS = map[*nbase.Key]*nbase.Val{
-		&nbase.Key{ID: "abcd"}: &nbase.Val{ID: "abcd"},
-	}
-	obj.Extra = nbase.NewExtraInfo()
-	obj.TrafficEnv = nbase.NewTrafficEnv()
-	obj.TrafficEnv.Code = 1
-	obj.TrafficEnv.Env = "abcd"
-	obj.TrafficEnv.Name = "abcd"
-	obj.TrafficEnv.Open = true
-	return obj
-}
+// func SampleNewBase() *nbase.Base {
+// 	obj := nbase.NewBase()
+// 	obj.Addr = "abcd"
+// 	obj.Caller = "abcd"
+// 	obj.LogID = "abcd"
+// 	obj.Meta = nbase.NewMetaInfo()
+// 	obj.Meta.PersistentKVS = map[string]string{
+// 		"abcd": "abcd",
+// 	}
+// 	obj.Meta.TransientKVS = map[*nbase.Key]*nbase.Val{
+// 		&nbase.Key{ID: "abcd"}: &nbase.Val{ID: "abcd"},
+// 	}
+// 	obj.Extra = nbase.NewExtraInfo()
+// 	obj.TrafficEnv = nbase.NewTrafficEnv()
+// 	obj.TrafficEnv.Code = 1
+// 	obj.TrafficEnv.Env = "abcd"
+// 	obj.TrafficEnv.Name = "abcd"
+// 	obj.TrafficEnv.Open = true
+// 	return obj
+// }
 
-func SampleOldBase() *obase.Base {
-	obj := obase.NewBase()
-	obj.Addr = "abcd"
-	obj.Caller = "abcd"
-	obj.LogID = "abcd"
-	obj.Meta = obase.NewMetaInfo()
-	obj.Meta.PersistentKVS = map[string]string{
-		"abcd": "abcd",
-	}
-	obj.Meta.TransientKVS = map[*obase.Key]*obase.Val{
-		&obase.Key{ID: "abcd"}: &obase.Val{ID: "abcd"},
-	}
-	obj.Extra = obase.NewExtraInfo()
-	obj.TrafficEnv = obase.NewTrafficEnv()
-	obj.TrafficEnv.Code = 1
-	obj.TrafficEnv.Env = "abcd"
-	obj.TrafficEnv.Name = "abcd"
-	obj.TrafficEnv.Open = true
-	return obj
-}
+// func SampleOldBase() *obase.Base {
+// 	obj := obase.NewBase()
+// 	obj.Addr = "abcd"
+// 	obj.Caller = "abcd"
+// 	obj.LogID = "abcd"
+// 	obj.Meta = obase.NewMetaInfo()
+// 	obj.Meta.PersistentKVS = map[string]string{
+// 		"abcd": "abcd",
+// 	}
+// 	obj.Meta.TransientKVS = map[*obase.Key]*obase.Val{
+// 		&obase.Key{ID: "abcd"}: &obase.Val{ID: "abcd"},
+// 	}
+// 	obj.Extra = obase.NewExtraInfo()
+// 	obj.TrafficEnv = obase.NewTrafficEnv()
+// 	obj.TrafficEnv.Code = 1
+// 	obj.TrafficEnv.Env = "abcd"
+// 	obj.TrafficEnv.Name = "abcd"
+// 	obj.TrafficEnv.Open = true
+// 	return obj
+// }
 
-func BenchmarkWriteWithFieldMask(b *testing.B) {
-	b.Run("old", func(b *testing.B) {
-		obj := SampleOldBase()
-		buf := thrift.NewTMemoryBufferLen(1024)
-		t := thrift.NewTBinaryProtocol(buf, true, true)
+// func BenchmarkWriteWithFieldMask(b *testing.B) {
+// 	b.Run("old", func(b *testing.B) {
+// 		obj := SampleOldBase()
+// 		buf := thrift.NewTMemoryBufferLen(1024)
+// 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		for i := 0; i < b.N; i++ {
-			if err := obj.Write(t); err != nil {
-				b.Fatal(err)
-			}
-			buf.Reset()
-		}
-	})
+// 		for i := 0; i < b.N; i++ {
+// 			if err := obj.Write(t); err != nil {
+// 				b.Fatal(err)
+// 			}
+// 			buf.Reset()
+// 		}
+// 	})
 
-	b.Run("new", func(b *testing.B) {
-		obj := SampleNewBase()
-		buf := thrift.NewTMemoryBufferLen(1024)
-		t := thrift.NewTBinaryProtocol(buf, true, true)
+// 	b.Run("new", func(b *testing.B) {
+// 		obj := SampleNewBase()
+// 		buf := thrift.NewTMemoryBufferLen(1024)
+// 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		for i := 0; i < b.N; i++ {
-			if err := obj.Write(t); err != nil {
-				b.Fatal(err)
-			}
-			buf.Reset()
-		}
-	})
+// 		for i := 0; i < b.N; i++ {
+// 			if err := obj.Write(t); err != nil {
+// 				b.Fatal(err)
+// 			}
+// 			buf.Reset()
+// 		}
+// 	})
 
-	b.Run("new-mask-half", func(b *testing.B) {
-		obj := SampleNewBase()
-		buf := thrift.NewTMemoryBufferLen(1024)
-		t := thrift.NewTBinaryProtocol(buf, true, true)
+// 	b.Run("new-mask-half", func(b *testing.B) {
+// 		obj := SampleNewBase()
+// 		buf := thrift.NewTMemoryBufferLen(1024)
+// 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.Meta.PersistentKVS", "$.TrafficEnv.Code", "$.TrafficEnv.Env")
-		if err != nil {
-			b.Fatal(err)
-		}
-		for i := 0; i < b.N; i++ {
-			obj.SetFieldMask(fm)
-			if err := obj.Write(t); err != nil {
-				b.Fatal(err)
-			}
-			buf.Reset()
-		}
-		fm.Recycle()
-	})
-}
+// 		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.Meta.PersistentKVS", "$.TrafficEnv.Code", "$.TrafficEnv.Env")
+// 		if err != nil {
+// 			b.Fatal(err)
+// 		}
+// 		for i := 0; i < b.N; i++ {
+// 			obj.SetFieldMask(fm)
+// 			if err := obj.Write(t); err != nil {
+// 				b.Fatal(err)
+// 			}
+// 			buf.Reset()
+// 		}
+// 		fm.Recycle()
+// 	})
+// }
 
-func BenchmarkReadWithFieldMask(b *testing.B) {
-	b.Run("old", func(b *testing.B) {
-		obj := SampleOldBase()
-		buf := thrift.NewTMemoryBufferLen(1024)
-		t := thrift.NewTBinaryProtocol(buf, true, true)
-		if err := obj.Write(t); err != nil {
-			b.Fatal(err)
-		}
-		data := []byte(buf.String())
-		obj = obase.NewBase()
+// func BenchmarkReadWithFieldMask(b *testing.B) {
+// 	b.Run("old", func(b *testing.B) {
+// 		obj := SampleOldBase()
+// 		buf := thrift.NewTMemoryBufferLen(1024)
+// 		t := thrift.NewTBinaryProtocol(buf, true, true)
+// 		if err := obj.Write(t); err != nil {
+// 			b.Fatal(err)
+// 		}
+// 		data := []byte(buf.String())
+// 		obj = obase.NewBase()
 
-		for i := 0; i < b.N; i++ {
-			buf.Reset()
-			buf.Write(data)
-			if err := obj.Read(t); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
+// 		for i := 0; i < b.N; i++ {
+// 			buf.Reset()
+// 			buf.Write(data)
+// 			if err := obj.Read(t); err != nil {
+// 				b.Fatal(err)
+// 			}
+// 		}
+// 	})
 
-	b.Run("new", func(b *testing.B) {
-		obj := SampleNewBase()
-		buf := thrift.NewTMemoryBufferLen(1024)
-		t := thrift.NewTBinaryProtocol(buf, true, true)
-		if err := obj.Write(t); err != nil {
-			b.Fatal(err)
-		}
-		data := []byte(buf.String())
-		obj = nbase.NewBase()
+// 	b.Run("new", func(b *testing.B) {
+// 		obj := SampleNewBase()
+// 		buf := thrift.NewTMemoryBufferLen(1024)
+// 		t := thrift.NewTBinaryProtocol(buf, true, true)
+// 		if err := obj.Write(t); err != nil {
+// 			b.Fatal(err)
+// 		}
+// 		data := []byte(buf.String())
+// 		obj = nbase.NewBase()
 
-		for i := 0; i < b.N; i++ {
-			buf.Reset()
-			buf.Write(data)
-			if err := obj.Read(t); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
+// 		for i := 0; i < b.N; i++ {
+// 			buf.Reset()
+// 			buf.Write(data)
+// 			if err := obj.Read(t); err != nil {
+// 				b.Fatal(err)
+// 			}
+// 		}
+// 	})
 
-	b.Run("new-mask-half", func(b *testing.B) {
-		obj := SampleNewBase()
-		buf := thrift.NewTMemoryBufferLen(1024)
-		t := thrift.NewTBinaryProtocol(buf, true, true)
-		if err := obj.Write(t); err != nil {
-			b.Fatal(err)
-		}
-		data := []byte(buf.String())
-		obj = nbase.NewBase()
+// 	b.Run("new-mask-half", func(b *testing.B) {
+// 		obj := SampleNewBase()
+// 		buf := thrift.NewTMemoryBufferLen(1024)
+// 		t := thrift.NewTBinaryProtocol(buf, true, true)
+// 		if err := obj.Write(t); err != nil {
+// 			b.Fatal(err)
+// 		}
+// 		data := []byte(buf.String())
+// 		obj = nbase.NewBase()
 
-		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.Meta.PersistentKVS", "$.TrafficEnv.Code", "$.TrafficEnv.Env")
-		if err != nil {
-			b.Fatal(err)
-		}
+// 		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.Meta.PersistentKVS", "$.TrafficEnv.Code", "$.TrafficEnv.Env")
+// 		if err != nil {
+// 			b.Fatal(err)
+// 		}
 
-		for i := 0; i < b.N; i++ {
-			buf.Reset()
-			buf.Write(data)
-			obj.SetFieldMask(fm)
-			if err := obj.Read(t); err != nil {
-				b.Fatal(err)
-			}
-		}
+// 		for i := 0; i < b.N; i++ {
+// 			buf.Reset()
+// 			buf.Write(data)
+// 			obj.SetFieldMask(fm)
+// 			if err := obj.Read(t); err != nil {
+// 				b.Fatal(err)
+// 			}
+// 		}
 
-		fm.Recycle()
-	})
-}
+// 		fm.Recycle()
+// 	})
+// }

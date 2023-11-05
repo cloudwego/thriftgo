@@ -630,7 +630,7 @@ var FieldWrite = `
 var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
 	{{if Features.WithFieldMask}}if {{.Target}} != nil {
-		{{.Target}}.SetFieldMask(fm)
+		{{.Target}}.SetFieldMask({{.FieldMask}})
 	}{{end}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err
@@ -674,9 +674,34 @@ var FieldWriteMap = `
 		return err
 	}
 	for k, v := range {{.Target}}{
+		{{- $curFieldmask := .FieldMask -}}
+		{{if Features.WithFieldMask}}
+		{{- $isIntKey := .KeyCtx.Type | IsIntType -}}
+		{{- $isStrKey := .KeyCtx.Type | IsStrType -}}
+		{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+		{{- if $isIntKey -}}
+		{{- $curFieldmask = "nfm" -}}
+		if !fm.IntInMask(int(k)) {
+			continue
+		}
+		{{- if not $isBaseVal}}
+		nfm := fm.Int(int(k))
+		{{- end}}
+		{{- else if $isStrKey -}}
+		{{- $curFieldmask = "nfm" -}}
+		ks := string(k)
+		if !fm.StrInMask(ks) {
+			continue
+		}
+		{{- if not $isBaseVal}}
+		nfm := fm.Str(ks)
+		{{- end}}
+		{{end}}
+		{{- end}}
+		
 		{{$ctx := .KeyCtx.WithTarget "k"}}
 		{{- template "FieldWrite" $ctx}}
-		{{$ctx := .ValCtx.WithTarget "v"}}
+		{{$ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask }}
 		{{- template "FieldWrite" $ctx}}
 	}
 	if err := oprot.WriteMapEnd(); err != nil {

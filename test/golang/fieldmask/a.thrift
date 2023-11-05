@@ -17,13 +17,18 @@ struct Base {
 }
 
 struct ExtraInfo {
-	1: map<string, string> KVS
+	1: map<string, string> F1
+	2: map<i64, string> F2,
+	3: list<string> List
+	4: set<string> Set,
 }
 
 struct MetaInfo {
-	1: map<string, string> PersistentKVS,
-	2: map<Key, Val> TransientKVS,
-	3: Base Base,
+	1: map<i64, Val> IntMap,
+	2: map<string, Val> StrMap,
+	3: list<Val> List,
+	4: set<Val> Set,
+	255: Base Base,
 }
 
 struct Key {
