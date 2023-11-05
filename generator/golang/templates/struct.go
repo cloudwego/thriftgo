@@ -265,7 +265,7 @@ var StructLikeReadField = `
 {{- range .Fields}}
 {{$FieldName := .GoName}}
 func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol{{if and Features.WithFieldMask .Type.Category.IsComplex}}, fm *fieldmask.FieldMask{{end}}) error {
-	{{- $ctx := MkRWCtx .}}
+	{{$ctx := (MkRWCtx .).WithFieldMask "fm"}}
 	{{- template "FieldRead" $ctx}}
 	return nil
 }
@@ -352,7 +352,7 @@ func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol{{if and Features.With
 	if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 		goto WriteFieldBeginError
 	}
-	{{- $ctx := MkRWCtx .}}
+	{{- $ctx := (MkRWCtx .).WithFieldMask "fm"}}
 	{{- template "FieldWrite" $ctx}}
 	if err = oprot.WriteFieldEnd(); err != nil {
 		goto WriteFieldEndError
@@ -486,7 +486,7 @@ var FieldRead = `
 var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
 	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
-	{{if Features.WithFieldMask}}{{.Target}}.SetFieldMask(fm){{end}}
+	{{if Features.WithFieldMask}}{{.Target}}.SetFieldMask({{.FieldMask}}){{end}}
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
 	}
@@ -537,6 +537,10 @@ var FieldReadContainer = `
 // FieldReadMap .
 var FieldReadMap = `
 {{define "FieldReadMap"}}
+{{- $isIntKey := .KeyCtx.Type | IsIntType -}}
+{{- $isStrKey := .KeyCtx.Type | IsStrType -}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := "nil" -}}
 	_, _, size, err := iprot.ReadMapBegin()
 	if err != nil {
 		return err
@@ -546,9 +550,28 @@ var FieldReadMap = `
 		{{- $key := .GenID "_key"}}
 		{{- $ctx := .KeyCtx.WithDecl.WithTarget $key}}
 		{{- template "FieldRead" $ctx}}
+		{{- if Features.WithFieldMask}}
+		{{- if $isIntKey}}
+		if !{{.FieldMask}}.IntInMask(int({{$key}})) {
+			continue
+		}
+		{{- if not $isBaseVal}}
+		{{- $curFieldMask = "nfm"}}
+		{{$curFieldMask}} := {{.FieldMask}}.Int(int({{$key}}))
+		{{- end}}
+		{{- else if $isStrKey}}
+		if !{{.FieldMask}}.StrInMask(string({{$key}})) {
+			continue
+		}
+		{{- if not $isBaseVal}}
+		{{- $curFieldMask = "nfm"}}
+		{{$curFieldMask}} := {{.FieldMask}}.Str(string({{$key}}))
+		{{- end}}
+		{{- end}}
+		{{- end}}
 		{{/* line break */}}
 		{{- $val := .GenID "_val"}}
-		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
+		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
 		{{- template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
@@ -566,6 +589,8 @@ var FieldReadMap = `
 // FieldReadSet .
 var FieldReadSet = `
 {{define "FieldReadSet"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := "nil" -}}
 	_, size, err := iprot.ReadSetBegin()
 	if err != nil {
 		return err
@@ -573,8 +598,17 @@ var FieldReadSet = `
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
 	for i := 0; i < size; i++ {
 		{{- $val := .GenID "_elem"}}
-		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
-		{{- template "FieldRead" $ctx}}
+		{{- if Features.WithFieldMask}}
+		if !{{.FieldMask}}.IntInMask(i) {
+			continue
+		}
+		{{- if not $isBaseVal}}
+		{{- $curFieldMask = "nfm"}}
+		{{$curFieldMask}} := {{.FieldMask}}.Int(i)
+		{{- end}}
+		{{- end}}
+		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
@@ -591,6 +625,8 @@ var FieldReadSet = `
 // FieldReadList .
 var FieldReadList = `
 {{define "FieldReadList"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := "nil" -}}
 	_, size, err := iprot.ReadListBegin()
 	if err != nil {
 		return err
@@ -598,8 +634,17 @@ var FieldReadList = `
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
 	for i := 0; i < size; i++ {
 		{{- $val := .GenID "_elem"}}
-		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
-		{{- template "FieldRead" $ctx}}
+		{{- if Features.WithFieldMask}}
+		if !{{.FieldMask}}.IntInMask(i) {
+			continue
+		}
+		{{- if not $isBaseVal}}
+		{{- $curFieldMask = "nfm"}}
+		{{$curFieldMask}} := {{.FieldMask}}.Int(i)
+		{{- end}}
+		{{- end}}
+		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
@@ -629,9 +674,11 @@ var FieldWrite = `
 // FieldWriteStructLike .
 var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
-	{{if Features.WithFieldMask}}if {{.Target}} != nil {
+	{{- if Features.WithFieldMask}}
+	if {{.Target}} != nil {
 		{{.Target}}.SetFieldMask({{.FieldMask}})
-	}{{end}}
+	}
+	{{- end}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err
 	}
@@ -667,41 +714,70 @@ var FieldWriteContainer = `
 // FieldWriteMap .
 var FieldWriteMap = `
 {{define "FieldWriteMap"}}
+{{- $isIntKey := .KeyCtx.Type | IsIntType -}}
+{{- $isStrKey := .KeyCtx.Type | IsStrType -}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+	{{- if Features.WithFieldMask}}
+	if !{{.FieldMask}}.All() {
+		l := len({{.Target}})
+		for k := range {{.Target}} {
+			{{- if $isIntKey}}
+			if !{{.FieldMask}}.IntInMask(int(k)) {
+				l--
+			}
+			{{- else if $isStrKey}}
+			if !{{.FieldMask}}.StrInMask(string(k)) {
+				l--
+			}
+			{{- end}}
+		}
+		if err := oprot.WriteMapBegin(thrift.
+			{{- .KeyCtx.Type | GetTypeIDConstant -}}
+			, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, l); err != nil {
+			return err
+		}
+	} else {
+		if err := oprot.WriteMapBegin(thrift.
+			{{- .KeyCtx.Type | GetTypeIDConstant -}}
+			, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, len({{.Target}})); err != nil {
+			return err
+		}
+	}
+	{{- else}}
 	if err := oprot.WriteMapBegin(thrift.
 		{{- .KeyCtx.Type | GetTypeIDConstant -}}
 		, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 		return err
 	}
-	for k, v := range {{.Target}}{
-		{{- $curFieldmask := .FieldMask -}}
-		{{if Features.WithFieldMask}}
-		{{- $isIntKey := .KeyCtx.Type | IsIntType -}}
-		{{- $isStrKey := .KeyCtx.Type | IsStrType -}}
-		{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-		{{- if $isIntKey -}}
+	{{- end}}
+	for k, v := range {{.Target}} {
+		{{- $curFieldmask := "nil" -}}
+		{{- if Features.WithFieldMask}}
+		{{- if $isIntKey}}
 		{{- $curFieldmask = "nfm" -}}
-		if !fm.IntInMask(int(k)) {
+		if !{{.FieldMask}}.IntInMask(int(k)) {
 			continue
 		}
 		{{- if not $isBaseVal}}
-		nfm := fm.Int(int(k))
+		{{$curFieldmask}} := {{.FieldMask}}.Int(int(k))
 		{{- end}}
-		{{- else if $isStrKey -}}
+		{{- else if $isStrKey}}
 		{{- $curFieldmask = "nfm" -}}
 		ks := string(k)
-		if !fm.StrInMask(ks) {
+		if !{{.FieldMask}}.StrInMask(ks) {
 			continue
 		}
 		{{- if not $isBaseVal}}
-		nfm := fm.Str(ks)
+		{{$curFieldmask}} := {{.FieldMask}}.Str(ks)
 		{{- end}}
-		{{end}}
 		{{- end}}
-		
-		{{$ctx := .KeyCtx.WithTarget "k"}}
+		{{- end}}
+		{{- $ctx := .KeyCtx.WithTarget "k" -}}
 		{{- template "FieldWrite" $ctx}}
-		{{$ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask }}
+		{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
 		{{- template "FieldWrite" $ctx}}
 	}
 	if err := oprot.WriteMapEnd(); err != nil {
@@ -713,11 +789,33 @@ var FieldWriteMap = `
 // FieldWriteSet .
 var FieldWriteSet = `
 {{define "FieldWriteSet"}}
+		{{- if Features.WithFieldMask}}
+		if !{{.FieldMask}}.All() {
+			l := len({{.Target}})
+			for i:=0; i < l; i++ {
+				if !{{.FieldMask}}.IntInMask(i) {
+					l--
+				}
+			}
+			if err := oprot.WriteSetBegin(thrift.
+			{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, l); err != nil {
+				return err
+			}
+		} else {
+			if err := oprot.WriteSetBegin(thrift.
+			{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, len({{.Target}})); err != nil {
+				return err
+			}
+		}
+		{{- else}}
 		if err := oprot.WriteSetBegin(thrift.
 		{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 			return err
 		}
+		{{- end}}
 		{{- if Features.ValidateSet}}
 		{{- $ctx := (.ValCtx.WithTarget "tgt").WithSource "src"}}
 		for i := 0; i < len({{.Target}}); i++ {
@@ -737,8 +835,19 @@ var FieldWriteSet = `
 			}
 		}
 		{{- end}}
-		for _, v := range {{.Target}} {
-			{{- $ctx := .ValCtx.WithTarget "v"}}
+		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
+			{{- $curFieldmask := "nil" -}}
+			{{if Features.WithFieldMask -}}
+			{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+			{{- $curFieldmask = "nfm" -}}
+			if !{{.FieldMask}}.IntInMask(i) {
+				continue
+			}
+			{{- if not $isBaseVal}}
+			nfm := {{.FieldMask}}.Int(i)
+			{{- end -}}
+			{{- end}}
+			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
 			{{- template "FieldWrite" $ctx}}
 		}
 		if err := oprot.WriteSetEnd(); err != nil {
@@ -750,13 +859,46 @@ var FieldWriteSet = `
 // FieldWriteList .
 var FieldWriteList = `
 {{define "FieldWriteList"}}
+	{{- if Features.WithFieldMask}}
+	if !{{.FieldMask}}.All() {
+		l := len({{.Target}})
+		for i:=0; i < l; i++ {
+			if !{{.FieldMask}}.IntInMask(i) {
+				l--
+			}
+		}
+		if err := oprot.WriteListBegin(thrift.
+		{{- .ValCtx.Type | GetTypeIDConstant -}}
+		, l); err != nil {
+			return err
+		}
+	} else {
 		if err := oprot.WriteListBegin(thrift.
 		{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 			return err
 		}
-		for _, v := range {{.Target}} {
-			{{- $ctx := .ValCtx.WithTarget "v"}}
+	}
+	{{- else}}
+	if err := oprot.WriteListBegin(thrift.
+	{{- .ValCtx.Type | GetTypeIDConstant -}}
+	, len({{.Target}})); err != nil {
+		return err
+	}
+	{{- end}}
+		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
+			{{- $curFieldmask := "nil" -}}
+			{{if Features.WithFieldMask -}}
+			{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+			{{- $curFieldmask = "nfm" -}}
+			if !{{.FieldMask}}.IntInMask(i) {
+				continue
+			}
+			{{- if not $isBaseVal}}
+			nfm := {{.FieldMask}}.Int(i)
+			{{- end -}}
+			{{- end}}
+			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
 			{{- template "FieldWrite" $ctx}}
 		}
 		if err := oprot.WriteListEnd(); err != nil {
