@@ -717,7 +717,8 @@ var FieldWriteMap = `
 {{- $isIntKey := .KeyCtx.Type | IsIntType -}}
 {{- $isStrKey := .KeyCtx.Type | IsStrType -}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-	{{- if Features.WithFieldMask}}
+{{- $curFieldmask := "nil" -}}
+	{{- if and Features.WithFieldMask (or $isIntKey $isStrKey) }}
 	if !{{.FieldMask}}.All() {
 		l := len({{.Target}})
 		for k := range {{.Target}} {
@@ -754,23 +755,22 @@ var FieldWriteMap = `
 	}
 	{{- end}}
 	for k, v := range {{.Target}} {
-		{{- $curFieldmask := "nil" -}}
 		{{- if Features.WithFieldMask}}
 		{{- if $isIntKey}}
-		{{- $curFieldmask = "nfm" -}}
 		if !{{.FieldMask}}.IntInMask(int(k)) {
 			continue
 		}
 		{{- if not $isBaseVal}}
+		{{- $curFieldmask = "nfm"}}
 		{{$curFieldmask}} := {{.FieldMask}}.Int(int(k))
 		{{- end}}
 		{{- else if $isStrKey}}
-		{{- $curFieldmask = "nfm" -}}
 		ks := string(k)
 		if !{{.FieldMask}}.StrInMask(ks) {
 			continue
 		}
 		{{- if not $isBaseVal}}
+		{{- $curFieldmask = "nfm"}}
 		{{$curFieldmask}} := {{.FieldMask}}.Str(ks)
 		{{- end}}
 		{{- end}}
@@ -789,6 +789,8 @@ var FieldWriteMap = `
 // FieldWriteSet .
 var FieldWriteSet = `
 {{define "FieldWriteSet"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldmask := "nil" -}}
 		{{- if Features.WithFieldMask}}
 		if !{{.FieldMask}}.All() {
 			l := len({{.Target}})
@@ -837,13 +839,12 @@ var FieldWriteSet = `
 		{{- end}}
 		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
 			{{- $curFieldmask := "nil" -}}
-			{{if Features.WithFieldMask -}}
-			{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-			{{- $curFieldmask = "nfm" -}}
+			{{- if Features.WithFieldMask}}
 			if !{{.FieldMask}}.IntInMask(i) {
 				continue
 			}
 			{{- if not $isBaseVal}}
+			{{- $curFieldmask = "nfm"}}
 			nfm := {{.FieldMask}}.Int(i)
 			{{- end -}}
 			{{- end}}
@@ -859,6 +860,8 @@ var FieldWriteSet = `
 // FieldWriteList .
 var FieldWriteList = `
 {{define "FieldWriteList"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldmask := "nil" -}}
 	{{- if Features.WithFieldMask}}
 	if !{{.FieldMask}}.All() {
 		l := len({{.Target}})
@@ -887,16 +890,14 @@ var FieldWriteList = `
 	}
 	{{- end}}
 		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
-			{{- $curFieldmask := "nil" -}}
-			{{if Features.WithFieldMask -}}
-			{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-			{{- $curFieldmask = "nfm" -}}
+			{{- if Features.WithFieldMask}}
 			if !{{.FieldMask}}.IntInMask(i) {
 				continue
 			}
 			{{- if not $isBaseVal}}
+			{{- $curFieldmask = "nfm"}}
 			nfm := {{.FieldMask}}.Int(i)
-			{{- end -}}
+			{{- end}}
 			{{- end}}
 			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
 			{{- template "FieldWrite" $ctx}}

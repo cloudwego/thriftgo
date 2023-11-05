@@ -19,8 +19,9 @@ struct Base {
 struct ExtraInfo {
 	1: map<string, string> F1
 	2: map<i64, string> F2,
-	3: list<string> List
-	4: set<string> Set,
+	3: list<string> F3
+	4: set<string> F4,
+	5: map<double, Val> F5
 }
 
 struct MetaInfo {
