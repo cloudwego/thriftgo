@@ -553,6 +553,9 @@ var FieldReadMap = `
 		{{- if Features.WithFieldMask}}
 		{{- if $isIntKey}}
 		if !{{.FieldMask}}.IntInMask(int({{$key}})) {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
 			continue
 		}
 		{{- if not $isBaseVal}}
@@ -561,6 +564,9 @@ var FieldReadMap = `
 		{{- end}}
 		{{- else if $isStrKey}}
 		if !{{.FieldMask}}.StrInMask(string({{$key}})) {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
 			continue
 		}
 		{{- if not $isBaseVal}}
@@ -600,6 +606,9 @@ var FieldReadSet = `
 		{{- $val := .GenID "_elem"}}
 		{{- if Features.WithFieldMask}}
 		if !{{.FieldMask}}.IntInMask(i) {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
 			continue
 		}
 		{{- if not $isBaseVal}}
@@ -636,6 +645,9 @@ var FieldReadList = `
 		{{- $val := .GenID "_elem"}}
 		{{- if Features.WithFieldMask}}
 		if !{{.FieldMask}}.IntInMask(i) {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
 			continue
 		}
 		{{- if not $isBaseVal}}
