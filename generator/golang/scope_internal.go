@@ -349,7 +349,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
 		isNested := false
-		if cu.Features().EnableNestedStruct && strings.EqualFold(f.Type.Name, f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
 			// EnableNestedStruct, the file name needs to be ""
 			fn = ""
 			isNested = true
@@ -418,7 +418,7 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 		v := f.Field
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
 		// EnableNestedStruct, the type name needs to be used when retrieving the value.
-		if cu.Features().EnableNestedStruct && strings.EqualFold(f.Type.Name, f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
 			name := f.typeName.Deref().String()
 			if strings.Contains(name, ".") {
 				names := strings.Split(name, ".")
@@ -474,4 +474,14 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 			}
 		}
 	}
+}
+
+func isNestedField(typeName, fieldName string) bool {
+	tmp := strings.Split(typeName, ".")
+	typeName = tmp[len(tmp)-1]
+	if strings.EqualFold(typeName, fieldName) {
+		return true
+	}
+
+	return false
 }
