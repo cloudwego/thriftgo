@@ -321,12 +321,12 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	// reserve method names
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
-		if cu.Features().EnableNestedStruct {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
 			// EnableNestedStruct, the type name needs to be used when retrieving the value.
 			fn = s.identify(cu, f.Type.Name)
 			if strings.Contains(fn, ".") {
 				fns := strings.Split(fn, ".")
-				fn = fns[len(fns)-1]
+				fn = s.identify(cu, fns[len(fns)-1])
 			}
 		}
 
