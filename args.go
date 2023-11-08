@@ -104,6 +104,7 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 		if err != nil {
 			return nil, err
 		}
+		// checkOptions may modify the content of the options
 		desc.Options = opts
 		spec := &generator.LangSpec{
 			Language: desc.Name,
@@ -114,11 +115,13 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 	return
 }
 
+// checkOptions used to validate the command parameters.
 func (a *Arguments) checkOptions(opts []plugin.Option) ([]plugin.Option, error) {
 	params := plugin.Pack(opts)
 	cu := golang.NewCodeUtils(backend.DummyLogFunc())
 	cu.HandleOptions(params)
 	if cu.Features().EnableNestedStruct {
+		// In nested mode, if template is not 'slim', it is automatically converted to slim
 		if cu.Template() != "slim" {
 			found := false
 			for _, opt := range opts {

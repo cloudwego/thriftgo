@@ -322,7 +322,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
 		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
-			// EnableNestedStruct, the type name needs to be used when retrieving the value.
+			// EnableNestedStruct, the type name needs to be used when retrieving the value for getter&setter
 			fn = s.identify(cu, f.Type.Name)
 			if strings.Contains(fn, ".") {
 				fns := strings.Split(fn, ".")
@@ -350,8 +350,6 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 		fn := s.identify(cu, f.Name)
 		isNested := false
 		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
-			// EnableNestedStruct, the file name needs to be ""
-			fn = ""
 			isNested = true
 		}
 		fn = st.scope.Add(fn, f.Name)
@@ -417,7 +415,10 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	for f := range ff {
 		v := f.Field
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
-		// EnableNestedStruct, the type name needs to be used when retrieving the value.
+		// This is used to set the real field name for nested struct, ex.
+		// type T struct {
+		// 	*Nested
+		// }
 		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
 			name := f.typeName.Deref().String()
 			if strings.Contains(name, ".") {
