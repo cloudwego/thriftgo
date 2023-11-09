@@ -427,6 +427,7 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 			})
 			return ret
 		},
+		"backquoted": BackQuoted,
 	}
 	return m
 }
@@ -460,4 +461,8 @@ func JoinPath(elem ...string) string {
 		return strings.ReplaceAll(filepath.Join(elem...), "\\", "/")
 	}
 	return filepath.Join(elem...)
+}
+
+func BackQuoted(s string) string {
+	return "`" + s + "`"
 }
