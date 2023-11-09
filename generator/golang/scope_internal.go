@@ -24,8 +24,14 @@ import (
 	"github.com/cloudwego/thriftgo/pkg/namespace"
 )
 
-// A prefix to denote synthesized identifiers.
-const prefix = "$"
+const (
+	// A prefix to denote synthesized identifiers.
+	prefix = "$"
+	// A nestedSuffix to denote the field is nested.
+	nestedSuffix = "nested"
+	//
+	nestedSuffixLen = 6
+)
 
 func _p(id string) string {
 	return prefix + id
@@ -321,7 +327,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	// reserve method names
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
-		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Name) {
 			// EnableNestedStruct, the type name needs to be used when retrieving the value for getter&setter
 			fn = s.identify(cu, f.Type.Name)
 			if strings.Contains(fn, ".") {
@@ -349,7 +355,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
 		isNested := false
-		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Name) {
 			isNested = true
 		}
 		fn = st.scope.Add(fn, f.Name)
@@ -419,7 +425,7 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 		// type T struct {
 		// 	*Nested
 		// }
-		if cu.Features().EnableNestedStruct && isNestedField(f.Type.Name, f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Name) {
 			name := f.typeName.Deref().String()
 			if strings.Contains(name, ".") {
 				names := strings.Split(name, ".")
@@ -477,12 +483,6 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	}
 }
 
-func isNestedField(typeName, fieldName string) bool {
-	tmp := strings.Split(typeName, ".")
-	typeName = tmp[len(tmp)-1]
-	if strings.EqualFold(typeName, fieldName) {
-		return true
-	}
-
-	return false
+func isNestedField(fieldName string) bool {
+	return len(fieldName) >= nestedSuffixLen && strings.EqualFold(fieldName[len(fieldName)-nestedSuffixLen:], nestedSuffix)
 }

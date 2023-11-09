@@ -55,8 +55,7 @@ type Features struct {
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
-	EnableNestedStruct     bool `enable_nested_struct:"Generate nested field when 'type name' equal to 'field name', valid only in 'slim template'"`
-
+	EnableNestedStruct     bool `enable_nested_struct:"Generate nested field when 'field name' ends with 'Nested' , valid only in 'slim template'"`
 	JSONStringer bool `json_stringer:"Generate the JSON marshal method in String() method."`
 
 	WithFieldMask         bool `with_field_mask:"Support field-mask for generated code."`
