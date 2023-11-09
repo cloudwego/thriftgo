@@ -54,7 +54,7 @@ func IsBaseType(t *parser.Type) bool {
 // IsBaseType determines whether the given type is a base type.
 func IsIntType(t *parser.Type) bool {
 	switch t.Category {
-	case parser.Category_Byte, parser.Category_I16, parser.Category_I32, parser.Category_I64:
+	case parser.Category_Byte, parser.Category_I16, parser.Category_I32, parser.Category_I64, parser.Category_Enum:
 		return true
 	default:
 		return false
