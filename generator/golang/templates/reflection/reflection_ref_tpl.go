@@ -45,9 +45,9 @@ func init() {
 	}
 	type x struct{}
 	replacer := &thrift_reflection.FileDescriptorReplacer{
-		RemoteGoPkgPath:  "{{ .RefPath }}",
+		RemoteGoPkgPath:  {{ backquoted .RefPath }},
 		CurrentGoPkgPath: reflect.TypeOf(x{}).PkgPath(),
-		CurrentFilepath:  "{{ $IDLPath}}",
+		CurrentFilepath:  {{ backquoted  $IDLPath }},
 		Matcher:          "{{ .GetFirstDescriptor }}",
 	}
 	file_{{$IDLName}}_thrift = thrift_reflection.ReplaceFileDescriptor(replacer)
