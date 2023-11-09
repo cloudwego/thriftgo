@@ -540,7 +540,7 @@ var FieldReadMap = `
 {{- $isIntKey := .KeyCtx.Type | IsIntType -}}
 {{- $isStrKey := .KeyCtx.Type | IsStrType -}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-{{- $curFieldMask := "nil" -}}
+{{- $curFieldMask := .FieldMask -}}
 	_, _, size, err := iprot.ReadMapBegin()
 	if err != nil {
 		return err
@@ -573,6 +573,8 @@ var FieldReadMap = `
 		{{- $curFieldMask = "nfm"}}
 		{{$curFieldMask}} := {{.FieldMask}}.Str(string({{$key}}))
 		{{- end}}
+		{{- else}}
+		{{$curFieldMask}} = nil
 		{{- end}}
 		{{- end}}
 		{{/* line break */}}
@@ -596,7 +598,7 @@ var FieldReadMap = `
 var FieldReadSet = `
 {{define "FieldReadSet"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-{{- $curFieldMask := "nil" -}}
+{{- $curFieldMask := .FieldMask -}}
 	_, size, err := iprot.ReadSetBegin()
 	if err != nil {
 		return err
@@ -635,7 +637,7 @@ var FieldReadSet = `
 var FieldReadList = `
 {{define "FieldReadList"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-{{- $curFieldMask := "nil" -}}
+{{- $curFieldMask := .FieldMask -}}
 	_, size, err := iprot.ReadListBegin()
 	if err != nil {
 		return err
@@ -729,7 +731,7 @@ var FieldWriteMap = `
 {{- $isIntKey := .KeyCtx.Type | IsIntType -}}
 {{- $isStrKey := .KeyCtx.Type | IsStrType -}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-{{- $curFieldmask := "nil" -}}
+{{- $curFieldMask := .FieldMask -}}
 	{{- if and Features.WithFieldMask (or $isIntKey $isStrKey) }}
 	if !{{.FieldMask}}.All() {
 		l := len({{.Target}})
@@ -773,8 +775,8 @@ var FieldWriteMap = `
 			continue
 		}
 		{{- if not $isBaseVal}}
-		{{- $curFieldmask = "nfm"}}
-		{{$curFieldmask}} := {{.FieldMask}}.Int(int(k))
+		{{- $curFieldMask = "nfm"}}
+		{{$curFieldMask}} := {{.FieldMask}}.Int(int(k))
 		{{- end}}
 		{{- else if $isStrKey}}
 		ks := string(k)
@@ -782,14 +784,16 @@ var FieldWriteMap = `
 			continue
 		}
 		{{- if not $isBaseVal}}
-		{{- $curFieldmask = "nfm"}}
-		{{$curFieldmask}} := {{.FieldMask}}.Str(ks)
+		{{- $curFieldMask = "nfm"}}
+		{{$curFieldMask}} := {{.FieldMask}}.Str(ks)
 		{{- end}}
+		{{- else}}
+		{{$curFieldMask}} = nil
 		{{- end}}
 		{{- end}}
 		{{- $ctx := .KeyCtx.WithTarget "k" -}}
 		{{- template "FieldWrite" $ctx}}
-		{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
+		{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 		{{- template "FieldWrite" $ctx}}
 	}
 	if err := oprot.WriteMapEnd(); err != nil {
@@ -802,7 +806,7 @@ var FieldWriteMap = `
 var FieldWriteSet = `
 {{define "FieldWriteSet"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-{{- $curFieldmask := "nil" -}}
+{{- $curFieldMask := .FieldMask -}}
 		{{- if Features.WithFieldMask}}
 		if !{{.FieldMask}}.All() {
 			l := len({{.Target}})
@@ -850,17 +854,16 @@ var FieldWriteSet = `
 		}
 		{{- end}}
 		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
-			{{- $curFieldmask := "nil" -}}
 			{{- if Features.WithFieldMask}}
 			if !{{.FieldMask}}.IntInMask(i) {
 				continue
 			}
 			{{- if not $isBaseVal}}
-			{{- $curFieldmask = "nfm"}}
+			{{- $curFieldMask = "nfm"}}
 			nfm := {{.FieldMask}}.Int(i)
 			{{- end -}}
 			{{- end}}
-			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
+			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 			{{- template "FieldWrite" $ctx}}
 		}
 		if err := oprot.WriteSetEnd(); err != nil {
@@ -873,7 +876,7 @@ var FieldWriteSet = `
 var FieldWriteList = `
 {{define "FieldWriteList"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
-{{- $curFieldmask := "nil" -}}
+{{- $curFieldMask := .FieldMask -}}
 	{{- if Features.WithFieldMask}}
 	if !{{.FieldMask}}.All() {
 		l := len({{.Target}})
@@ -907,11 +910,11 @@ var FieldWriteList = `
 				continue
 			}
 			{{- if not $isBaseVal}}
-			{{- $curFieldmask = "nfm"}}
+			{{- $curFieldMask = "nfm"}}
 			nfm := {{.FieldMask}}.Int(i)
 			{{- end}}
 			{{- end}}
-			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldmask -}}
+			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 			{{- template "FieldWrite" $ctx}}
 		}
 		if err := oprot.WriteListEnd(); err != nil {

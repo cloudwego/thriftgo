@@ -29,6 +29,8 @@ struct MetaInfo {
 	2: map<Str, Key> StrMap,
 	3: list<Key> List,
 	4: set<Val> Set,
+	11: map<Int, list<Str>> MapList
+	12: list<map<Int, list<Str>>> ListMapList
 	255: Base Base,
 }
 
@@ -62,4 +64,6 @@ struct BaseResp {
 	8: map<Float, Val> F5
 	9: map<double, string> F6
 	10: map<Ex, string> F7
+	11: map<double, list<Str>> F8
+	12: list<map<Float, list<Str>>> F9
 }
