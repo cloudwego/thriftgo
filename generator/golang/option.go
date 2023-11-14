@@ -53,6 +53,7 @@ type Features struct {
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
 	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
+	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 }
 
