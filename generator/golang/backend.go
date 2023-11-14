@@ -170,6 +170,7 @@ func (g *GoBackend) executeTemplates() {
 }
 
 func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
+	keepName := g.utils.Features().KeepCodeRefName
 	path := g.utils.CombineOutputPath(g.req.OutputPath, ast)
 	filename := filepath.Join(path, g.utils.GetFilename(ast))
 	localScope, refScope, err := BuildRefScope(g.utils, ast)
@@ -180,12 +181,12 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	if err != nil {
 		return err
 	}
-	err = g.renderByTemplate(refScope, g.refTpl, ToRefFilename(filename))
+	err = g.renderByTemplate(refScope, g.refTpl, ToRefFilename(keepName, filename))
 	if err != nil {
 		return err
 	}
 	if g.utils.Features().WithReflection {
-		err = g.renderByTemplate(refScope, g.reflectionRefTpl, ToReflectionRefFilename(filename))
+		err = g.renderByTemplate(refScope, g.reflectionRefTpl, ToReflectionRefFilename(keepName, filename))
 		if err != nil {
 			return err
 		}
@@ -194,7 +195,10 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	return nil
 }
 
-func ToRefFilename(filename string) string {
+func ToRefFilename(keepName bool, filename string) string {
+	if keepName {
+		return filename
+	}
 	return strings.TrimSuffix(filename, ".go") + "-ref.go"
 }
 
@@ -202,7 +206,10 @@ func ToReflectionFilename(filename string) string {
 	return strings.TrimSuffix(filename, ".go") + "-reflection.go"
 }
 
-func ToReflectionRefFilename(filename string) string {
+func ToReflectionRefFilename(keepName bool, filename string) string {
+	if keepName {
+		return ToReflectionFilename(filename)
+	}
 	return strings.TrimSuffix(filename, ".go") + "-reflection-ref.go"
 }
 
