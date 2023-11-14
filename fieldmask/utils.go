@@ -46,13 +46,14 @@ func errPath(tok pathToken, msg ...string) error {
 }
 
 func switchFt(desc *thrift_reflection.TypeDescriptor) fieldMaskType {
+	desc = unwrapDesc(desc)
 	if desc.IsBasic() {
 		return ftScalar
 	} else if desc.IsList() {
 		return ftArray
 	} else if desc.IsMap() {
-		ft := desc.GetKeyType().GetName()
-		switch ft {
+		ft := unwrapDesc(desc.GetKeyType())
+		switch ft.GetName() {
 		case "i8", "i16", "i32", "i64", "byte":
 			return ftIntMap
 		case "string", "binary":
