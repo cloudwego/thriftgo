@@ -35,7 +35,8 @@ const (
 	ftIntMap
 )
 
-// FieldMask represents a collection of field paths
+// FieldMask represents a collection of thrift pathes
+// See
 type FieldMask struct {
 	typ fieldMaskType
 
@@ -56,6 +57,7 @@ var fmsPool = sync.Pool{
 	},
 }
 
+// NewFieldMask create a new fieldmask
 func NewFieldMask(desc *thrift_reflection.TypeDescriptor, pathes ...string) (*FieldMask, error) {
 	ret := FieldMask{}
 	err := ret.init(desc, pathes...)
@@ -75,12 +77,13 @@ func GetFieldMask(desc *thrift_reflection.TypeDescriptor, paths ...string) (*Fie
 	return ret, nil
 }
 
-// GetFieldMask put fieldmask into pool
+// Recycle puts fieldmask into pool
 func (self *FieldMask) Recycle() {
 	self.Reset()
 	fmsPool.Put(self)
 }
 
+// Reset clears fieldmask's all path
 func (self *FieldMask) Reset() {
 	if self == nil {
 		return
@@ -95,7 +98,7 @@ func (self *FieldMask) Reset() {
 func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...string) error {
 	// horizontal traversal...
 	for _, path := range paths {
-		if err := self.SetPath(path, desc); err != nil {
+		if err := self.addPath(path, desc); err != nil {
 			return fmt.Errorf("Parsing path %q  error: %v", path, err)
 		}
 	}
@@ -103,6 +106,22 @@ func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...str
 }
 
 // String pretty prints the structure a FieldMask represents
+//
+// For example:
+// pathes `[]string{"$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr"}` will print:
+//
+//	  (Base)
+//		.Extra (list<ExtraInfo>)
+//		[
+//		  *
+//		]
+//		.Meta (MetaInfo)
+//		  .F2 (map<i8,Base>)
+//		  {
+//		    *
+//		  }
+//
+// WARING: This is unstable API, the printer format is not guaranteed
 func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {
 	buf := strings.Builder{}
 	buf.WriteString("(")
@@ -112,22 +131,27 @@ func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {
 	return buf.String()
 }
 
+// Exist tells if the fieldmask is setted
 func (self *FieldMask) Exist() bool {
 	return self != nil && self.typ != 0
 }
 
+// FieldInMask tells if a id in the mask
 func (self *FieldMask) FieldInMask(id int16) bool {
 	return !self.Exist() || self.isAll || (self.typ == ftStruct && self.fdMask.Get(fieldID(id)) != nil)
 }
 
+// IntInMask tells if a index in the mask
 func (self *FieldMask) IntInMask(id int) bool {
 	return !self.Exist() || self.isAll || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask.Get(id) != nil))
 }
 
+// StrInMask tells if a string in the mask
 func (self *FieldMask) StrInMask(id string) bool {
 	return !self.Exist() || self.isAll || (self.typ == ftStrMap && (self.strMask.Get(id) != nil))
 }
 
+// Field returns the specific sub mask for given id
 func (self *FieldMask) Field(id int16) *FieldMask {
 	if self == nil || self.typ == 0 {
 		return nil
@@ -138,6 +162,7 @@ func (self *FieldMask) Field(id int16) *FieldMask {
 	return self.fdMask.Get(fieldID(id))
 }
 
+// Int returns the specific sub mask for given index
 func (self *FieldMask) Int(id int) *FieldMask {
 	if self == nil || self.typ == 0 {
 		return nil
@@ -148,6 +173,7 @@ func (self *FieldMask) Int(id int) *FieldMask {
 	return self.intMask.Get(id)
 }
 
+// Field returns the specific sub mask for given string
 func (self *FieldMask) Str(id string) *FieldMask {
 	if self == nil || self.typ == 0 {
 		return nil
@@ -158,6 +184,7 @@ func (self *FieldMask) Str(id string) *FieldMask {
 	return self.strMask.Get(id)
 }
 
+// All tells if the mask allows all elements pass (*)
 func (self *FieldMask) All() bool {
 	if self == nil {
 		return true

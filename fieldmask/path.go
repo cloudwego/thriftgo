@@ -306,6 +306,7 @@ ret:
 	return val, nil
 }
 
+// PathInMask tells if a given path is already in current fieldmask
 func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path string) bool {
 	it := newPathIter(path)
 	// println("[PathInMask]")

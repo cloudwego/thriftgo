@@ -17,22 +17,22 @@
 package fieldmask
 
 // ValueMapper is used to mapping values
-type ValueMapper struct {
-	// AllowNested indicates if a recursive type (LIST/SET/MAP) is acceptable to this.
-	// If it is true, every elem (both key for MAP) will trigger `OnXX` mapping function
-	AllowRecurse bool
+// type ValueMapper struct {
+// 	// AllowNested indicates if a recursive type (LIST/SET/MAP) is acceptable to this.
+// 	// If it is true, every elem (both key for MAP) will trigger `OnXX` mapping function
+// 	AllowRecurse bool
 
-	//mapping functions
-	OnInt    func(isNil bool, val int) (int, bool)
-	OnFloat  func(isNil bool, val float64) (int, bool)
-	OnBool   func(isNil bool, val bool) (bool, bool)
-	OnString func(isNil bool, val string) (string, bool)
-}
+// 	//mapping functions
+// 	OnInt    func(isNil bool, val int) (int, bool)
+// 	OnFloat  func(isNil bool, val float64) (int, bool)
+// 	OnBool   func(isNil bool, val bool) (bool, bool)
+// 	OnString func(isNil bool, val string) (string, bool)
+// }
 
 // PathNapper is the definition of a ValueMapper for specific path
-type PathMapper struct {
-	Path   string
-	Mapper ValueMapper
-}
+// type PathMapper struct {
+// 	Path   string
+// 	Mapper ValueMapper
+// }
 
 // func NewFieldMapper(desc thrift_reflection.TypeDescriptor, maps ...PathMapper) *FieldMask

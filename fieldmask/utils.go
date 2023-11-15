@@ -79,7 +79,7 @@ func unwrapDesc(desc *thrift_reflection.TypeDescriptor) *thrift_reflection.TypeD
 	return desc
 }
 
-func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescriptor) error {
+func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescriptor) error {
 	// println("[SetPath]: ", path)
 
 	curDesc = unwrapDesc(curDesc)
@@ -241,7 +241,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			for _, id := range ids {
 				// println("setInt ", id, nextFt)
 				next := cur.setInt(id, nextFt)
-				if err := next.SetPath(nextPath, et); err != nil {
+				if err := next.addPath(nextPath, et); err != nil {
 					return err
 				}
 			}
@@ -344,7 +344,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				for _, id := range ids {
 					next := cur.setInt(id, nextFt)
-					if err := next.SetPath(nextPath, et); err != nil {
+					if err := next.addPath(nextPath, et); err != nil {
 						return err
 					}
 				}
@@ -355,7 +355,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				for _, id := range strs {
 					next := cur.setStr(id, nextFt)
-					if err := next.SetPath(nextPath, et); err != nil {
+					if err := next.addPath(nextPath, et); err != nil {
 						return err
 					}
 				}
