@@ -306,6 +306,24 @@ func TestErrors(t *testing.T) {
 				err:        `onflicts with previously-set all (*) keys`,
 			},
 		},
+		{
+			name: "empty map set",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "ExtraInfo",
+				path:       []string{"$.IntMap{}"},
+				err:        `empty key set`,
+			},
+		},
+		{
+			name: "empty list set",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "ExtraInfo",
+				path:       []string{"$.List[]"},
+				err:        `empty index set`,
+			},
+		},
 	}
 
 	for _, tt := range tests {

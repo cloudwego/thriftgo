@@ -194,6 +194,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 
 			var ids = []int{}
+			var empty = true
 			// iter indexies...
 			for it.HasNext() {
 				tok := it.Next()
@@ -204,8 +205,12 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errPath(tok, "isn't integer", tok.Err().Error())
 				}
 				if typ == pathTypeIndexR {
+					if empty {
+						return errPath(tok, "empty index set")
+					}
 					break
 				}
+				empty = false
 
 				if all || typ == pathTypeElem {
 					continue
@@ -274,6 +279,7 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 
 			isInt := cur.typ == ftIntMap
 			isStr := cur.typ == ftStrMap
+			var empty = true
 			ids := []int{}
 			strs := []string{}
 			for it.HasNext() {
@@ -285,8 +291,12 @@ func (cur *FieldMask) SetPath(path string, curDesc *thrift_reflection.TypeDescri
 				// println("sub tok: ", tok.String())
 
 				if typ == pathTypeMapR {
+					if empty {
+						return errPath(tok, "empty key set")
+					}
 					break
 				}
+				empty = false
 
 				if all || typ == pathTypeElem {
 					continue
