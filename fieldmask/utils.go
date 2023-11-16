@@ -376,7 +376,8 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 }
 
 func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_reflection.TypeDescriptor) {
-	if self == nil || self.typ == ftScalar {
+	if self.All() {
+		printIndent(buf, indent+2, "*\n")
 		return
 	}
 	if self.typ == ftStruct {
@@ -384,40 +385,26 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 		if err != nil {
 			panic(err)
 		}
-		if self.All() {
-			printIndent(buf, indent+2, "*\n")
-		} else {
-			for _, f := range st.GetFields() {
-				if !self.FieldInMask(int16(f.GetID())) {
-					continue
-				}
-				self.printField(buf, indent+2, f)
+		for _, f := range st.GetFields() {
+			if _, exist := self.Field(int16(f.GetID())); !exist {
+				continue
 			}
+			self.printField(buf, indent+2, f)
 		}
 	} else if self.typ == ftArray {
-		printIndent(buf, indent, "[\n")
-		if self.All() {
-			printIndent(buf, indent+2, "*\n")
-		} else {
-			for k, v := range self.intMask {
-				if v.typ == 0 {
-					continue
-				}
-				self.printElem(buf, indent+2, k, desc.GetValueType())
+		for k, v := range self.intMask {
+			if v.typ == 0 {
+				continue
 			}
+			self.printElem(buf, indent+2, k, desc.GetValueType())
 		}
 		printIndent(buf, indent, "]\n")
 	} else if self.typ == ftIntMap || self.typ == ftStrMap {
-		printIndent(buf, indent, "{\n")
-		if self.All() {
-			printIndent(buf, indent+2, "*\n")
-		} else {
-			for k, v := range self.intMask {
-				if v.typ == 0 {
-					continue
-				}
-				self.printElem(buf, indent+2, k, desc.GetValueType())
+		for k, v := range self.intMask {
+			if v.typ == 0 {
+				continue
 			}
+			self.printElem(buf, indent+2, k, desc.GetValueType())
 		}
 		printIndent(buf, indent, "}\n")
 	} else {
@@ -432,7 +419,7 @@ func printIndent(buf *strings.Builder, indent int, v string) {
 	buf.WriteString(v)
 }
 
-func (self FieldMask) printField(buf *strings.Builder, indent int, field *thrift_reflection.FieldDescriptor) {
+func (self *FieldMask) printField(buf *strings.Builder, indent int, field *thrift_reflection.FieldDescriptor) {
 	printIndent(buf, indent, ".")
 	buf.WriteString(field.GetName())
 	buf.WriteString(" (")
@@ -451,25 +438,26 @@ func (self FieldMask) printField(buf *strings.Builder, indent int, field *thrift
 	}
 	buf.WriteString(")\n")
 	nd := field.GetType()
-	next := self.Field(int16(field.GetID()))
-	if next != nil {
+	next, exist := self.Field(int16(field.GetID()))
+	if exist {
 		next.print(buf, indent, nd)
 	}
 }
 
-func (self FieldMask) printElem(buf *strings.Builder, indent int, id interface{}, desc *thrift_reflection.TypeDescriptor) {
+func (self *FieldMask) printElem(buf *strings.Builder, indent int, id interface{}, desc *thrift_reflection.TypeDescriptor) {
 	printIndent(buf, indent, "+")
 	var next *FieldMask
+	var e bool
 	switch v := id.(type) {
 	case int:
 		buf.WriteString(strconv.Itoa(v))
-		next = self.Int(v)
+		next, e = self.Int(v)
 	case string:
 		buf.WriteString(v)
-		next = self.Str(v)
+		next, e = self.Str(v)
 	}
 	buf.WriteString("\n")
-	if next != nil {
+	if e {
 		next.print(buf, indent, desc)
 	}
 }

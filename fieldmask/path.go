@@ -340,9 +340,6 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			// for any * directive
-			all := cur.All()
-
 			tok := it.Next()
 			if tok.Err() != nil {
 				return false
@@ -364,7 +361,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					return false
 				}
 			} else if typ == pathTypeAny {
-				if !all {
+				if !cur.All() {
 					return false
 				}
 			} else {
@@ -373,7 +370,8 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 
 			// println("all", all, "FieldInMask:", cur.FieldInMask(int32(f.GetID())))
 			// check if name set mask
-			if !all && !cur.FieldInMask(int16(f.GetID())) {
+			nextFm, exist := cur.Field(int16(f.GetID()))
+			if !exist {
 				return false
 			}
 
@@ -382,7 +380,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			if curDesc == nil {
 				return false
 			}
-			cur = cur.Field(int16(f.GetID()))
+			cur = nextFm
 
 		} else if styp == pathTypeIndexL {
 
@@ -425,12 +423,12 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 
 				// check mask
 				v := tok.val.Int()
-				if !cur.IntInMask(v) {
+				nextFm, exist := cur.Int(v)
+				if !exist {
 					return false
 				}
-
 				//NOTICE: always use last elem's fieldmask
-				next = cur.Int(v)
+				next = nextFm
 			}
 
 			// next fieldmask
@@ -456,7 +454,6 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			var all = cur.All()
 			var next = cur.all
 			// iter indexies...
 			for it.HasNext() {
@@ -470,7 +467,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				if typ == pathTypeMapR {
 					break
 				}
-				if all || typ == pathTypeElem {
+				if cur.All() || typ == pathTypeElem {
 					continue
 				}
 				if typ == pathTypeAny {
@@ -482,21 +479,23 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 						return false
 					}
 					v := tok.val.Int()
-					if !cur.IntInMask(v) {
+					nextFm, exist := cur.Int(v)
+					if !exist {
 						return false
 					}
 					//NOTICE: always use last elem's fieldmask
-					next = cur.Int(v)
+					next = nextFm
 				} else if typ == pathTypeStr {
 					if cur.typ != ftStrMap {
 						return false
 					}
 					v := tok.val.Str()
-					if !cur.StrInMask(v) {
+					nextFm, exist := cur.Str(v)
+					if !exist {
 						return false
 					}
 					//NOTICE: always use last elem's fieldmask
-					next = cur.Str(v)
+					next = nextFm
 				} else {
 					return false
 				}

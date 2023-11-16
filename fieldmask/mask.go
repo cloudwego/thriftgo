@@ -136,52 +136,40 @@ func (self *FieldMask) Exist() bool {
 	return self != nil && self.typ != 0
 }
 
-// FieldInMask tells if a id in the mask
-func (self *FieldMask) FieldInMask(id int16) bool {
-	return !self.Exist() || self.isAll || (self.typ == ftStruct && self.fdMask.Get(fieldID(id)) != nil)
-}
-
-// IntInMask tells if a index in the mask
-func (self *FieldMask) IntInMask(id int) bool {
-	return !self.Exist() || self.isAll || ((self.typ == ftArray || self.typ == ftIntMap) && (self.intMask.Get(id) != nil))
-}
-
-// StrInMask tells if a string in the mask
-func (self *FieldMask) StrInMask(id string) bool {
-	return !self.Exist() || self.isAll || (self.typ == ftStrMap && (self.strMask.Get(id) != nil))
-}
-
-// Field returns the specific sub mask for given id
-func (self *FieldMask) Field(id int16) *FieldMask {
+// Field returns the specific sub mask for a given id, and tells if the id in the mask
+func (self *FieldMask) Field(id int16) (*FieldMask, bool) {
 	if self == nil || self.typ == 0 {
-		return nil
+		return nil, true
 	}
 	if self.isAll {
-		return self.all
+		return self.all, true
 	}
-	return self.fdMask.Get(fieldID(id))
+	fm := self.fdMask.Get(fieldID(id))
+	return fm, fm != nil
 }
 
-// Int returns the specific sub mask for given index
-func (self *FieldMask) Int(id int) *FieldMask {
+// Int returns the specific sub mask for a given index, and tells if the index in the mask
+func (self *FieldMask) Int(id int) (*FieldMask, bool) {
 	if self == nil || self.typ == 0 {
-		return nil
+		return nil, true
 	}
 	if self.isAll {
-		return self.all
+		return self.all, true
 	}
-	return self.intMask.Get(id)
+	fm := self.intMask.Get(id)
+	return fm, fm != nil
 }
 
-// Field returns the specific sub mask for given string
-func (self *FieldMask) Str(id string) *FieldMask {
+// Field returns the specific sub mask for a given string, and tells if the string in the mask
+func (self *FieldMask) Str(id string) (*FieldMask, bool) {
 	if self == nil || self.typ == 0 {
-		return nil
+		return nil, true
 	}
 	if self.isAll {
-		return self.all
+		return self.all, true
 	}
-	return self.strMask.Get(id)
+	fm := self.strMask.Get(id)
+	return fm, fm != nil
 }
 
 // All tells if the mask allows all elements pass (*)

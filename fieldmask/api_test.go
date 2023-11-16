@@ -376,61 +376,69 @@ func BenchmarkFieldMask_InMask(b *testing.B) {
 	b.Run("Field", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			if fm.Field(6) == nil {
+			if next, exist := fm.Field(6); !exist {
 				b.Fail()
+			} else {
+				_ = next
 			}
 		}
 	})
 
 	b.Run("Index", func(b *testing.B) {
 		var v *FieldMask
-		if ex := fm.Field(6); ex == nil {
+		if next, ex := fm.Field(6); !ex {
 			b.Fail()
 		} else {
-			v = ex
+			v = next
 		}
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			if v.Int(0) == nil {
+			if next, ex := v.Int(0); !ex {
 				b.Fail()
+			} else {
+				_ = next
 			}
 		}
 	})
 
 	b.Run("Int Map", func(b *testing.B) {
 		var v *FieldMask
-		if ex := fm.Field(6); ex == nil {
+		if next, ex := fm.Field(6); !ex {
 			b.Fail()
-		} else if l := ex.Int(1); l == nil {
+		} else if l, ex := next.Int(1); !ex {
 			b.Fail()
-		} else if f := l.Field(1); f == nil {
+		} else if f, ex := l.Field(1); !ex {
 			b.Fail()
 		} else {
 			v = f
 		}
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			if v.Int(0) == nil {
+			if next, ex := v.Int(0); !ex {
 				b.Fail()
+			} else {
+				_ = next
 			}
 		}
 	})
 
 	b.Run("Str Map", func(b *testing.B) {
 		var v *FieldMask
-		if ex := fm.Field(6); ex == nil {
+		if next, ex := fm.Field(6); !ex {
 			b.Fail()
-		} else if l := ex.Int(2); l == nil {
+		} else if l, ex := next.Int(2); !ex {
 			b.Fail()
-		} else if f := l.Field(2); f == nil {
+		} else if f, ex := l.Field(2); !ex {
 			b.Fail()
 		} else {
 			v = f
 		}
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			if v.Str("abcdefghi") == nil {
+			if next, ex := v.Str("abcdefghi"); !ex {
 				b.Fail()
+			} else {
+				_ = next
 			}
 		}
 	})
