@@ -14,11 +14,12 @@
 
 package trim
 
-import "github.com/cloudwego/thriftgo/parser"
+import (
+	"github.com/cloudwego/thriftgo/parser"
+)
 
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
-
 	var listInclude []*parser.Include
 	for i := range ast.Includes {
 		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+
@@ -31,7 +32,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listStruct []*parser.StructLike
 	for i := range ast.Structs {
-		if t.marks[filename][ast.Structs[i]] {
+		if t.marks[filename][ast.Structs[i]] || t.checkPreserve(ast.Structs[i]) {
 			listStruct = append(listStruct, ast.Structs[i])
 		}
 	}
@@ -39,7 +40,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listUnion []*parser.StructLike
 	for i := range ast.Unions {
-		if t.marks[filename][ast.Unions[i]] {
+		if t.marks[filename][ast.Unions[i]] || t.checkPreserve(ast.Unions[i]) {
 			listUnion = append(listUnion, ast.Unions[i])
 		}
 	}
@@ -47,7 +48,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listException []*parser.StructLike
 	for i := range ast.Exceptions {
-		if t.marks[filename][ast.Exceptions[i]] {
+		if t.marks[filename][ast.Exceptions[i]] || t.checkPreserve(ast.Exceptions[i]) {
 			listException = append(listException, ast.Exceptions[i])
 		}
 	}
@@ -56,9 +57,21 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	var listService []*parser.Service
 	for i := range ast.Services {
 		if t.marks[filename][ast.Services[i]] {
+			if t.trimMethods != nil {
+				var trimmedMethods []*parser.Function
+				for j := range ast.Services[i].Functions {
+					if t.marks[filename][ast.Services[i].Functions[j]] {
+						trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
+					}
+				}
+				ast.Services[i].Functions = trimmedMethods
+			}
 			listService = append(listService, ast.Services[i])
 		}
 	}
 	ast.Services = listService
-
+	ast.Name2Category = nil
+	for _, inc := range ast.Includes {
+		inc.Used = nil
+	}
 }

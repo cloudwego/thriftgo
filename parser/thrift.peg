@@ -25,7 +25,7 @@ Const <- CONST FieldType Identifier EQUAL ConstValue ListSeparator?
 
 Typedef <- TYPEDEF FieldType Identifier
 
-Enum  <- ENUM Identifier LWING (ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator? SkipLine)* RWING
+Enum  <- ENUM Identifier LWING (ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator? ReservedEndLineComments SkipLine)* RWING
 
 Service <- SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
 

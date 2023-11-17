@@ -44,6 +44,8 @@ test7
 typedef Gender(key="v") MyGender (key = "1", key = "2", key2 = "v2")
 
 typedef MyGender MyAnotherGender
+typedef sample1b.AnotherException samlpe1bAnotherException
+typedef sample1b.NotDirectInclude notDirectInclude
 typedef i32 a
 
 // out enum"ZZ"
@@ -60,6 +62,7 @@ struct Address {
     4: required a country
 }
 
+// @pResErve
 struct Company {
     1: required string name
     2: optional Address address
@@ -94,6 +97,16 @@ struct Simple { // should not appear
     2: i32 int
 }
 
+struct MaybeUseless{
+}
+
+// some comments
+# @preServe
+// some others
+struct preserved{
+
+}
+
 service EmployeeService extends sample1b.GetPerson {
     Employee getEmployee(1: string id)
     void addEmployee(1: Employee employee)
@@ -109,9 +122,10 @@ service ProjectService {
 
 service CompanyService {
     Company getCompany(1: string id)
-    void addCompany(1: Company company) throws(1: sample1b.AnotherException exc)
+    void addCompany(1: Company company) throws(1: samlpe1bAnotherException exc)
     void updateCompany(1: string id, 2: Company company)
     list<sample1b.Department> getDepartments(1: string company_id)
+    void anotherUselessMethod(1: MaybeUseless useless)
 }
 
 

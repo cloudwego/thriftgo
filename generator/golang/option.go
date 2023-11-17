@@ -24,7 +24,9 @@ import (
 
 // Features controls the behavior of CodeUtils.
 type Features struct {
-	MarshalEnumToText      bool `json_enum_as_text:"Generate MarshalText for enum values"`
+	MarshalEnumToText      bool `json_enum_as_text:"Generate MarshalText and UnmarshalText for enum values"`
+	MarshalEnum            bool `enum_marshal:"Generate MarshalText for enum values"`
+	UnmarshalEnum          bool `enum_unmarshal:"Generate UnmarshalText for enum values"`
 	GenerateSetter         bool `gen_setter:"Generate Set* methods for fields"`
 	GenDatabaseTag         bool `gen_db_tag:"Generate 'db:$field' tag"`
 	GenOmitEmptyTag        bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields."`
@@ -51,12 +53,15 @@ type Features struct {
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
 	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
+	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 	WithFieldMask          bool `with_field_mask:"Support field-mask for generated code."`
 }
 
 var defaultFeatures = Features{
 	MarshalEnumToText:      false,
+	MarshalEnum:            false,
+	UnmarshalEnum:          false,
 	GenerateSetter:         false,
 	GenDatabaseTag:         false,
 	GenOmitEmptyTag:        true,

@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+namespace go c
 
-const ThriftgoVersion = "0.3.3"
+struct TestStruct{
+    // hello
+    1:required string hello
+    2:required string id
+}
+
+enum GenderEnum{
+    MALE
+    FEMALE
+}

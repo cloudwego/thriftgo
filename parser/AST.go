@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+
 	"github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 )
 

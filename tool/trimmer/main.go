@@ -16,16 +16,17 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/semantic"
 	"github.com/cloudwego/thriftgo/tool/trimmer/dump"
 	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 	"github.com/cloudwego/thriftgo/version"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/cloudwego/thriftgo/generator"
 )
 
 var (
@@ -52,6 +53,16 @@ func main() {
 		os.Exit(0)
 	}
 
+	var preserveInput *bool
+	if a.Preserve != "" {
+		preserve, err := strconv.ParseBool(a.Preserve)
+		if err != nil {
+			help()
+			os.Exit(2)
+		}
+		preserveInput = &preserve
+	}
+
 	// parse file to ast
 	ast, err := parser.ParseFile(a.IDL, nil, true)
 	check(err)
@@ -64,7 +75,9 @@ func main() {
 	check(semantic.ResolveSymbols(ast))
 
 	// trim ast
-	check(trim.TrimAST(ast))
+	check(trim.TrimAST(&trim.TrimASTArg{
+		Ast: ast, TrimMethods: a.Methods, Preserve: preserveInput,
+	}))
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
@@ -98,21 +111,16 @@ func main() {
 					os.Exit(2)
 				}
 			} else {
-				println("-o should be set as a valid dir to enable -r", err.Error())
+				println("-o should be set as a valid dir to enable -r")
 				os.Exit(2)
 			}
-
 		}
-		createDirTree(a.Recurse, a.OutputFile)
-		recurseDump(ast, a.Recurse, a.OutputFile)
-		relativePath, err := filepath.Rel(a.Recurse, a.IDL)
-		if err != nil {
-			println("-r input err, range should cover all the target IDLs;", err.Error())
+		relPath, err := filepath.Rel(a.Recurse, a.OutputFile)
+		if err == nil && (len(relPath) < 2 || relPath[:2] != "..") {
+			println("output-dir should be set outside of -r base-dir to avoid overlay")
 			os.Exit(2)
 		}
-		outputFileUrl := filepath.Join(a.OutputFile, relativePath)
-		check(writeStringToFile(outputFileUrl, idl))
-		removeEmptyDir(a.OutputFile)
+		recurseDump(ast, a.Recurse, a.OutputFile)
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
 	}
@@ -121,25 +129,30 @@ func main() {
 	os.Exit(0)
 }
 
-func recurseDump(ast *parser.Thrift, sourceDir string, outDir string) {
+func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	if ast == nil {
 		return
 	}
+	out, err := dump.DumpIDL(ast)
+	check(err)
+	relativeUrl, err := filepath.Rel(sourceDir, ast.Filename)
+	if err != nil {
+		println("-r input err, range should cover all the target IDLs;", err.Error())
+		os.Exit(2)
+	}
+	outputFileUrl := filepath.Join(outDir, relativeUrl)
+	err = os.MkdirAll(filepath.Dir(outputFileUrl), os.ModePerm)
+	if err != nil {
+		println("mkdir", filepath.Dir(outputFileUrl), "error:", err.Error())
+		os.Exit(2)
+	}
+	check(writeStringToFile(outputFileUrl, out))
 	for _, includes := range ast.Includes {
-		out, err := dump.DumpIDL(includes.Reference)
-		check(err)
-		relativeUrl, err := filepath.Rel(sourceDir, includes.Reference.Filename)
-		if err != nil {
-			println("-r input err, range should cover all the target IDLs;", err.Error())
-			os.Exit(2)
-		}
-		outputFileUrl := filepath.Join(outDir, relativeUrl)
-		check(writeStringToFile(outputFileUrl, out))
 		recurseDump(includes.Reference, sourceDir, outDir)
 	}
 }
 
-func writeStringToFile(filename string, content string) error {
+func writeStringToFile(filename, content string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

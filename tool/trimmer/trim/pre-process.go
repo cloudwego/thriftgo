@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+package trim
 
-const ThriftgoVersion = "0.3.3"
+import "github.com/cloudwego/thriftgo/parser"
+
+func (t *Trimmer) preProcess(ast *parser.Thrift, filename string) {
+	t.markKeptPart(ast, filename)
+	for _, include := range ast.Includes {
+		t.preProcess(include.Reference, filename)
+	}
+}

@@ -16,21 +16,21 @@ package dump
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/pkg/test"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/pkg/test"
 )
 
 func TestDumpSingle(t *testing.T) {
 	filename := filepath.Join("..", "test_cases", "sample1.thrift")
 	ast, err := parser.ParseFile(filename, []string{"test_cases"}, true)
 	test.Assert(t, err == nil, err)
-	out, err := DumpIDL(ast)
+	_, err = DumpIDL(ast)
 	test.Assert(t, err == nil, err)
-	println(out)
 }
 
 func TestDumpMany(t *testing.T) {
@@ -60,8 +60,6 @@ func testDir(dir string, t *testing.T) {
 		test.Assert(t, err == nil, err)
 		out, err := DumpIDL(ast)
 		test.Assert(t, err == nil, err)
-		println("out of ", f, " :")
-		println(out)
-		println("===================")
+		test.Assert(t, out != "", out)
 	}
 }

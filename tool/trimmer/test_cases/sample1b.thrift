@@ -47,5 +47,9 @@ exception AnotherException{
   1: i32 abc
 }
 
+exception NotDirectInclude{
+
+}
+
 const i32 DEFAULT_CODE = 3000;
 const string trash_string = "trash!"
