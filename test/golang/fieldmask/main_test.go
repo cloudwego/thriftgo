@@ -19,19 +19,19 @@ import (
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/fieldmask"
+	"github.com/cloudwego/thriftgo/internal/test_util"
 	"github.com/cloudwego/thriftgo/plugin"
-	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/output/new/base"
-	obase "github.com/cloudwego/thriftgo/test/golang/fieldmask/output/old/base"
-	"github.com/cloudwego/thriftgo/test/golang/test_util"
+	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-new/base"
+	obase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-old/base"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGen(t *testing.T) {
-	g, r := test_util.GenerateGolang("a.thrift", "output/old/", nil, nil)
+	g, r := test_util.GenerateGolang("a.thrift", "gen-old/", nil, nil)
 	if err := g.Persist(r); err != nil {
 		panic(err)
 	}
-	g, r = test_util.GenerateGolang("a.thrift", "output/new/", []plugin.Option{
+	g, r = test_util.GenerateGolang("a.thrift", "gen-new/", []plugin.Option{
 		{"with_field_mask", ""},
 		{"with_reflection", ""},
 	}, nil)

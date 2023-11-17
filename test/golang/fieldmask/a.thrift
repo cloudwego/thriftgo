@@ -22,6 +22,11 @@ struct ExtraInfo {
 	3: list<string> F3
 	4: set<string> F4,
 	5: map<double, Val> F5
+	6: map<Int, Key> F6
+	7: map<Int, map<Int, Key>> F7
+	8: map<Int, list<Key>> F8
+	9: map<Int, list<map<Int, Key>>> F9
+	10: map<Val, Key> F10
 }
 
 struct MetaInfo {
