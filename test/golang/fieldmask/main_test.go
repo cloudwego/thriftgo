@@ -227,7 +227,7 @@ func TestFieldmaskWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var obj2 = nbase.NewBase()
+	obj2 := nbase.NewBase()
 	err = obj2.Read(prot)
 	if err != nil {
 		t.Fatal(err)
@@ -266,7 +266,7 @@ func TestFieldmaskRead(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var obj2 = nbase.NewBase()
+	obj2 := nbase.NewBase()
 	obj2.SetFieldMask(fm)
 	err = obj2.Read(prot)
 	if err != nil {

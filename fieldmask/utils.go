@@ -188,13 +188,13 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errDesc(et, "unspported type for fieldmask")
 			}
 
-			var all = cur.All()
+			all := cur.All()
 			if all {
 				return errPath(stok, "conflicts with previously-set all (*) index")
 			}
 
-			var ids = []int{}
-			var empty = true
+			ids := []int{}
+			empty := true
 			// iter indexies...
 			for it.HasNext() {
 				tok := it.Next()
@@ -272,14 +272,14 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errDesc(et, "unspported type for fieldmask")
 			}
 
-			var all = cur.All()
+			all := cur.All()
 			if all {
 				return errPath(stok, "conflicts with previously-set all (*) keys")
 			}
 
 			isInt := cur.typ == ftIntMap
 			isStr := cur.typ == ftStrMap
-			var empty = true
+			empty := true
 			ids := []int{}
 			strs := []string{}
 			for it.HasNext() {

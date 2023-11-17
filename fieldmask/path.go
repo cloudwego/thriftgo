@@ -259,7 +259,7 @@ func (p *pathIterator) Unwind(pos int) {
 }
 
 func (p *pathIterator) lit() (string, bool) {
-	var i = p.pos
+	i := p.pos
 	var isInt bool
 	for ; i < len(p.src); i++ {
 		switch cc := p.src[i]; cc {
@@ -282,8 +282,8 @@ ret:
 }
 
 func (p *pathIterator) str() (string, error) {
-	var i = p.pos
-	var open = false
+	i := p.pos
+	open := false
 	for ; i < len(p.src); i++ {
 		switch cc := p.src[i]; cc {
 		case pathSepSlash:
@@ -311,10 +311,10 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 	it := newPathIter(path)
 	// println("[PathInMask]")
 	for it.HasNext() {
-		//NOTICE: desc shoudn't empty here
+		// NOTICE: desc shoudn't empty here
 		// println("desc: ", curDesc.Name)
 
-		//NOTICE: empty fm for path means **IN MASK**
+		// NOTICE: empty fm for path means **IN MASK**
 		if cur == nil {
 			return true
 		}
@@ -328,7 +328,6 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 
 		if styp == pathTypeRoot {
 			continue
-
 		} else if styp == pathTypeField {
 			// get struct descriptor
 			st, err := curDesc.GetStructDescriptor()
@@ -397,8 +396,8 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			var all = cur.All()
-			var next = cur.all
+			all := cur.All()
+			next := cur.all
 			// iter indexies...
 			for it.HasNext() {
 				tok := it.Next()
@@ -427,7 +426,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				if !exist {
 					return false
 				}
-				//NOTICE: always use last elem's fieldmask
+				// NOTICE: always use last elem's fieldmask
 				next = nextFm
 			}
 
@@ -454,7 +453,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			var next = cur.all
+			next := cur.all
 			// iter indexies...
 			for it.HasNext() {
 				tok := it.Next()
@@ -483,7 +482,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					if !exist {
 						return false
 					}
-					//NOTICE: always use last elem's fieldmask
+					// NOTICE: always use last elem's fieldmask
 					next = nextFm
 				} else if typ == pathTypeStr {
 					if cur.typ != ftStrMap {
@@ -494,7 +493,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					if !exist {
 						return false
 					}
-					//NOTICE: always use last elem's fieldmask
+					// NOTICE: always use last elem's fieldmask
 					next = nextFm
 				} else {
 					return false

@@ -24,8 +24,7 @@ import (
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
-var (
-	baseIDL = `
+var baseIDL = `
 namespace go base
 
 struct TrafficEnv {
@@ -68,7 +67,6 @@ struct BaseResp {
 	2: i32 StatusCode = 0,
 	3: optional map<string, string> Extra,
 }`
-)
 
 func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
 	ast, err := parser.ParseString("a.thrift", IDL)
@@ -172,7 +170,7 @@ func TestNewFieldMask(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			var retry = true
+			retry := true
 		begin:
 
 			println("fieldmask:")
