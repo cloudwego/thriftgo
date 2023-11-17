@@ -72,7 +72,7 @@ DoubleConstant  <- Skip <[+\-]? (
 
 Exponent <- ('e' / 'E') IntConstant
 
-Annotations <- LPAR Annotation+ RPAR
+Annotations <- LPAR Annotation* RPAR
 
 Annotation <- Identifier EQUAL Literal ListSeparator?
 

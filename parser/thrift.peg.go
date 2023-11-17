@@ -2008,15 +2008,12 @@ func (p *ThriftIDL) Init(options ...func(*ThriftIDL) error) error {
 			position, tokenIndex = position203, tokenIndex203
 			return false
 		},
-		/* 31 Annotations <- <(LPAR Annotation+ RPAR)> */
+		/* 31 Annotations <- <(LPAR Annotation* RPAR)> */
 		func() bool {
 			position207, tokenIndex207 := position, tokenIndex
 			{
 				position208 := position
 				if !_rules[ruleLPAR]() {
-					goto l207
-				}
-				if !_rules[ruleAnnotation]() {
 					goto l207
 				}
 			l209:
