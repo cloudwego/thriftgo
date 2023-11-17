@@ -50,11 +50,11 @@ func (fm *fieldMap) Reset() {
 		return
 	}
 	for _, v := range fm.tail {
-		v.Reset()
+		v.reset()
 	}
 	// memclrNoHeapPointers(unsafe.Pointer(&fm.head), 8*(_MaxFieldIDHead+1))
 	for _, v := range fm.head {
-		v.Reset()
+		v.reset()
 	}
 }
 
@@ -150,7 +150,7 @@ type intMap map[int]*FieldMask
 
 func (im intMap) Reset() {
 	for _, v := range im {
-		v.Reset()
+		v.reset()
 	}
 }
 
@@ -191,7 +191,7 @@ type strMap map[string]*FieldMask
 
 func (sm strMap) Reset() {
 	for _, v := range sm {
-		v.Reset()
+		v.reset()
 	}
 }
 

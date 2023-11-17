@@ -200,7 +200,7 @@ func TestNewFieldMask(t *testing.T) {
 			}
 
 			if retry {
-				got.Reset()
+				got.reset()
 				if err := got.init(st, tt.args.paths...); err != nil {
 					t.Fatal(err)
 				}
