@@ -43,6 +43,7 @@ const (
 	DefaultUnknownLib   = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 	DefaultMetaLib      = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
+	ThriftFieldMaskLib  = "github.com/cloudwego/thriftgo/fieldmask"
 	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
 	defaultTemplate     = "default"
 )
@@ -383,6 +384,8 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"IsFixedLengthType": IsFixedLengthType,
 		"SupportIsSet":      SupportIsSet,
 		"GetTypeIDConstant": GetTypeIDConstant,
+		"IsIntType":         IsIntType,
+		"IsStrType":         IsStrType,
 		"UseStdLibrary": func(libs ...string) string {
 			cu.rootScope.imports.UseStdLibrary(libs...)
 			return ""
