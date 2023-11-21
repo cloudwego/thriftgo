@@ -21,6 +21,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/cloudwego/thriftgo/generator/golang/streaming"
 	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 
 	ref_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/ref"
@@ -95,6 +96,9 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	}
 	g.prepareTemplates()
 	g.fillRequisitions()
+	if !g.utils.Features().ThriftStreaming {
+		g.removeStreamingFunctions(req.GetAST())
+	}
 	g.executeTemplates()
 	return g.buildResponse()
 }
@@ -264,4 +268,24 @@ func (g *GoBackend) PostProcess(path string, content []byte) ([]byte, error) {
 		}
 	}
 	return content, nil
+}
+
+func (g *GoBackend) removeStreamingFunctions(ast *parser.Thrift) {
+	for _, svc := range ast.Services {
+		functions := make([]*parser.Function, 0, len(svc.Functions))
+		for _, f := range svc.Functions {
+			st, err := streaming.ParseStreaming(f)
+			if err != nil {
+				g.log.Warn(fmt.Sprintf("%s.%s: failed to parse streaming, err = %v", svc.Name, f.Name, err))
+				continue
+			}
+			if st.IsStreaming {
+				g.log.Warn(fmt.Sprintf("skip streaming function %s.%s: not supported by your kitex, "+
+					"please update your kitex tool to the latest version", svc.Name, f.Name))
+				continue
+			}
+			functions = append(functions, f)
+		}
+		svc.Functions = functions
+	}
 }
