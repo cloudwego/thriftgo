@@ -77,22 +77,51 @@ func GetFileDescriptorFor{{ToCamel $IDLName}}() *thrift_reflection.FileDescripto
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
 	return file_{{$IDLName}}_thrift.GetStructDescriptor("{{.Name}}")
 }
+
+func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
+	ret := thrift_reflection.NewTypeDescriptor()
+	ret.Filepath = file_{{$IDLName}}_thrift.Filepath
+	ret.Name = "{{.Name}}"
+	return ret
+}
 {{- end}}
 {{- range .Enums}}
 func (p {{.GoName}}) GetDescriptor() *thrift_reflection.EnumDescriptor{
 	return file_{{$IDLName}}_thrift.GetEnumDescriptor("{{.Name}}")
+}
+
+func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
+	ret := thrift_reflection.NewTypeDescriptor()
+	ret.Filepath = file_{{$IDLName}}_thrift.Filepath
+	ret.Name = "{{.Name}}"
+	return ret
 }
 {{- end}}
 {{- range .Unions}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
 	return file_{{$IDLName}}_thrift.GetUnionDescriptor("{{.Name}}")
 }
+
+func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
+	ret := thrift_reflection.NewTypeDescriptor()
+	ret.Filepath = file_{{$IDLName}}_thrift.Filepath
+	ret.Name = "{{.Name}}"
+	return ret
+}
 {{- end}}
 {{- range .Exceptions}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
 	return file_{{$IDLName}}_thrift.GetExceptionDescriptor("{{.Name}}")
 }
+
+func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
+	ret := thrift_reflection.NewTypeDescriptor()
+	ret.Filepath = file_{{$IDLName}}_thrift.Filepath
+	ret.Name = "{{.Name}}"
+	return ret
+}
 {{- end}}
+
 
 {{- InsertionPoint "eof"}}
 `

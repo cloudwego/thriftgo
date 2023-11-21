@@ -33,12 +33,12 @@ jobs:
           go install mvdan.cc/gofumpt@v0.2.0
           echo "install done!"
           set -e
-          if [[ -n "$(gofumpt -l -extra .)" ]]; then
+          if [[ -n "$(gofumpt -l .)" ]]; then
             echo "gofumpt found formatting issues."
-            gofumpt -l -extra .
+            gofumpt -l .
             exit 1
           fi
-          test -z "$(gofumpt -l -extra .)" 
+          test -z "$(gofumpt -l .)" 
           echo "test done!"
           go vet -stdmethods=false $(go list ./...)   
           echo "go vet done!"

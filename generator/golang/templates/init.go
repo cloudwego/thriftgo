@@ -27,6 +27,7 @@ func Alternative() map[string][]string {
 func Templates() []string {
 	return []string{
 		File, Imports, Constant, Enum, Typedef,
+		HandleUnknownFields,
 		StructLike,
 		StructLikeDefault,
 		StructLikeRead,
