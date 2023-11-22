@@ -16,7 +16,7 @@ package trim
 
 import (
 	"fmt"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
@@ -32,7 +32,7 @@ type YamlArguments struct {
 
 func ParseYamlConfig(path string) *YamlArguments {
 	cfg := YamlArguments{}
-	dataBytes, err := os.ReadFile(filepath.Join(path, DefaultYamlFileName))
+	dataBytes, err := ioutil.ReadFile(filepath.Join(path, DefaultYamlFileName))
 	if err != nil {
 		return nil
 	}
