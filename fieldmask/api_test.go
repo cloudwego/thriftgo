@@ -327,7 +327,7 @@ func TestErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
-			_, err := GetFieldMask(st, tt.args.path...)
+			_, err := NewFieldMask(st, tt.args.path...)
 			if err == nil || !strings.Contains(err.Error(), tt.args.err) {
 				t.Fatal(err)
 			}
@@ -350,16 +350,16 @@ func BenchmarkNewFieldMask(b *testing.B) {
 			_ = fm
 		}
 	})
-	b.Run("reuse", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			fm, err := GetFieldMask(st, []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Extra[0]", "$.Extra[1].IntMap{0}", "$.Extra[2].StrMap{\"abcd\"}"}...)
-			if err != nil {
-				b.Fatal(err)
-			}
-			fm.Recycle()
-		}
-	})
+	// b.Run("reuse", func(b *testing.B) {
+	// 	b.ResetTimer()
+	// 	for i := 0; i < b.N; i++ {
+	// 		fm, err := GetFieldMask(st, []string{"$.LogID", "$.TrafficEnv.Open", "$.TrafficEnv.Env", "$.Extra[0]", "$.Extra[1].IntMap{0}", "$.Extra[2].StrMap{\"abcd\"}"}...)
+	// 		if err != nil {
+	// 			b.Fatal(err)
+	// 		}
+	// 		fm.Recycle()
+	// 	}
+	// })
 }
 
 func BenchmarkFieldMask_InMask(b *testing.B) {

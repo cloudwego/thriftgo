@@ -67,22 +67,6 @@ func NewFieldMask(desc *thrift_reflection.TypeDescriptor, pathes ...string) (*Fi
 	return &ret, nil
 }
 
-// GetFieldMask reuse fieldmask from pool
-func GetFieldMask(desc *thrift_reflection.TypeDescriptor, paths ...string) (*FieldMask, error) {
-	ret := fmsPool.Get().(*FieldMask)
-	err := ret.init(desc, paths...)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
-// Recycle puts fieldmask into pool
-func (self *FieldMask) Recycle() {
-	self.reset()
-	fmsPool.Put(self)
-}
-
 // reset clears fieldmask's all path
 func (self *FieldMask) reset() {
 	if self == nil {

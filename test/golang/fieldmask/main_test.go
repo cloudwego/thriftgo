@@ -130,18 +130,17 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 		buf := thrift.NewTMemoryBufferLen(1024)
 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+		fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
 		if err != nil {
 			b.Fatal(err)
 		}
 		for i := 0; i < b.N; i++ {
-			obj.SetFieldMask(fm)
+			obj.Set_FieldMask(fm)
 			if err := obj.Write(t); err != nil {
 				b.Fatal(err)
 			}
 			buf.Reset()
 		}
-		fm.Recycle()
 	})
 }
 
@@ -194,7 +193,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		data := []byte(buf.String())
 		obj = nbase.NewBase()
 
-		fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+		fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -202,13 +201,12 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			buf.Reset()
 			buf.Write(data)
-			obj.SetFieldMask(fm)
+			obj.Set_FieldMask(fm)
 			if err := obj.Read(t); err != nil {
 				b.Fatal(err)
 			}
 		}
 
-		fm.Recycle()
 	})
 }
 
@@ -217,12 +215,12 @@ func TestFieldmaskWrite(t *testing.T) {
 	buf := thrift.NewTMemoryBufferLen(1024)
 	prot := thrift.NewTBinaryProtocol(buf, true, true)
 
-	fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(),
+	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
 		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
 	if err != nil {
 		t.Fatal(err)
 	}
-	obj.SetFieldMask(fm)
+	obj.Set_FieldMask(fm)
 	if err := obj.Write(prot); err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +246,6 @@ func TestFieldmaskWrite(t *testing.T) {
 	require.Equal(t, 1, len(obj2.Meta.List))
 	require.Equal(t, "b", obj2.Meta.Set[0].ID)
 	require.Equal(t, 1, len(obj2.Meta.Set))
-	fm.Recycle()
 }
 
 func TestFieldmaskRead(t *testing.T) {
@@ -256,7 +253,7 @@ func TestFieldmaskRead(t *testing.T) {
 	buf := thrift.NewTMemoryBufferLen(1024)
 	prot := thrift.NewTBinaryProtocol(buf, true, true)
 
-	fm, err := fieldmask.GetFieldMask(obj.GetTypeDescriptor(),
+	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
 		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
 	if err != nil {
 		t.Fatal(err)
@@ -267,7 +264,7 @@ func TestFieldmaskRead(t *testing.T) {
 	}
 
 	obj2 := nbase.NewBase()
-	obj2.SetFieldMask(fm)
+	obj2.Set_FieldMask(fm)
 	err = obj2.Read(prot)
 	if err != nil {
 		t.Fatal(err)
@@ -288,5 +285,4 @@ func TestFieldmaskRead(t *testing.T) {
 	require.Equal(t, 1, len(obj2.Meta.List))
 	require.Equal(t, "b", obj2.Meta.Set[0].ID)
 	require.Equal(t, 1, len(obj2.Meta.Set))
-	fm.Recycle()
 }
