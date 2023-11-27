@@ -206,7 +206,6 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 				b.Fatal(err)
 			}
 		}
-
 	})
 }
 
