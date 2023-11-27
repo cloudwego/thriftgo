@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+
+	"github.com/cloudwego/thriftgo/internal/utils"
 )
 
 var bytesPool = sync.Pool{
@@ -248,4 +250,39 @@ func (self *FieldMask) checkAll(s *shadowFieldMask) (bool, error) {
 		return true, self.all.fromShadow(s)
 	}
 	return false, nil
+}
+
+var (
+	fm2json sync.Map
+	json2fm sync.Map
+)
+
+func Marshal(fm *FieldMask) ([]byte, error) {
+	// fast-path: load from cache
+	if j, ok := fm2json.Load(fm); ok {
+		return j.([]byte), nil
+	}
+	// slow-path: marshal from object
+	nj, err := fm.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	fm2json.Store(fm, nj)
+	return nj, nil
+}
+
+func Unmarshal(data []byte) (*FieldMask, error) {
+	// fast-path: load from cache
+	sd := utils.B2S(data)
+	if fm, ok := json2fm.Load(sd); ok {
+		return fm.(*FieldMask), nil
+	}
+	// slow-path: unmarshal from json
+	var fm = new(FieldMask)
+	err := fm.UnmarshalJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	json2fm.Store(string(data), fm)
+	return fm, nil
 }
