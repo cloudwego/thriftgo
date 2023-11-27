@@ -61,7 +61,7 @@ const (
 
 const (
 	jsonPathAny  = `"*"`
-	jsonPathRoot = `"$"`
+	jsonPathRoot = `$`
 )
 
 type pathValue struct {
@@ -340,7 +340,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 			// println("struct: ", st.Name)
-			if cur.typ != ftStruct {
+			if cur.typ != FtStruct {
 				return false
 			}
 
@@ -454,7 +454,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			}
 
 			// println("cur.typ::", cur.typ, "cur::", cur.String(curDesc))
-			if cur.typ != ftIntMap && cur.typ != ftStrMap {
+			if cur.typ != FtIntMap && cur.typ != FtStrMap {
 				return false
 			}
 
@@ -479,7 +479,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				}
 
 				if typ == pathTypeLitInt {
-					if cur.typ != ftIntMap {
+					if cur.typ != FtIntMap {
 						return false
 					}
 					v := tok.val.Int()
@@ -490,7 +490,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					// NOTICE: always use last elem's fieldmask
 					next = nextFm
 				} else if typ == pathTypeStr {
-					if cur.typ != ftStrMap {
+					if cur.typ != FtStrMap {
 						return false
 					}
 					v := tok.val.Str()

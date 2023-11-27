@@ -178,6 +178,7 @@ func TestNewFieldMask(t *testing.T) {
 			println(got.String(st))
 			// spew.Dump(got)
 
+			// test marshal json
 			println("marshal:")
 			out, err := got.MarshalJSON()
 			if err != nil {
@@ -188,10 +189,19 @@ func TestNewFieldMask(t *testing.T) {
 				t.Fatal("not invalid json")
 			}
 
+			// test unmarshal json
+			nn := &FieldMask{}
+			if err := nn.UnmarshalJSON(out); err != nil {
+				t.Fatal(err)
+			}
+
 			if tt.name != "Union" {
 				for _, path := range tt.args.paths {
 					println("[paths] ", path)
 					if !got.PathInMask(st, path) {
+						t.Fatal(path)
+					}
+					if !nn.PathInMask(st, path) {
 						t.Fatal(path)
 					}
 				}
@@ -202,10 +212,16 @@ func TestNewFieldMask(t *testing.T) {
 				if !got.PathInMask(st, path) {
 					t.Fatal(path)
 				}
+				if !nn.PathInMask(st, path) {
+					t.Fatal(path)
+				}
 			}
 			for _, path := range tt.args.notInMasks {
 				println("[notInMasks] ", path)
 				if got.PathInMask(st, path) {
+					t.Fatal(path)
+				}
+				if nn.PathInMask(st, path) {
 					t.Fatal(path)
 				}
 			}

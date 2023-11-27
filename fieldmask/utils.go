@@ -55,14 +55,14 @@ func switchFt(desc *thrift_reflection.TypeDescriptor) FieldMaskType {
 		ft := unwrapDesc(desc.GetKeyType())
 		switch ft.GetName() {
 		case "i8", "i16", "i32", "i64", "byte":
-			return ftIntMap
+			return FtIntMap
 		case "string", "binary":
-			return ftStrMap
+			return FtStrMap
 		default:
 			return FtInvalid
 		}
 	} else if desc.IsStruct() {
-		return ftStruct
+		return FtStruct
 	} else {
 		return FtInvalid
 	}
@@ -109,7 +109,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			if err != nil || st == nil {
 				return errDesc(curDesc, "isn't STRUCT")
 			}
-			if cur.typ != ftStruct {
+			if cur.typ != FtStruct {
 				return errDesc(curDesc, "expect STRUCT")
 			}
 			// println("struct: ", st.Name)
@@ -164,7 +164,8 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				if curDesc == nil {
 					return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
 				}
-				cur = cur.setFieldID(fieldID(f.GetID()), st)
+
+				cur = cur.setFieldID(fieldID(f.GetID()), switchFt(st.GetFieldById(int32(f.GetID())).GetType()), len(st.GetFields()))
 				// cur.path = strconv.Itoa(int(f.GetID()))
 			}
 			// continue for deeper path..
@@ -242,7 +243,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			nextPath := it.LeftPath()
 			for _, id := range ids {
 				// println("setInt ", id, nextFt)
-				next := cur.setInt(id, nextFt)
+				next := cur.setInt(id, nextFt, len(ids))
 				// next.path = strconv.Itoa(id)
 				if err := next.addPath(nextPath, et); err != nil {
 					return err
@@ -256,7 +257,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			if !curDesc.IsMap() {
 				return errDesc(curDesc, "isn't MAP")
 			}
-			if cur.typ != ftIntMap && cur.typ != ftStrMap {
+			if cur.typ != FtIntMap && cur.typ != FtStrMap {
 				return errDesc(curDesc, "expect MAP")
 			}
 
@@ -280,8 +281,8 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errPath(stok, "conflicts with previously-set all (*) keys")
 			}
 
-			isInt := cur.typ == ftIntMap
-			isStr := cur.typ == ftStrMap
+			isInt := cur.typ == FtIntMap
+			isStr := cur.typ == FtStrMap
 			empty := true
 			ids := []int{}
 			strs := []string{}
@@ -343,11 +344,11 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 
 			nextPath := it.LeftPath()
 			if isInt {
-				if cur.typ != ftIntMap {
+				if cur.typ != FtIntMap {
 					return errDesc(et, "should be integer-key map")
 				}
 				for _, id := range ids {
-					next := cur.setInt(id, nextFt)
+					next := cur.setInt(id, nextFt, len(ids))
 					// next.path = strconv.Itoa(id)
 					if err := next.addPath(nextPath, et); err != nil {
 						return err
@@ -355,11 +356,11 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 
 			} else if isStr {
-				if cur.typ != ftStrMap {
+				if cur.typ != FtStrMap {
 					return errDesc(et, "should be string-key map")
 				}
 				for _, id := range strs {
-					next := cur.setStr(id, nextFt)
+					next := cur.setStr(id, nextFt, len(strs))
 					// next.path = strconv.Quote(id)
 					if err := next.addPath(nextPath, et); err != nil {
 						return err
@@ -385,7 +386,7 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 	if !self.Exist() {
 		return
 	}
-	if self.typ == ftStruct {
+	if self.typ == FtStruct {
 		st, err := desc.GetStructDescriptor()
 		if err != nil {
 			panic(err)
@@ -403,7 +404,7 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 			}
 			self.printField(buf, indent+2, f)
 		}
-	} else if self.typ == FtList || self.typ == ftIntMap {
+	} else if self.typ == FtList || self.typ == FtIntMap {
 		if self.All() {
 			printIndent(buf, indent+2, "*\n")
 			self.all.printElem(buf, indent+2, 0, desc.GetValueType())
@@ -415,7 +416,7 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 			}
 			self.printElem(buf, indent+2, k, desc.GetValueType())
 		}
-	} else if self.typ == ftStrMap {
+	} else if self.typ == FtStrMap {
 		if self.All() {
 			printIndent(buf, indent+2, "*")
 			self.printElem(buf, indent+2, "", desc.GetValueType())

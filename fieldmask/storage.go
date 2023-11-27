@@ -16,10 +16,6 @@
 
 package fieldmask
 
-import (
-	"github.com/cloudwego/thriftgo/thrift_reflection"
-)
-
 type fieldID int32
 
 const _MaxFieldIDHead = 127
@@ -29,17 +25,17 @@ type fieldMap struct {
 	tail map[fieldID]*FieldMask
 }
 
-func makeFieldMaskMap(st *thrift_reflection.StructDescriptor) fieldMap {
-	max := 0
-	count := 0
-	for _, f := range st.GetFields() {
-		if max < int(f.GetID()) {
-			max = int(f.GetID())
-			count = 0
-		} else {
-			count += 1
-		}
-	}
+func makeFieldMaskMap(count int) fieldMap {
+	// max := 0
+	// count := 0
+	// for _, f := range st.GetFields() {
+	// 	if max < int(f.GetID()) {
+	// 		max = int(f.GetID())
+	// 		count = 0
+	// 	} else {
+	// 		count += 1
+	// 	}
+	// }
 	return fieldMap{
 		tail: make(map[fieldID]*FieldMask, count),
 	}
@@ -101,13 +97,13 @@ func (self *fieldMap) Get(f fieldID) (ret *FieldMask) {
 }
 
 // setFieldID ensure a fieldmask slot for f
-func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescriptor) *FieldMask {
+func (self *FieldMask) setFieldID(f fieldID, ft FieldMaskType, cap int) *FieldMask {
 	if self.fdMask == nil {
 		// println("new fdmask")
-		m := makeFieldMaskMap(st)
+		m := makeFieldMaskMap(cap)
 		self.fdMask = &m
 	}
-	return self.fdMask.SetIfNotExist(fieldID(f), switchFt(st.GetFieldById(int32(f)).GetType()))
+	return self.fdMask.SetIfNotExist(fieldID(f), ft)
 }
 
 // type fieldMaskBitmap []byte
@@ -138,10 +134,10 @@ func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescrip
 // 	return ((*self)[b] & byte(1<<i)) != 0
 // }
 
-func (self *FieldMask) setInt(v int, ft FieldMaskType) *FieldMask {
+func (self *FieldMask) setInt(v int, ft FieldMaskType, cap int) *FieldMask {
 	if self.intMask == nil {
 		// println("new intMask")
-		self.intMask = make(intMap)
+		self.intMask = make(intMap, cap)
 	}
 	return self.intMask.SetIfNotExist(v, ft)
 }
@@ -179,10 +175,10 @@ func (im intMap) Unset(i int) {
 	delete(im, i)
 }
 
-func (self *FieldMask) setStr(v string, ft FieldMaskType) *FieldMask {
+func (self *FieldMask) setStr(v string, ft FieldMaskType, cap int) *FieldMask {
 	if self.strMask == nil {
 		// println("new setStr")
-		self.strMask = make(strMap)
+		self.strMask = make(strMap, cap)
 	}
 	return self.strMask.SetIfNotExist(v, ft)
 }

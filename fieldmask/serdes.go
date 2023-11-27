@@ -15,7 +15,9 @@
 package fieldmask
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 )
@@ -52,13 +54,14 @@ func (self *FieldMask) marshalBegin(buf *[]byte) error {
 		return nil
 	}
 	write(buf, `{"path":"$","type":"`)
-	write(buf, self.typ.String())
+	out, _ := self.typ.MarshalText()
+	*buf = append(*buf, out...)
 	write(buf, `"`)
 	return self.marshalRec(buf)
 }
 
 func (self *FieldMask) marshalRec(buf *[]byte) error {
-	if self.typ == FtScalar {
+	if self.typ == FtScalar || (self.isAll && self.all == nil) {
 		write(buf, "}")
 		return nil
 	}
@@ -79,7 +82,8 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 
 		// write type
 		write(buf, `"type":"`)
-		write(buf, f.typ.String())
+		typ, _ := f.typ.MarshalText()
+		*buf = append(*buf, typ...)
 		write(buf, `"`)
 
 		if err := f.marshalRec(buf); err != nil {
@@ -99,7 +103,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 			return err
 		}
 
-	} else if self.typ == ftStruct {
+	} else if self.typ == FtStruct {
 		for id, f := range self.fdMask.head {
 			cont, err := writer(strconv.Itoa(id), f)
 			if err != nil {
@@ -119,7 +123,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 			}
 		}
 
-	} else if self.typ == FtList || self.typ == ftIntMap {
+	} else if self.typ == FtList || self.typ == FtIntMap {
 		for k, f := range self.intMask {
 			cont, err := writer(strconv.Itoa(k), f)
 			if err != nil {
@@ -130,7 +134,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 			}
 		}
 
-	} else if self.typ == ftStrMap {
+	} else if self.typ == FtStrMap {
 		for k, f := range self.strMask {
 			cont, err := writer(strconv.Quote(k), f)
 			if err != nil {
@@ -148,4 +152,100 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	return nil
 }
 
-// func (self *FieldMask)
+type shadowFieldMask struct {
+	Path    interface{}       `json:"path"`
+	Type    FieldMaskType     `json:"type"`
+	Chilren []shadowFieldMask `json:"children"`
+}
+
+func (self *FieldMask) UnmarshalJSON(in []byte) error {
+	if self == nil {
+		return errors.New("nil memory address")
+	}
+	var s = new(shadowFieldMask)
+	if err := json.Unmarshal(in, &s); err != nil {
+		return err
+	}
+	// spew.Dump(s)
+	if s.Path != jsonPathRoot {
+		return errors.New("fieldmask must begin with root path '$'")
+	}
+	return self.fromShadow(s)
+}
+
+func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
+	if s == nil || s.Type == FtInvalid {
+		return errors.New("invalid fieldmask type")
+	}
+	self.typ = s.Type
+
+	if len(s.Chilren) == 0 {
+		self.isAll = true
+		return nil
+	}
+
+	if s.Type == FtStruct {
+		for _, n := range s.Chilren {
+			if is, err := self.checkAll(&n); err != nil {
+				return err
+			} else if is {
+				return nil
+			}
+			id, ok := n.Path.(float64)
+			if !ok {
+				return fmt.Errorf("expect number but got %#v", n.Path)
+			}
+			if self.fdMask == nil {
+			}
+			next := self.setFieldID(fieldID(id), n.Type, len(s.Chilren))
+			if err := next.fromShadow(&n); err != nil {
+				return err
+			}
+		}
+
+	} else if s.Type == FtList || s.Type == FtIntMap {
+		for _, n := range s.Chilren {
+			if is, err := self.checkAll(&n); err != nil {
+				return err
+			} else if is {
+				return nil
+			}
+			id, ok := n.Path.(float64)
+			if !ok {
+				return fmt.Errorf("expect number but got %#v", n.Path)
+			}
+			next := self.setInt(int(id), n.Type, len(s.Chilren))
+			if err := next.fromShadow(&n); err != nil {
+				return err
+			}
+		}
+
+	} else if s.Type == FtStrMap {
+		for _, n := range s.Chilren {
+			if is, err := self.checkAll(&n); err != nil {
+				return err
+			} else if is {
+				return nil
+			}
+			id, ok := n.Path.(string)
+			if !ok {
+				return fmt.Errorf("expect string but got %#v", n.Path)
+			}
+			next := self.setStr(id, n.Type, len(s.Chilren))
+			if err := next.fromShadow(&n); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (self *FieldMask) checkAll(s *shadowFieldMask) (bool, error) {
+	if s.Path == "*" {
+		self.isAll = true
+		self.all = &FieldMask{}
+		return true, self.all.fromShadow(s)
+	}
+	return false, nil
+}

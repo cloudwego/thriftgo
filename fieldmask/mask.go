@@ -21,52 +21,54 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cloudwego/thriftgo/internal/utils"
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
 type FieldMaskType uint8
 
-func (ft FieldMaskType) String() string {
+func (ft FieldMaskType) MarshalText() ([]byte, error) {
 	switch ft {
 	case FtScalar:
-		return "Scalar"
+		return utils.S2B("Scalar"), nil
 	case FtList:
-		return "List"
-	case ftStruct:
-		return "Struct"
-	case ftStrMap:
-		return "StrMap"
-	case ftIntMap:
-		return "IntMap"
+		return utils.S2B("List"), nil
+	case FtStruct:
+		return utils.S2B("Struct"), nil
+	case FtStrMap:
+		return utils.S2B("StrMap"), nil
+	case FtIntMap:
+		return utils.S2B("IntMap"), nil
 	default:
-		return "Invalid"
+		return utils.S2B("Invalid"), nil
 	}
 }
 
-func (ft *FieldMaskType) FromString(in string) {
-	switch in {
+func (ft *FieldMaskType) UnmarshalText(in []byte) error {
+	switch utils.B2S(in) {
 	case "Scalar":
 		*ft = FtScalar
 	case "List":
 		*ft = FtList
 	case "Struct":
-		*ft = ftStruct
+		*ft = FtStruct
 	case "StrMap":
-		*ft = ftStrMap
+		*ft = FtStrMap
 	case "IntMap":
-		*ft = ftIntMap
+		*ft = FtIntMap
 	default:
 		*ft = FtInvalid
 	}
+	return nil
 }
 
 const (
 	FtInvalid FieldMaskType = iota
 	FtScalar
 	FtList
-	ftStruct
-	ftStrMap
-	ftIntMap
+	FtStruct
+	FtStrMap
+	FtIntMap
 )
 
 // FieldMask represents a collection of thrift pathes
@@ -196,7 +198,7 @@ func (self *FieldMask) All() bool {
 		return true
 	}
 	switch self.typ {
-	case ftStruct, FtList, ftIntMap, ftStrMap:
+	case FtStruct, FtList, FtIntMap, FtStrMap:
 		return self.isAll
 	default:
 		return true
