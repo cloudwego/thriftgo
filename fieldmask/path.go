@@ -59,6 +59,11 @@ const (
 	pathSepSlash      = '\\'
 )
 
+const (
+	jsonPathAny  = `"*"`
+	jsonPathRoot = `"$"`
+)
+
 type pathValue struct {
 	pv unsafe.Pointer
 	iv int

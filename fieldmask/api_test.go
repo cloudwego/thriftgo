@@ -17,6 +17,7 @@
 package fieldmask
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -176,6 +177,16 @@ func TestNewFieldMask(t *testing.T) {
 			println("fieldmask:")
 			println(got.String(st))
 			// spew.Dump(got)
+
+			println("marshal:")
+			out, err := got.MarshalJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !json.Valid(out) {
+				t.Fatal("not invalid json")
+			}
+			println(string(out))
 
 			if tt.name != "Union" {
 				for _, path := range tt.args.paths {

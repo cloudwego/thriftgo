@@ -26,6 +26,40 @@ import (
 
 type fieldMaskType uint8
 
+func (ft fieldMaskType) String() string {
+	switch ft {
+	case ftScalar:
+		return `"Scalar"`
+	case ftArray:
+		return `"List"`
+	case ftStruct:
+		return `"Struct"`
+	case ftStrMap:
+		return `"StrMap"`
+	case ftIntMap:
+		return `"IntMap"`
+	default:
+		return `"Invalid"`
+	}
+}
+
+func (ft *fieldMaskType) FromString(in string) {
+	switch in {
+	case `"Scalar"`:
+		*ft = ftScalar
+	case `"List"`:
+		*ft = ftArray
+	case `"Struct"`:
+		*ft = ftStruct
+	case `"StrMap"`:
+		*ft = ftStrMap
+	case `"IntMap"`:
+		*ft = ftIntMap
+	default:
+		*ft = ftInvalid
+	}
+}
+
 const (
 	ftInvalid fieldMaskType = iota
 	ftScalar
@@ -41,6 +75,8 @@ type FieldMask struct {
 	typ fieldMaskType
 
 	isAll bool
+
+	path string
 
 	all *FieldMask
 

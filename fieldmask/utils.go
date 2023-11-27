@@ -100,6 +100,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 
 		if styp == pathTypeRoot {
 			cur.typ = switchFt(curDesc)
+			cur.path = jsonPathRoot
 			continue
 
 		} else if styp == pathTypeField {
@@ -133,7 +134,6 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				if f == nil {
 					return errDesc(curDesc, "field "+strconv.Itoa(id)+" doesn't exist")
 				}
-
 			} else if typ == pathTypeLitStr {
 				name := tok.val.Str()
 				f = st.GetFieldByName(name)
@@ -144,7 +144,6 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				cur.fdMask.Reset()
 				cur.isAll = true
 				all = true
-
 			} else {
 				return errPath(stok, "isn't field-name or field-id")
 			}
@@ -157,6 +156,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errDesc(curDesc, "doesn't have children fields")
 				}
 				cur = cur.getAll(switchFt(fs[0].GetType()))
+				cur.path = jsonPathAny
 			} else {
 				// println("field: ", f.Name, f.ID)
 				// deep down to the next fieldmask
@@ -165,6 +165,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
 				}
 				cur = cur.setFieldID(fieldID(f.GetID()), st)
+				cur.path = strconv.Itoa(int(f.GetID()))
 			}
 			// continue for deeper path..
 
@@ -234,6 +235,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				// println("all for list")
 				curDesc = et
 				cur = cur.getAll(nextFt)
+				cur.path = jsonPathAny
 				continue
 			}
 
@@ -241,6 +243,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			for _, id := range ids {
 				// println("setInt ", id, nextFt)
 				next := cur.setInt(id, nextFt)
+				next.path = strconv.Itoa(id)
 				if err := next.addPath(nextPath, et); err != nil {
 					return err
 				}
@@ -334,6 +337,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				// println("all for map")
 				curDesc = et
 				cur = cur.getAll(nextFt)
+				cur.path = jsonPathAny
 				continue
 			}
 
@@ -344,6 +348,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				for _, id := range ids {
 					next := cur.setInt(id, nextFt)
+					next.path = strconv.Itoa(id)
 					if err := next.addPath(nextPath, et); err != nil {
 						return err
 					}
@@ -355,6 +360,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				for _, id := range strs {
 					next := cur.setStr(id, nextFt)
+					next.path = strconv.Quote(id)
 					if err := next.addPath(nextPath, et); err != nil {
 						return err
 					}
