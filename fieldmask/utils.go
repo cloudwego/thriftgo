@@ -45,12 +45,12 @@ func errPath(tok pathToken, msg ...string) error {
 	return errors.New(buf.String())
 }
 
-func switchFt(desc *thrift_reflection.TypeDescriptor) fieldMaskType {
+func switchFt(desc *thrift_reflection.TypeDescriptor) FieldMaskType {
 	desc = unwrapDesc(desc)
 	if desc.IsBasic() {
-		return ftScalar
+		return FtScalar
 	} else if desc.IsList() {
-		return ftArray
+		return FtList
 	} else if desc.IsMap() {
 		ft := unwrapDesc(desc.GetKeyType())
 		switch ft.GetName() {
@@ -59,12 +59,12 @@ func switchFt(desc *thrift_reflection.TypeDescriptor) fieldMaskType {
 		case "string", "binary":
 			return ftStrMap
 		default:
-			return ftInvalid
+			return FtInvalid
 		}
 	} else if desc.IsStruct() {
 		return ftStruct
 	} else {
-		return ftInvalid
+		return FtInvalid
 	}
 }
 
@@ -100,7 +100,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 
 		if styp == pathTypeRoot {
 			cur.typ = switchFt(curDesc)
-			cur.path = jsonPathRoot
+			// cur.path = jsonPathRoot
 			continue
 
 		} else if styp == pathTypeField {
@@ -156,7 +156,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errDesc(curDesc, "doesn't have children fields")
 				}
 				cur = cur.getAll(switchFt(fs[0].GetType()))
-				cur.path = jsonPathAny
+				// cur.path = jsonPathAny
 			} else {
 				// println("field: ", f.Name, f.ID)
 				// deep down to the next fieldmask
@@ -165,7 +165,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
 				}
 				cur = cur.setFieldID(fieldID(f.GetID()), st)
-				cur.path = strconv.Itoa(int(f.GetID()))
+				// cur.path = strconv.Itoa(int(f.GetID()))
 			}
 			// continue for deeper path..
 
@@ -174,7 +174,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			if !curDesc.IsList() {
 				return errDesc(curDesc, "isn't LIST or SET")
 			}
-			if cur.typ != ftArray {
+			if cur.typ != FtList {
 				return errDesc(curDesc, "expect LIST or SET")
 			}
 
@@ -185,7 +185,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			// println("et: ", et.GetName())
 
 			nextFt := switchFt(et)
-			if nextFt == ftInvalid {
+			if nextFt == FtInvalid {
 				return errDesc(et, "unspported type for fieldmask")
 			}
 
@@ -235,7 +235,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				// println("all for list")
 				curDesc = et
 				cur = cur.getAll(nextFt)
-				cur.path = jsonPathAny
+				// cur.path = jsonPathAny
 				continue
 			}
 
@@ -243,7 +243,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			for _, id := range ids {
 				// println("setInt ", id, nextFt)
 				next := cur.setInt(id, nextFt)
-				next.path = strconv.Itoa(id)
+				// next.path = strconv.Itoa(id)
 				if err := next.addPath(nextPath, et); err != nil {
 					return err
 				}
@@ -271,7 +271,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			// println("et: ", et.GetName())
 
 			nextFt := switchFt(et)
-			if nextFt == ftInvalid {
+			if nextFt == FtInvalid {
 				return errDesc(et, "unspported type for fieldmask")
 			}
 
@@ -337,7 +337,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				// println("all for map")
 				curDesc = et
 				cur = cur.getAll(nextFt)
-				cur.path = jsonPathAny
+				// cur.path = jsonPathAny
 				continue
 			}
 
@@ -348,7 +348,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				for _, id := range ids {
 					next := cur.setInt(id, nextFt)
-					next.path = strconv.Itoa(id)
+					// next.path = strconv.Itoa(id)
 					if err := next.addPath(nextPath, et); err != nil {
 						return err
 					}
@@ -360,7 +360,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				for _, id := range strs {
 					next := cur.setStr(id, nextFt)
-					next.path = strconv.Quote(id)
+					// next.path = strconv.Quote(id)
 					if err := next.addPath(nextPath, et); err != nil {
 						return err
 					}
@@ -382,8 +382,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 }
 
 func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_reflection.TypeDescriptor) {
-	if self.All() {
-		printIndent(buf, indent+2, "*\n")
+	if !self.Exist() {
 		return
 	}
 	if self.typ == ftStruct {
@@ -391,28 +390,47 @@ func (self *FieldMask) print(buf *strings.Builder, indent int, desc *thrift_refl
 		if err != nil {
 			panic(err)
 		}
+		if self.All() {
+			printIndent(buf, indent+2, "*\n")
+			if fs := st.GetFields(); len(fs) > 0 {
+				self.all.print(buf, indent+2, fs[0].GetType())
+			}
+			return
+		}
 		for _, f := range st.GetFields() {
 			if _, exist := self.Field(int16(f.GetID())); !exist {
 				continue
 			}
 			self.printField(buf, indent+2, f)
 		}
-	} else if self.typ == ftArray {
+	} else if self.typ == FtList || self.typ == ftIntMap {
+		if self.All() {
+			printIndent(buf, indent+2, "*\n")
+			self.all.printElem(buf, indent+2, 0, desc.GetValueType())
+			return
+		}
 		for k, v := range self.intMask {
 			if v.typ == 0 {
 				continue
 			}
 			self.printElem(buf, indent+2, k, desc.GetValueType())
 		}
-		printIndent(buf, indent, "]\n")
-	} else if self.typ == ftIntMap || self.typ == ftStrMap {
-		for k, v := range self.intMask {
+	} else if self.typ == ftStrMap {
+		if self.All() {
+			printIndent(buf, indent+2, "*")
+			self.printElem(buf, indent+2, "", desc.GetValueType())
+			return
+		}
+		for k, v := range self.strMask {
 			if v.typ == 0 {
 				continue
 			}
 			self.printElem(buf, indent+2, k, desc.GetValueType())
 		}
-		printIndent(buf, indent, "}\n")
+	} else if self.typ == FtScalar {
+		buf.WriteString(" (")
+		buf.WriteString(desc.GetName())
+		buf.WriteString(")\n")
 	} else {
 		printIndent(buf, indent, "Unknown Fieldmask")
 	}

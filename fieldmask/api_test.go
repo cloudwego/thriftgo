@@ -183,10 +183,10 @@ func TestNewFieldMask(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			println(string(out))
 			if !json.Valid(out) {
 				t.Fatal("not invalid json")
 			}
-			println(string(out))
 
 			if tt.name != "Union" {
 				for _, path := range tt.args.paths {

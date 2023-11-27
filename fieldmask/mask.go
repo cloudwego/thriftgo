@@ -24,46 +24,46 @@ import (
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
-type fieldMaskType uint8
+type FieldMaskType uint8
 
-func (ft fieldMaskType) String() string {
+func (ft FieldMaskType) String() string {
 	switch ft {
-	case ftScalar:
-		return `"Scalar"`
-	case ftArray:
-		return `"List"`
+	case FtScalar:
+		return "Scalar"
+	case FtList:
+		return "List"
 	case ftStruct:
-		return `"Struct"`
+		return "Struct"
 	case ftStrMap:
-		return `"StrMap"`
+		return "StrMap"
 	case ftIntMap:
-		return `"IntMap"`
+		return "IntMap"
 	default:
-		return `"Invalid"`
+		return "Invalid"
 	}
 }
 
-func (ft *fieldMaskType) FromString(in string) {
+func (ft *FieldMaskType) FromString(in string) {
 	switch in {
-	case `"Scalar"`:
-		*ft = ftScalar
-	case `"List"`:
-		*ft = ftArray
-	case `"Struct"`:
+	case "Scalar":
+		*ft = FtScalar
+	case "List":
+		*ft = FtList
+	case "Struct":
 		*ft = ftStruct
-	case `"StrMap"`:
+	case "StrMap":
 		*ft = ftStrMap
-	case `"IntMap"`:
+	case "IntMap":
 		*ft = ftIntMap
 	default:
-		*ft = ftInvalid
+		*ft = FtInvalid
 	}
 }
 
 const (
-	ftInvalid fieldMaskType = iota
-	ftScalar
-	ftArray
+	FtInvalid FieldMaskType = iota
+	FtScalar
+	FtList
 	ftStruct
 	ftStrMap
 	ftIntMap
@@ -72,11 +72,9 @@ const (
 // FieldMask represents a collection of thrift pathes
 // See
 type FieldMask struct {
-	typ fieldMaskType
-
 	isAll bool
 
-	path string
+	typ FieldMaskType
 
 	all *FieldMask
 
@@ -198,7 +196,7 @@ func (self *FieldMask) All() bool {
 		return true
 	}
 	switch self.typ {
-	case ftStruct, ftArray, ftIntMap, ftStrMap:
+	case ftStruct, FtList, ftIntMap, ftStrMap:
 		return self.isAll
 	default:
 		return true

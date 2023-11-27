@@ -65,7 +65,7 @@ func (fm *fieldMap) Reset() {
 // 	self.tail = self.tail[:0]
 // }
 
-func (self *fieldMap) SetIfNotExist(f fieldID, ft fieldMaskType) (s *FieldMask) {
+func (self *fieldMap) SetIfNotExist(f fieldID, ft FieldMaskType) (s *FieldMask) {
 	if f <= _MaxFieldIDHead {
 		s = self.head[f]
 		if s == nil {
@@ -138,7 +138,7 @@ func (self *FieldMask) setFieldID(f fieldID, st *thrift_reflection.StructDescrip
 // 	return ((*self)[b] & byte(1<<i)) != 0
 // }
 
-func (self *FieldMask) setInt(v int, ft fieldMaskType) *FieldMask {
+func (self *FieldMask) setInt(v int, ft FieldMaskType) *FieldMask {
 	if self.intMask == nil {
 		// println("new intMask")
 		self.intMask = make(intMap)
@@ -162,7 +162,7 @@ func (im intMap) Get(i int) (ret *FieldMask) {
 	return nil
 }
 
-func (im intMap) SetIfNotExist(i int, ft fieldMaskType) *FieldMask {
+func (im intMap) SetIfNotExist(i int, ft FieldMaskType) *FieldMask {
 	s := im[i]
 	if s == nil {
 		fm := newFieldMask(ft)
@@ -179,7 +179,7 @@ func (im intMap) Unset(i int) {
 	delete(im, i)
 }
 
-func (self *FieldMask) setStr(v string, ft fieldMaskType) *FieldMask {
+func (self *FieldMask) setStr(v string, ft FieldMaskType) *FieldMask {
 	if self.strMask == nil {
 		// println("new setStr")
 		self.strMask = make(strMap)
@@ -203,7 +203,7 @@ func (im strMap) Get(i string) (ret *FieldMask) {
 	return nil
 }
 
-func (im strMap) SetIfNotExist(i string, ft fieldMaskType) *FieldMask {
+func (im strMap) SetIfNotExist(i string, ft FieldMaskType) *FieldMask {
 	s := im[i]
 	if s == nil {
 		fm := newFieldMask(ft)
@@ -220,7 +220,7 @@ func (im strMap) Unset(i string) {
 	delete(im, i)
 }
 
-func (self *FieldMask) getAll(ft fieldMaskType) *FieldMask {
+func (self *FieldMask) getAll(ft FieldMaskType) *FieldMask {
 	if self.all == nil {
 		fm := newFieldMask(ft)
 		self.all = &fm
@@ -230,14 +230,14 @@ func (self *FieldMask) getAll(ft fieldMaskType) *FieldMask {
 	return self.all
 }
 
-func newFieldMask(ft fieldMaskType) FieldMask {
+func newFieldMask(ft FieldMaskType) FieldMask {
 	return FieldMask{
 		typ:   ft,
 		isAll: false,
 	}
 }
 
-func (self *FieldMask) assign(ft fieldMaskType) {
+func (self *FieldMask) assign(ft FieldMaskType) {
 	self.typ = ft
 	self.isAll = false
 }

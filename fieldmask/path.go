@@ -397,7 +397,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			if cur.typ != ftArray {
+			if cur.typ != FtList {
 				return false
 			}
 

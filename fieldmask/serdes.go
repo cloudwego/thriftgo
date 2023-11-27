@@ -16,6 +16,7 @@ package fieldmask
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 )
 
@@ -29,7 +30,7 @@ var bytesPool = sync.Pool{
 func (fm *FieldMask) MarshalJSON() ([]byte, error) {
 	buf := bytesPool.Get().(*[]byte)
 
-	err := fm.marshal(buf)
+	err := fm.marshalBegin(buf)
 	if err != nil {
 		(*buf) = (*buf)[:0]
 		bytesPool.Put(buf)
@@ -45,54 +46,62 @@ func write(buf *[]byte, str string) {
 	*buf = append(*buf, str...)
 }
 
-func (self *FieldMask) marshal(buf *[]byte) error {
+func (self *FieldMask) marshalBegin(buf *[]byte) error {
 	if self == nil {
 		write(buf, "{}")
 		return nil
 	}
-
-	// write path
-	if self.path == "" {
-		return errors.New("unknown path for fieldmask")
-	}
-	write(buf, `{"path":`)
-	write(buf, self.path)
-	write(buf, ",")
-
-	// write type
-	write(buf, `"type":`)
+	write(buf, `{"path":"$","type":"`)
 	write(buf, self.typ.String())
-	if self.typ == ftScalar {
+	write(buf, `"`)
+	return self.marshalRec(buf)
+}
+
+func (self *FieldMask) marshalRec(buf *[]byte) error {
+	if self.typ == FtScalar {
 		write(buf, "}")
 		return nil
 	}
-	write(buf, ",")
 
-	// write children
-	write(buf, `"children":[`)
 	var start bool
-	var writer = func(f *FieldMask) (bool, error) {
+	var writer = func(path string, f *FieldMask) (bool, error) {
 		if !f.Exist() {
 			return true, nil
 		}
 		if start {
 			write(buf, ",")
 		}
-		if err := f.marshal(buf); err != nil {
+
+		// write path
+		write(buf, `{"path":`)
+		write(buf, path)
+		write(buf, ",")
+
+		// write type
+		write(buf, `"type":"`)
+		write(buf, f.typ.String())
+		write(buf, `"`)
+
+		if err := f.marshalRec(buf); err != nil {
 			return false, err
 		}
+
 		start = true
 		return true, nil
 	}
 
+	// write children
+	write(buf, `,"children":[`)
+
 	if self.All() {
-		_, err := writer(self.all)
+		_, err := writer(jsonPathAny, self.all)
 		if err != nil {
 			return err
 		}
+
 	} else if self.typ == ftStruct {
-		for _, f := range self.fdMask.head {
-			cont, err := writer(f)
+		for id, f := range self.fdMask.head {
+			cont, err := writer(strconv.Itoa(id), f)
 			if err != nil {
 				return err
 			}
@@ -100,8 +109,8 @@ func (self *FieldMask) marshal(buf *[]byte) error {
 				break
 			}
 		}
-		for _, f := range self.fdMask.tail {
-			cont, err := writer(f)
+		for id, f := range self.fdMask.tail {
+			cont, err := writer(strconv.Itoa(int(id)), f)
 			if err != nil {
 				return err
 			}
@@ -110,9 +119,9 @@ func (self *FieldMask) marshal(buf *[]byte) error {
 			}
 		}
 
-	} else if self.typ == ftArray || self.typ == ftIntMap {
-		for _, f := range self.intMask {
-			cont, err := writer(f)
+	} else if self.typ == FtList || self.typ == ftIntMap {
+		for k, f := range self.intMask {
+			cont, err := writer(strconv.Itoa(k), f)
 			if err != nil {
 				return err
 			}
@@ -122,8 +131,8 @@ func (self *FieldMask) marshal(buf *[]byte) error {
 		}
 
 	} else if self.typ == ftStrMap {
-		for _, f := range self.strMask {
-			cont, err := writer(f)
+		for k, f := range self.strMask {
+			cont, err := writer(strconv.Quote(k), f)
 			if err != nil {
 				return err
 			}
@@ -131,6 +140,8 @@ func (self *FieldMask) marshal(buf *[]byte) error {
 				break
 			}
 		}
+	} else {
+		return errors.New("invalid fieldmask type")
 	}
 
 	write(buf, "]}")
