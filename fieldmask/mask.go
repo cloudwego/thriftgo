@@ -19,14 +19,15 @@ package fieldmask
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/cloudwego/thriftgo/internal/utils"
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
+// FieldMaskType indicates the corresponding thrift message type for a fieldmask
 type FieldMaskType uint8
 
+// MarshalText implements encoding.TextMarshaler
 func (ft FieldMaskType) MarshalText() ([]byte, error) {
 	switch ft {
 	case FtScalar:
@@ -44,6 +45,7 @@ func (ft FieldMaskType) MarshalText() ([]byte, error) {
 	}
 }
 
+// UnmarshalText implements encoding.TextUnmarshaler
 func (ft *FieldMaskType) UnmarshalText(in []byte) error {
 	switch utils.B2S(in) {
 	case "Scalar":
@@ -62,12 +64,19 @@ func (ft *FieldMaskType) UnmarshalText(in []byte) error {
 	return nil
 }
 
+// FieldMaskType Enums
 const (
+	// Invalid or unsupported thrift type
 	FtInvalid FieldMaskType = iota
+	// thrift scalar types, including BOOL/I8/I16/I32/I64/DOUBLE/STRING/BINARY
 	FtScalar
+	// thrift LIST/SET
 	FtList
+	// thrift STRUCT
 	FtStruct
+	// thrift MAP with string-typed key
 	FtStrMap
+	// thrift MAP with integer-typed key
 	FtIntMap
 )
 
@@ -85,12 +94,6 @@ type FieldMask struct {
 	strMask strMap
 
 	intMask intMap
-}
-
-var fmsPool = sync.Pool{
-	New: func() interface{} {
-		return &FieldMask{}
-	},
 }
 
 // NewFieldMask create a new fieldmask
@@ -126,20 +129,6 @@ func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...str
 }
 
 // String pretty prints the structure a FieldMask represents
-//
-// For example:
-// pathes `[]string{"$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr"}` will print:
-//
-//	  (Base)
-//		.Extra (list<ExtraInfo>)
-//		[
-//		  *
-//		]
-//		.Meta (MetaInfo)
-//		  .F2 (map<i8,Base>)
-//		  {
-//		    *
-//		  }
 //
 // WARING: This is unstable API, the printer format is not guaranteed
 func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {

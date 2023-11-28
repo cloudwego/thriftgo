@@ -18,6 +18,8 @@ package fieldmask
 
 import (
 	"encoding/json"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -466,5 +468,135 @@ func BenchmarkFieldMask_InMask(b *testing.B) {
 				_ = next
 			}
 		}
+	})
+}
+
+func BenchmarkMarshal(b *testing.B) {
+	st := GetDescriptor(baseIDL, "Base")
+	got, err := NewFieldMask(st, "$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr")
+	if err != nil {
+		b.Fatal(err)
+	}
+	j, err := got.MarshalJSON()
+	if err != nil {
+		b.Fatal(err)
+	}
+	if !json.Valid(j) {
+		b.Fatal("invalid json:", string(j))
+	}
+	j2, e2 := Marshal(got)
+	if e2 != nil {
+		b.Fatal(e2)
+	}
+	if !json.Valid(j2) {
+		b.Fatal("invalid json2", string(j2))
+	}
+
+	b.Run("MarshalJSON", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = got.MarshalJSON()
+		}
+	})
+
+	b.Run("Marshal", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = Marshal(got)
+		}
+	})
+}
+
+func BenchmarkUnmarshal(b *testing.B) {
+	st := GetDescriptor(baseIDL, "Base")
+	got, err := NewFieldMask(st, "$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr")
+	if err != nil {
+		b.Fatal(err)
+	}
+	j, err := got.MarshalJSON()
+	if err != nil {
+		b.Fatal(err)
+	}
+	if !json.Valid(j) {
+		b.Fatal("invalid json:", string(j))
+	}
+	act := new(FieldMask)
+	if err := act.UnmarshalJSON(j); err != nil {
+		b.Fatal(err)
+	}
+	// if !reflect.DeepEqual(got, act) {
+	// 	b.Fatal()
+	// }
+
+	_, err = Unmarshal(j)
+	if err != nil {
+		b.Fatal(err)
+	}
+	// if !reflect.DeepEqual(got, act2) {
+	// 	b.Fatal()
+	// }
+
+	b.Run("UnmarshalJSON", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			act := new(FieldMask)
+			_ = act.UnmarshalJSON(j)
+		}
+	})
+
+	b.Run("Umarshal", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = Unmarshal(j)
+		}
+	})
+}
+
+func BenchmarkMemory(b *testing.B) {
+	st := GetDescriptor(baseIDL, "Base")
+	_, err := NewFieldMask(st, []string{"$.Extra[0].List", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr"}...)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	go func() {
+		for {
+			runtime.GC()
+		}
+	}()
+
+	tester := func(X int, b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for x := 0; x < X; x++ {
+				tt, err := NewFieldMask(st, "$.Extra["+strconv.Itoa(x)+"].List", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr")
+				if err != nil {
+					b.Fatal(err)
+				}
+				j, err := Marshal(tt)
+				if err != nil {
+					b.Fatal(err)
+				}
+				_, err = Unmarshal(j)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		}
+	}
+
+	b.Run("10", func(b *testing.B) {
+		tester(10, b)
+	})
+
+	b.Run("100", func(b *testing.B) {
+		tester(100, b)
+	})
+
+	b.Run("1000", func(b *testing.B) {
+		tester(1000, b)
+	})
+
+	b.Run("10000", func(b *testing.B) {
+		tester(10000, b)
 	})
 }

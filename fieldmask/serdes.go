@@ -31,6 +31,18 @@ var bytesPool = sync.Pool{
 	},
 }
 
+// MarshalJSON marshals the fieldmask into json.
+//
+// For example:
+//   - pathes `[]string{"$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr"}` will produces:
+//   - `{"path":"$","type":"Struct","children":[{"path":6,"type":"List","children":[{"path":"*","type":"Struct","children":[{"path":4,"type":"List"}]}]},{"path":256,"type":"Struct","children":[{"path":2,"type":"IntMap","children":[{"path":"*","type":"Struct","children":[{"path":0,"type":"Scalar"}]}]}]}]}`
+//
+// For details:
+//   - `path` is the path segment of current fieldmask layer
+//   - `type` is the `FieldMaskType` of the fieldmask
+//     -`children` is the chidlren of subsequent pathes
+//   - each fieldmask always starts with root path "$"
+//   - path "*" indicates all subsequent path of the fieldmask shares the same sub fieldmask
 func (fm *FieldMask) MarshalJSON() ([]byte, error) {
 	buf := bytesPool.Get().(*[]byte)
 
@@ -43,6 +55,8 @@ func (fm *FieldMask) MarshalJSON() ([]byte, error) {
 
 	ret := make([]byte, len(*buf))
 	copy(ret, *buf)
+	(*buf) = (*buf)[:0]
+	bytesPool.Put(buf)
 	return ret, nil
 }
 
@@ -69,7 +83,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	}
 
 	var start bool
-	var writer = func(path string, f *FieldMask) (bool, error) {
+	var writer = func(path interface{}, f *FieldMask) (bool, error) {
 		if !f.Exist() {
 			return true, nil
 		}
@@ -79,7 +93,12 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 
 		// write path
 		write(buf, `{"path":`)
-		write(buf, path)
+		switch v := path.(type) {
+		case int:
+			*buf = strconv.AppendInt(*buf, int64(v), 10)
+		case string:
+			*buf = strconv.AppendQuote(*buf, v)
+		}
 		write(buf, ",")
 
 		// write type
@@ -107,7 +126,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 
 	} else if self.typ == FtStruct {
 		for id, f := range self.fdMask.head {
-			cont, err := writer(strconv.Itoa(id), f)
+			cont, err := writer(id, f)
 			if err != nil {
 				return err
 			}
@@ -116,7 +135,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 			}
 		}
 		for id, f := range self.fdMask.tail {
-			cont, err := writer(strconv.Itoa(int(id)), f)
+			cont, err := writer(int(id), f)
 			if err != nil {
 				return err
 			}
@@ -127,7 +146,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 
 	} else if self.typ == FtList || self.typ == FtIntMap {
 		for k, f := range self.intMask {
-			cont, err := writer(strconv.Itoa(k), f)
+			cont, err := writer(k, f)
 			if err != nil {
 				return err
 			}
@@ -138,7 +157,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 
 	} else if self.typ == FtStrMap {
 		for k, f := range self.strMask {
-			cont, err := writer(strconv.Quote(k), f)
+			cont, err := writer(k, f)
 			if err != nil {
 				return err
 			}
@@ -155,11 +174,14 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 }
 
 type shadowFieldMask struct {
-	Path    interface{}       `json:"path"`
-	Type    FieldMaskType     `json:"type"`
-	Chilren []shadowFieldMask `json:"children"`
+	Path     interface{}       `json:"path"`
+	Type     FieldMaskType     `json:"type"`
+	Children []shadowFieldMask `json:"children"`
 }
 
+// UnmarshalJSON unmarshal the fieldmask from json.
+//
+//	Input JSON **MUST** be according to the schema of `FieldMask.MarshalJSON()`
 func (self *FieldMask) UnmarshalJSON(in []byte) error {
 	if self == nil {
 		return errors.New("nil memory address")
@@ -181,13 +203,13 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 	}
 	self.typ = s.Type
 
-	if len(s.Chilren) == 0 {
+	if len(s.Children) == 0 {
 		self.isAll = true
 		return nil
 	}
 
 	if s.Type == FtStruct {
-		for _, n := range s.Chilren {
+		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
 				return err
 			} else if is {
@@ -197,16 +219,14 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			if !ok {
 				return fmt.Errorf("expect number but got %#v", n.Path)
 			}
-			if self.fdMask == nil {
-			}
-			next := self.setFieldID(fieldID(id), n.Type, len(s.Chilren))
+			next := self.setFieldID(fieldID(id), n.Type, len(s.Children))
 			if err := next.fromShadow(&n); err != nil {
 				return err
 			}
 		}
 
 	} else if s.Type == FtList || s.Type == FtIntMap {
-		for _, n := range s.Chilren {
+		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
 				return err
 			} else if is {
@@ -216,14 +236,14 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			if !ok {
 				return fmt.Errorf("expect number but got %#v", n.Path)
 			}
-			next := self.setInt(int(id), n.Type, len(s.Chilren))
+			next := self.setInt(int(id), n.Type, len(s.Children))
 			if err := next.fromShadow(&n); err != nil {
 				return err
 			}
 		}
 
 	} else if s.Type == FtStrMap {
-		for _, n := range s.Chilren {
+		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
 				return err
 			} else if is {
@@ -233,7 +253,7 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			if !ok {
 				return fmt.Errorf("expect string but got %#v", n.Path)
 			}
-			next := self.setStr(id, n.Type, len(s.Chilren))
+			next := self.setStr(id, n.Type, len(s.Children))
 			if err := next.fromShadow(&n); err != nil {
 				return err
 			}
@@ -257,6 +277,10 @@ var (
 	json2fm sync.Map
 )
 
+// Marshal serializes a fieldmask into bytes.
+//
+// Notice: This API uses cache to accelerate processing,
+// at the cost of increasing memory usage
 func Marshal(fm *FieldMask) ([]byte, error) {
 	// fast-path: load from cache
 	if j, ok := fm2json.Load(fm); ok {
@@ -271,10 +295,13 @@ func Marshal(fm *FieldMask) ([]byte, error) {
 	return nj, nil
 }
 
+// Marshal deserializes a fieldmask from bytes.
+//
+// Notice: This API uses cache to accelerate processing,
+// at the cost of increasing memory usage
 func Unmarshal(data []byte) (*FieldMask, error) {
 	// fast-path: load from cache
-	sd := utils.B2S(data)
-	if fm, ok := json2fm.Load(sd); ok {
+	if fm, ok := json2fm.Load(utils.B2S(data)); ok {
 		return fm.(*FieldMask), nil
 	}
 	// slow-path: unmarshal from json

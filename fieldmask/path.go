@@ -60,7 +60,7 @@ const (
 )
 
 const (
-	jsonPathAny  = `"*"`
+	jsonPathAny  = `*`
 	jsonPathRoot = `$`
 )
 

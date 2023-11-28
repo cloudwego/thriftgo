@@ -26,16 +26,6 @@ type fieldMap struct {
 }
 
 func makeFieldMaskMap(count int) fieldMap {
-	// max := 0
-	// count := 0
-	// for _, f := range st.GetFields() {
-	// 	if max < int(f.GetID()) {
-	// 		max = int(f.GetID())
-	// 		count = 0
-	// 	} else {
-	// 		count += 1
-	// 	}
-	// }
 	return fieldMap{
 		tail: make(map[fieldID]*FieldMask, count),
 	}
