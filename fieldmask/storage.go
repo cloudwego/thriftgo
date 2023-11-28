@@ -18,7 +18,7 @@ package fieldmask
 
 type fieldID int32
 
-const _MaxFieldIDHead = 127
+const _MaxFieldIDHead = 63
 
 type fieldMap struct {
 	head [_MaxFieldIDHead + 1]*FieldMask
