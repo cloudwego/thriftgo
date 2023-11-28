@@ -15,6 +15,8 @@
 package fieldmask
 
 import (
+	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/apache/thrift/lib/go/thrift"
@@ -25,6 +27,105 @@ import (
 	obase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-old/base"
 	"github.com/stretchr/testify/require"
 )
+
+var fieldmaskCache sync.Map
+
+func init() {
+	// new a obj to get its TypeDescriptor
+	obj := nbase.NewBase()
+
+	// construct a fieldmask with TypeDescriptor and thrift pathes
+	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
+		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+	if err != nil {
+		panic(err)
+	}
+
+	// cache it for future usage of nbase.Base
+	fieldmaskCache.Store("Mask1ForBase", fm)
+}
+
+func TestFieldMask_Write(t *testing.T) {
+	// biz logic: handle and get final response object
+	obj := SampleNewBase()
+
+	// Load fieldmask from cache
+	fm, _ := fieldmaskCache.Load("Mask1ForBase")
+	if fm != nil {
+		// load ok, set fieldmask onto the object using codegen API
+		obj.Set_FieldMask(fm.(*fieldmask.FieldMask))
+	}
+
+	// return obj
+
+	// prepare buffer
+	buf := thrift.NewTMemoryBufferLen(1024)
+	prot := thrift.NewTBinaryProtocol(buf, true, true)
+	if err := obj.Write(prot); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate output
+	obj2 := nbase.NewBase()
+	err := obj2.Read(prot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, obj.Addr, obj2.Addr)
+	require.Equal(t, obj.LogID, obj2.LogID)
+	require.Equal(t, "", obj2.Caller)
+	require.Equal(t, "", obj2.TrafficEnv.Name)
+	require.Equal(t, false, obj2.TrafficEnv.Open)
+	require.Equal(t, "", obj2.TrafficEnv.Env)
+	require.Equal(t, obj.TrafficEnv.Code, obj2.TrafficEnv.Code)
+	require.Equal(t, obj.Meta.IntMap[1].ID, obj2.Meta.IntMap[1].ID)
+	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.IntMap[0])
+	require.Equal(t, obj.Meta.StrMap["1234"].ID, obj2.Meta.StrMap["1234"].ID)
+	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.StrMap["abcd"])
+	require.Equal(t, "b", obj2.Meta.List[0].ID)
+	require.Equal(t, 1, len(obj2.Meta.List))
+	require.Equal(t, "b", obj2.Meta.Set[0].ID)
+	require.Equal(t, 1, len(obj2.Meta.Set))
+}
+
+func TestFieldMask_Read(t *testing.T) {
+	obj := SampleNewBase()
+	buf := thrift.NewTMemoryBufferLen(1024)
+	prot := thrift.NewTBinaryProtocol(buf, true, true)
+
+	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
+		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := obj.Write(prot); err != nil {
+		t.Fatal(err)
+	}
+
+	obj2 := nbase.NewBase()
+	obj2.Set_FieldMask(fm)
+	err = obj2.Read(prot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Equal(t, obj.Addr, obj2.Addr)
+	require.Equal(t, obj.LogID, obj2.LogID)
+	require.Equal(t, "", obj2.Caller)
+	require.Equal(t, "", obj2.TrafficEnv.Name)
+	require.Equal(t, false, obj2.TrafficEnv.Open)
+	require.Equal(t, "", obj2.TrafficEnv.Env)
+	require.Equal(t, obj.TrafficEnv.Code, obj2.TrafficEnv.Code)
+	require.Equal(t, obj.Meta.IntMap[1].ID, obj2.Meta.IntMap[1].ID)
+	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.IntMap[0])
+	require.Equal(t, obj.Meta.StrMap["1234"].ID, obj2.Meta.StrMap["1234"].ID)
+	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.StrMap["abcd"])
+	require.Equal(t, "b", obj2.Meta.List[0].ID)
+	require.Equal(t, 1, len(obj2.Meta.List))
+	require.Equal(t, "b", obj2.Meta.Set[0].ID)
+	require.Equal(t, 1, len(obj2.Meta.Set))
+}
 
 func TestGen(t *testing.T) {
 	g, r := test_util.GenerateGolang("a.thrift", "gen-old/", nil, nil)
@@ -60,7 +161,7 @@ func SampleNewBase() *nbase.Base {
 	v1.ID = "b"
 	obj.Meta.List = []*nbase.Val{v0, v1}
 	obj.Meta.Set = []*nbase.Val{v0, v1}
-	obj.Extra = nbase.NewExtraInfo()
+	// obj.Extra = nbase.NewExtraInfo()
 	obj.TrafficEnv = nbase.NewTrafficEnv()
 	obj.TrafficEnv.Code = 1
 	obj.TrafficEnv.Env = "abcd"
@@ -89,7 +190,7 @@ func SampleOldBase() *obase.Base {
 	v1.ID = "b"
 	obj.Meta.List = []*obase.Val{v0, v1}
 	obj.Meta.Set = []*obase.Val{v0, v1}
-	obj.Extra = obase.NewExtraInfo()
+	// obj.Extra = obase.NewExtraInfo()
 	obj.TrafficEnv = obase.NewTrafficEnv()
 	obj.TrafficEnv.Code = 1
 	obj.TrafficEnv.Env = "abcd"
@@ -130,7 +231,7 @@ func BenchmarkWriteWithFieldMask(b *testing.B) {
 		buf := thrift.NewTMemoryBufferLen(1024)
 		t := thrift.NewTBinaryProtocol(buf, true, true)
 
-		fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+		fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.TrafficEnv.Name", "$.Meta.IntMap", "$.Meta.List[*]")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -154,7 +255,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		}
 		data := []byte(buf.String())
 		obj = obase.NewBase()
-
+		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			buf.Reset()
 			buf.Write(data)
@@ -163,7 +264,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 			}
 		}
 	})
-
+	runtime.GC()
 	b.Run("new", func(b *testing.B) {
 		obj := SampleNewBase()
 		buf := thrift.NewTMemoryBufferLen(1024)
@@ -173,7 +274,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		}
 		data := []byte(buf.String())
 		obj = nbase.NewBase()
-
+		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			buf.Reset()
 			buf.Write(data)
@@ -182,7 +283,7 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 			}
 		}
 	})
-
+	runtime.GC()
 	b.Run("new-mask-half", func(b *testing.B) {
 		obj := SampleNewBase()
 		buf := thrift.NewTMemoryBufferLen(1024)
@@ -192,12 +293,11 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 		}
 		data := []byte(buf.String())
 		obj = nbase.NewBase()
-
-		fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+		fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(), "$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.TrafficEnv.Name", "$.Meta.IntMap", "$.Meta.List[*]")
 		if err != nil {
 			b.Fatal(err)
 		}
-
+		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			buf.Reset()
 			buf.Write(data)
@@ -207,81 +307,4 @@ func BenchmarkReadWithFieldMask(b *testing.B) {
 			}
 		}
 	})
-}
-
-func TestFieldmaskWrite(t *testing.T) {
-	obj := SampleNewBase()
-	buf := thrift.NewTMemoryBufferLen(1024)
-	prot := thrift.NewTBinaryProtocol(buf, true, true)
-
-	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
-		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
-	if err != nil {
-		t.Fatal(err)
-	}
-	obj.Set_FieldMask(fm)
-	if err := obj.Write(prot); err != nil {
-		t.Fatal(err)
-	}
-
-	obj2 := nbase.NewBase()
-	err = obj2.Read(prot)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	require.Equal(t, obj.Addr, obj2.Addr)
-	require.Equal(t, obj.LogID, obj2.LogID)
-	require.Equal(t, "", obj2.Caller)
-	require.Equal(t, "", obj2.TrafficEnv.Name)
-	require.Equal(t, false, obj2.TrafficEnv.Open)
-	require.Equal(t, "", obj2.TrafficEnv.Env)
-	require.Equal(t, obj.TrafficEnv.Code, obj2.TrafficEnv.Code)
-	require.Equal(t, obj.Meta.IntMap[1].ID, obj2.Meta.IntMap[1].ID)
-	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.IntMap[0])
-	require.Equal(t, obj.Meta.StrMap["1234"].ID, obj2.Meta.StrMap["1234"].ID)
-	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.StrMap["abcd"])
-	require.Equal(t, "b", obj2.Meta.List[0].ID)
-	require.Equal(t, 1, len(obj2.Meta.List))
-	require.Equal(t, "b", obj2.Meta.Set[0].ID)
-	require.Equal(t, 1, len(obj2.Meta.Set))
-}
-
-func TestFieldmaskRead(t *testing.T) {
-	obj := SampleNewBase()
-	buf := thrift.NewTMemoryBufferLen(1024)
-	prot := thrift.NewTBinaryProtocol(buf, true, true)
-
-	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
-		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := obj.Write(prot); err != nil {
-		t.Fatal(err)
-	}
-
-	obj2 := nbase.NewBase()
-	obj2.Set_FieldMask(fm)
-	err = obj2.Read(prot)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	require.Equal(t, obj.Addr, obj2.Addr)
-	require.Equal(t, obj.LogID, obj2.LogID)
-	require.Equal(t, "", obj2.Caller)
-	require.Equal(t, "", obj2.TrafficEnv.Name)
-	require.Equal(t, false, obj2.TrafficEnv.Open)
-	require.Equal(t, "", obj2.TrafficEnv.Env)
-	require.Equal(t, obj.TrafficEnv.Code, obj2.TrafficEnv.Code)
-	require.Equal(t, obj.Meta.IntMap[1].ID, obj2.Meta.IntMap[1].ID)
-	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.IntMap[0])
-	require.Equal(t, obj.Meta.StrMap["1234"].ID, obj2.Meta.StrMap["1234"].ID)
-	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.StrMap["abcd"])
-	require.Equal(t, "b", obj2.Meta.List[0].ID)
-	require.Equal(t, 1, len(obj2.Meta.List))
-	require.Equal(t, "b", obj2.Meta.Set[0].ID)
-	require.Equal(t, 1, len(obj2.Meta.Set))
 }
