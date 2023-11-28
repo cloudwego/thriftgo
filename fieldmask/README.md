@@ -16,12 +16,12 @@
 # Thrift FieldMask RFC
 
 ## What is thrift fieldmask?
-FieldMask is inspired by [Protobuf](https://protobuf.dev/reference/protobuf/google.protobuf/#field-mask) and used to indicates the data that users care about, and filter out useless data, during a RPC call, in order to reducing network package size and accelerating serializing/deserializing process. This tech has been widely used among `Protobuf` [services](https://netflixtechblog.com/practical-api-design-at-netflix-part-1-using-protobuf-fieldmask-35cfdc606518).
+FieldMask is inspired by [Protobuf](https://protobuf.dev/reference/protobuf/google.protobuf/#field-mask) and used to indicates the data that users care about, and filter out useless data, during a RPC call, in order to reducing network package size and accelerating serializing/deserializing process. This tech has been widely used among Protobuf [services](https://netflixtechblog.com/practical-api-design-at-netflix-part-1-using-protobuf-fieldmask-35cfdc606518).
 
 ## How to construct a fieldmask?
 To construct a fieldmask, you need two things: 
  - [Thrift Path](#thrift-path) for describing the data you want
- - [Type descriptor](#type-descriptor) for validating the thrift path you pass is compatible with thrift message definition (IDL)
+ - [Type Descriptor](#type-descriptor) for validating the thrift path you pass is compatible with thrift message definition (IDL)
 
 ### Thrift Path
 
@@ -58,7 +58,7 @@ $ | the root object,every path must start with it.
 </byte-sheet-html-origin><!--EndFragment-->
 
 ### Type Descriptor
-Type descriptor is the runtime representation of a message definition for thrift reflection, which ase first introduced in thriftgo [v0.3.0](https://github.com/cloudwego/thriftgo/pull/83), in accordance with [Protobuf Descriptor](https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto). you can generate the codes for this feature using option `with_reflection`.
+Type descriptor is the runtime representation of a message definition, in aligned with [Protobuf Descriptor](https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto). To get a type descriptor, you must enable thrift reflection feature first, which was introduced in thriftgo [v0.3.0](https://github.com/cloudwego/thriftgo/pull/83). you can generate related codes for this feature using option `with_reflection`.
 
 ## How to use fieldmask?
 1. First, you must generates codes for this feature using two options `with_fieldmask` and `with_reflection`
@@ -78,9 +78,10 @@ var fieldmaskCache sync.Map
 func init() {
 	// new a obj to get its TypeDescriptor
 	obj := nbase.NewBase()
+    desc := obj.GetTypeDescriptor()
 
 	// construct a fieldmask with TypeDescriptor and thrift pathes
-	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
+	fm, err := fieldmask.NewFieldMask(desc,
 		"$.Addr", "$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
 	if err != nil {
 		panic(err)
