@@ -73,6 +73,7 @@ func main() {
 	_, err = checker.CheckAll(ast)
 	check(err)
 	check(semantic.ResolveSymbols(ast))
+	structs, fields := countStructs(ast)
 
 	// trim ast
 	_, _, err = trim.TrimAST(&trim.TrimASTArg{
@@ -124,6 +125,8 @@ func main() {
 		recurseDump(ast, a.Recurse, a.OutputFile)
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
+		structsNew, fieldsNew := countStructs(ast)
+		fmt.Printf("removed %d unused structures with %d fields\n", structs-structsNew, fields-fieldsNew)
 	}
 	println("success, dump to", a.OutputFile)
 
@@ -164,4 +167,21 @@ func writeStringToFile(filename, content string) error {
 		return err
 	}
 	return nil
+}
+
+func countStructs(ast *parser.Thrift) (structs, fields int) {
+	structs += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
+	for _, v := range ast.Structs {
+		fields += len(v.Fields)
+	}
+	for _, v := range ast.Services {
+		fields += len(v.Functions)
+	}
+	for _, v := range ast.Unions {
+		fields += len(v.Fields)
+	}
+	for _, v := range ast.Exceptions {
+		fields += len(v.Fields)
+	}
+	return structs, fields
 }

@@ -24,13 +24,8 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 )
 
-func TestTrimmer(t *testing.T) {
-	t.Run("trim AST", testSingleFile)
-	// t.Run("trim AST - test many", testMany)
-}
-
 // test single file ast trimming
-func testSingleFile(t *testing.T) {
+func TestSingleFile(t *testing.T) {
 	trimmer, err := newTrimmer(nil, "")
 	test.Assert(t, err == nil, err)
 	filename := filepath.Join("..", "test_cases", "sample1.thrift")
