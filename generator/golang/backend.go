@@ -86,11 +86,12 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		err := trim.TrimAST(req.AST, nil)
+		g.log.Warn("You Are Using IDL Trimmer")
+		structureTrimmed, fieldTrimmed, err := trim.TrimAST(&trim.TrimASTArg{Ast: req.AST, TrimMethods: nil, Preserve: nil})
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
 		}
-		g.log.Warn("You Are Using IDL Trimmer")
+		g.log.Warn(fmt.Sprintf("removed %d unused structures with %d fields", structureTrimmed, fieldTrimmed))
 	}
 	g.prepareTemplates()
 	g.fillRequisitions()
@@ -170,6 +171,7 @@ func (g *GoBackend) executeTemplates() {
 }
 
 func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
+	keepName := g.utils.Features().KeepCodeRefName
 	path := g.utils.CombineOutputPath(g.req.OutputPath, ast)
 	filename := filepath.Join(path, g.utils.GetFilename(ast))
 	localScope, refScope, err := BuildRefScope(g.utils, ast)
@@ -180,12 +182,12 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	if err != nil {
 		return err
 	}
-	err = g.renderByTemplate(refScope, g.refTpl, ToRefFilename(filename))
+	err = g.renderByTemplate(refScope, g.refTpl, ToRefFilename(keepName, filename))
 	if err != nil {
 		return err
 	}
 	if g.utils.Features().WithReflection {
-		err = g.renderByTemplate(refScope, g.reflectionRefTpl, ToReflectionRefFilename(filename))
+		err = g.renderByTemplate(refScope, g.reflectionRefTpl, ToReflectionRefFilename(keepName, filename))
 		if err != nil {
 			return err
 		}
@@ -194,7 +196,10 @@ func (g *GoBackend) renderOneFile(ast *parser.Thrift) error {
 	return nil
 }
 
-func ToRefFilename(filename string) string {
+func ToRefFilename(keepName bool, filename string) string {
+	if keepName {
+		return filename
+	}
 	return strings.TrimSuffix(filename, ".go") + "-ref.go"
 }
 
@@ -202,7 +207,10 @@ func ToReflectionFilename(filename string) string {
 	return strings.TrimSuffix(filename, ".go") + "-reflection.go"
 }
 
-func ToReflectionRefFilename(filename string) string {
+func ToReflectionRefFilename(keepName bool, filename string) string {
+	if keepName {
+		return ToReflectionFilename(filename)
+	}
 	return strings.TrimSuffix(filename, ".go") + "-reflection-ref.go"
 }
 

@@ -190,3 +190,11 @@ func ParseKV(str string) (map[string]string, error) {
 		}
 	}
 }
+
+func SplitSubfix(t string) (typ, val string) {
+	idx := strings.LastIndex(t, ".")
+	if idx == -1 {
+		return "", t
+	}
+	return t[:idx], t[idx+1:]
+}

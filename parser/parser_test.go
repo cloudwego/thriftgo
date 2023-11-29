@@ -206,6 +206,24 @@ struct my_struct {
 		and for another line
 	*/
 }
+
+enum my_enum {
+	// header comment for 1
+	e1
+	// header comment for 2
+	e2 // tail-reserved comment for 2
+	e3 // tail-reserved comment for 3
+	e4, // tail-reserved comment for 4
+	e5(at="annotation") // tail-reserved comment for 5
+	// header comment for 6
+	e6
+	// header comment for 7
+	e7 // tail-reserved comment for 7
+	e8 # tail-reserved comment for 8
+	e9 /* tail-reserved comment for 9
+		and for another line
+	*/
+}
 `
 
 func TestFieldReservedEndLineComment(t *testing.T) {
@@ -232,6 +250,31 @@ func TestFieldReservedEndLineComment(t *testing.T) {
 		case "field8":
 			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 8`)
 		case "field9":
+			test.Assert(t, f.ReservedComments == `/* tail-reserved comment for 9
+		and for another line
+	*/`)
+		}
+	}
+
+	for _, f := range ast.Enums[0].Values {
+		switch f.Name {
+		case "e1":
+			test.Assert(t, f.ReservedComments == `// header comment for 1`)
+		case "e2":
+			test.Assert(t, f.ReservedComments == `// header comment for 2`)
+		case "e3":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 3`)
+		case "e4":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 4`)
+		case "e5":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 5`)
+		case "e6":
+			test.Assert(t, f.ReservedComments == `// header comment for 6`)
+		case "e7":
+			test.Assert(t, f.ReservedComments == `// header comment for 7`)
+		case "e8":
+			test.Assert(t, f.ReservedComments == `// tail-reserved comment for 8`)
+		case "e9":
 			test.Assert(t, f.ReservedComments == `/* tail-reserved comment for 9
 		and for another line
 	*/`)

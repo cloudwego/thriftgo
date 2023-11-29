@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+include "../../../sample1.thrift"
+include "../dir3/dir4/another.thrift"
 
-const ThriftgoVersion = "0.3.3"
+// @preserve
+struct TestStruct{
+    1: sample1.Person person
+    2: another.AnotherStruct another
+}
+
+service TestService{
+    void func1()
+    another.AnotherStruct func2()
+    void func3()
+}
+
+union useless{
+}

@@ -43,6 +43,7 @@ const (
 	DefaultUnknownLib   = "github.com/cloudwego/thriftgo/generator/golang/extension/unknown"
 	DefaultMetaLib      = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
+	ThriftFieldMaskLib  = "github.com/cloudwego/thriftgo/fieldmask"
 	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
 	defaultTemplate     = "default"
 	ThriftJSONUtilLib   = "github.com/cloudwego/thriftgo/utils/json_utils"
@@ -384,6 +385,8 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"IsFixedLengthType": IsFixedLengthType,
 		"SupportIsSet":      SupportIsSet,
 		"GetTypeIDConstant": GetTypeIDConstant,
+		"IsIntType":         IsIntType,
+		"IsStrType":         IsStrType,
 		"UseStdLibrary": func(libs ...string) string {
 			cu.rootScope.imports.UseStdLibrary(libs...)
 			return ""
@@ -428,6 +431,7 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 			})
 			return ret
 		},
+		"backquoted": BackQuoted,
 	}
 	return m
 }
@@ -461,4 +465,8 @@ func JoinPath(elem ...string) string {
 		return strings.ReplaceAll(filepath.Join(elem...), "\\", "/")
 	}
 	return filepath.Join(elem...)
+}
+
+func BackQuoted(s string) string {
+	return "`" + s + "`"
 }

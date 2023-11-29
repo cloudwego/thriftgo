@@ -51,6 +51,26 @@ func IsBaseType(t *parser.Type) bool {
 	return false
 }
 
+// IsBaseType determines whether the given type is a base type.
+func IsIntType(t *parser.Type) bool {
+	switch t.Category {
+	case parser.Category_Byte, parser.Category_I16, parser.Category_I32, parser.Category_I64, parser.Category_Enum:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsBaseType determines whether the given type is a base type.
+func IsStrType(t *parser.Type) bool {
+	switch t.Category {
+	case parser.Category_String, parser.Category_Binary:
+		return true
+	default:
+		return false
+	}
+}
+
 // NeedRedirect deterimines whether the given field should result in a pointer type.
 // Condition: struct-like || (optional non-binary base type without default vlaue).
 func NeedRedirect(f *parser.Field) bool {

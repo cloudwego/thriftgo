@@ -14,7 +14,9 @@
 
 package trim
 
-import "github.com/cloudwego/thriftgo/parser"
+import (
+	"github.com/cloudwego/thriftgo/parser"
+)
 
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
@@ -30,24 +32,27 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listStruct []*parser.StructLike
 	for i := range ast.Structs {
-		if t.marks[filename][ast.Structs[i]] {
+		if t.marks[filename][ast.Structs[i]] || t.checkPreserve(ast.Structs[i]) {
 			listStruct = append(listStruct, ast.Structs[i])
+			t.fieldsTrimmed -= len(ast.Structs[i].Fields)
 		}
 	}
 	ast.Structs = listStruct
 
 	var listUnion []*parser.StructLike
 	for i := range ast.Unions {
-		if t.marks[filename][ast.Unions[i]] {
+		if t.marks[filename][ast.Unions[i]] || t.checkPreserve(ast.Unions[i]) {
 			listUnion = append(listUnion, ast.Unions[i])
+			t.fieldsTrimmed -= len(ast.Unions[i].Fields)
 		}
 	}
 	ast.Unions = listUnion
 
 	var listException []*parser.StructLike
 	for i := range ast.Exceptions {
-		if t.marks[filename][ast.Exceptions[i]] {
+		if t.marks[filename][ast.Exceptions[i]] || t.checkPreserve(ast.Exceptions[i]) {
 			listException = append(listException, ast.Exceptions[i])
+			t.fieldsTrimmed -= len(ast.Exceptions[i].Fields)
 		}
 	}
 	ast.Exceptions = listException
@@ -55,7 +60,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	var listService []*parser.Service
 	for i := range ast.Services {
 		if t.marks[filename][ast.Services[i]] {
-			if t.trimMethods != nil {
+			if len(t.trimMethods) != 0 {
 				var trimmedMethods []*parser.Function
 				for j := range ast.Services[i].Functions {
 					if t.marks[filename][ast.Services[i].Functions[j]] {
@@ -65,7 +70,14 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 				ast.Services[i].Functions = trimmedMethods
 			}
 			listService = append(listService, ast.Services[i])
+			t.fieldsTrimmed -= len(ast.Services[i].Functions)
 		}
 	}
 	ast.Services = listService
+	ast.Name2Category = nil
+	for _, inc := range ast.Includes {
+		inc.Used = nil
+	}
+
+	t.structsTrimmed -= len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
 }
