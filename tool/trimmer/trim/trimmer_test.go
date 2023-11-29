@@ -101,7 +101,7 @@ func TestTrimMethod(t *testing.T) {
 	methods := make([]string, 1)
 	methods[0] = "func1"
 
-	err = TrimAST(&TrimASTArg{
+	_, _, err = TrimAST(&TrimASTArg{
 		Ast:         ast,
 		TrimMethods: methods,
 		Preserve:    nil,
