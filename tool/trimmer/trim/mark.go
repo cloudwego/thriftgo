@@ -36,12 +36,12 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		return
 	}
 
-	if t.trimMethods == nil {
+	if len(t.trimMethods) == 0 {
 		t.marks[filename][svc] = true
 	}
 
 	for _, function := range svc.Functions {
-		if t.trimMethods != nil {
+		if len(t.trimMethods) != 0 {
 			funcName := svc.Name + "." + function.Name
 			for i, method := range t.trimMethods {
 				if ok, _ := method.MatchString(funcName); ok {
@@ -55,7 +55,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		t.markFunction(function, ast, filename)
 	}
 
-	if t.trimMethods != nil && (svc.Extends != "" || svc.Reference != nil) {
+	if len(t.trimMethods) != 0 && (svc.Extends != "" || svc.Reference != nil) {
 		t.traceExtendMethod(svc, svc, ast, filename)
 	}
 
