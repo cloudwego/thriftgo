@@ -39,6 +39,8 @@ type Trimmer struct {
 	preserveRegex    *regexp.Regexp
 	forceTrimming    bool
 	preservedStructs []string
+	structsTrimmed   int
+	fieldsTrimmed    int
 }
 
 type TrimASTArg struct {
@@ -48,7 +50,7 @@ type TrimASTArg struct {
 }
 
 // TrimAST parse the cfg and trim the single AST
-func TrimAST(arg *TrimASTArg) error {
+func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error) {
 	var preservedStructs []string
 	if wd, err := os.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
@@ -71,10 +73,11 @@ func TrimAST(arg *TrimASTArg) error {
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, preservedStructs []string) error {
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, preservedStructs []string) (
+	structureTrimmed int, fieldTrimmed int, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
@@ -94,6 +97,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 		check(err)
 	}
 	trimmer.preservedStructs = preservedStructs
+	trimmer.countStructs(ast)
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
@@ -111,7 +115,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 		}
 	}
 
-	return nil
+	return trimmer.structsTrimmed, trimmer.fieldsTrimmed, nil
 }
 
 // Trim to trim thrift files to remove unused fields
@@ -138,6 +142,25 @@ func Trim(files, includeDir []string, outDir string) error {
 	}
 
 	return nil
+}
+
+func (t *Trimmer) countStructs(ast *parser.Thrift) {
+	t.structsTrimmed += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
+	for _, v := range ast.Structs {
+		t.fieldsTrimmed += len(v.Fields)
+	}
+	for _, v := range ast.Services {
+		t.fieldsTrimmed += len(v.Functions)
+	}
+	for _, v := range ast.Unions {
+		t.fieldsTrimmed += len(v.Fields)
+	}
+	for _, v := range ast.Exceptions {
+		t.fieldsTrimmed += len(v.Fields)
+	}
+	for _, v := range ast.Includes {
+		t.countStructs(v.Reference)
+	}
 }
 
 // make and init a trimmer with related parameters

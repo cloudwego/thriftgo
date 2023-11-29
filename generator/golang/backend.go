@@ -86,11 +86,12 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	g.log = log
 	g.prepareUtilities()
 	if g.utils.Features().TrimIDL {
-		err := trim.TrimAST(&trim.TrimASTArg{Ast: req.AST, TrimMethods: nil, Preserve: nil})
+		g.log.Warn("You Are Using IDL Trimmer")
+		structureTrimmed, fieldTrimmed, err := trim.TrimAST(&trim.TrimASTArg{Ast: req.AST, TrimMethods: nil, Preserve: nil})
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
 		}
-		g.log.Warn("You Are Using IDL Trimmer")
+		g.log.Warn(fmt.Sprintf("removed %d unused structures with %d fields", structureTrimmed, fieldTrimmed))
 	}
 	g.prepareTemplates()
 	g.fillRequisitions()
