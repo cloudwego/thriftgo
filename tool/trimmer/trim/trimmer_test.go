@@ -124,7 +124,7 @@ func TestPreserve(t *testing.T) {
 
 	preserve := false
 
-	err = TrimAST(&TrimASTArg{
+	_, _, err = TrimAST(&TrimASTArg{
 		Ast:         ast,
 		TrimMethods: nil,
 		Preserve:    &preserve,
