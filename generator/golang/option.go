@@ -55,7 +55,9 @@ type Features struct {
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
-	WithFieldMask          bool `with_field_mask:"Support field-mask for generated code."`
+
+	JSONStringer  bool `json_stringer:"Generate the JSON marshal method in String() method."`
+	WithFieldMask bool `with_field_mask:"Support field-mask for generated code."`
 }
 
 var defaultFeatures = Features{
@@ -86,6 +88,7 @@ var defaultFeatures = Features{
 	GenerateReflectionInfo: false,
 	EnumAsINT32:            false,
 	TrimIDL:                false,
+	JSONStringer:           false,
 	WithFieldMask:          false,
 }
 

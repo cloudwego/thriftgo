@@ -107,11 +107,18 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{template "StructLikeWriteField" .}}
 
 func (p *{{$TypeName}}) String() string {
+	{{- if Features.JSONStringer}}
+	{{- UseStdLibrary "json_utils"}}
+		JsonBytes , _  := json_utils.JSONFunc(p)
+		return string(JsonBytes)
+	{{- else}}
 	if p == nil {
 		return "<nil>"
 	}
 	{{- UseStdLibrary "fmt"}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
+	{{- end}}
+
 }
 
 {{- if eq .Category "exception"}}
