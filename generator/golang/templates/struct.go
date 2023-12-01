@@ -583,8 +583,8 @@ var FieldReadMap = `
 		{{- $ctx := .KeyCtx.WithDecl.WithTarget $key}}
 		{{- template "FieldRead" $ctx}}
 		{{- if Features.WithFieldMask}}
-		{{- if $isIntKey}}
 		{{- $curFieldMask = "nfm"}}
+		{{- if $isIntKey}}
 		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(int({{$key}})); !ex {
 			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
 				return err
@@ -592,7 +592,6 @@ var FieldReadMap = `
 			continue
 		} else {
 		{{- else if $isStrKey}}
-		{{- $curFieldMask = "nfm"}}
 		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Str(string({{$key}})); !ex {
 			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
 				return err
@@ -600,8 +599,12 @@ var FieldReadMap = `
 			continue
 		} else {
 		{{- else}}
-		{{$curFieldMask}} = nil
-		_ = {{$curFieldMask}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(0); !ex {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
+			continue
+		} else {
 		{{- end}}
 		{{- end}}{{/* end WithFieldMask */}}
 		{{/* line break */}}
@@ -614,7 +617,7 @@ var FieldReadMap = `
 		{{end}}
 
 		{{.Target}}[{{$key}}] = {{$val}}
-		{{- if and Features.WithFieldMask (or $isIntKey $isStrKey)}}
+		{{- if and Features.WithFieldMask}}
 		}
 		{{- end}}
 	}
@@ -762,7 +765,7 @@ var FieldWriteMap = `
 {{- $isStrKey := .KeyCtx.Type | IsStrType -}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
 {{- $curFieldMask := .FieldMask -}}
-	{{- if and Features.WithFieldMask (or $isIntKey $isStrKey) }}
+	{{- if and Features.WithFieldMask (or $isStrKey $isIntKey) }}
 	if !{{.FieldMask}}.All() {
 		l := len({{.Target}})
 		for k := range {{.Target}} {
@@ -800,27 +803,27 @@ var FieldWriteMap = `
 	{{- end}}
 	for k, v := range {{.Target}} {
 		{{- if Features.WithFieldMask}}
-		{{- if $isIntKey}}
 		{{- $curFieldMask = "nfm"}}
+		{{- if $isIntKey}}
 		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(int(k)); !ex {
 			continue
 		} else {
 		{{- else if $isStrKey}}
-		{{- $curFieldMask = "nfm"}}
 		ks := string(k)
 		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Str(ks); !ex {
 			continue
 		} else {
 		{{- else}}
-		{{$curFieldMask}} = nil
-		_ = {{$curFieldMask}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(0); !ex {
+			continue
+		} else {
 		{{- end}}
 		{{- end}}{{/* end Features.WithFieldMask */}}
 		{{- $ctx := .KeyCtx.WithTarget "k" -}}
 		{{- template "FieldWrite" $ctx}}
 		{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 		{{- template "FieldWrite" $ctx}}
-		{{- if and Features.WithFieldMask (or $isIntKey $isStrKey)}}
+		{{- if and Features.WithFieldMask }}
 		}
 		{{- end}}
 	}

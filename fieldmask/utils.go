@@ -59,12 +59,12 @@ func switchFt(desc *thrift_reflection.TypeDescriptor) FieldMaskType {
 		case "string", "binary":
 			return FtStrMap
 		default:
-			return FtInvalid
+			return FtScalar // NOTICE: mean fieldmask exist and is all
 		}
 	} else if desc.IsStruct() {
 		return FtStruct
 	} else {
-		return FtInvalid
+		return FtInvalid // NOTICE: mean fieldmask not exist
 	}
 }
 
@@ -80,7 +80,7 @@ func unwrapDesc(desc *thrift_reflection.TypeDescriptor) *thrift_reflection.TypeD
 }
 
 func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescriptor) error {
-	// println("[SetPath]: ", path)
+	println("[SetPath]: ", path)
 
 	curDesc = unwrapDesc(curDesc)
 	if curDesc == nil {
@@ -96,7 +96,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			return errPath(stok, "")
 		}
 		styp := stok.Type()
-		// println("stoken: ", stok.String())
+		println("stoken: ", stok.String())
 
 		if styp == pathTypeRoot {
 			cur.typ = switchFt(curDesc)
@@ -112,7 +112,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			if cur.typ != FtStruct {
 				return errDesc(curDesc, "expect STRUCT")
 			}
-			// println("struct: ", st.Name)
+			println("struct: ", st.Name)
 
 			// get field name or field id
 			tok := it.Next()
@@ -120,11 +120,11 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errPath(tok, "isn't field-name or field-id")
 			}
 			typ := tok.Type()
-			// println("token: ", tok.String())
+			println("token: ", tok.String())
 
 			all := cur.All()
 			if all {
-				return errPath(tok, "conflicts with previously-set all (*) fields")
+				return errPath(tok, "field conflicts with previously settled '*'")
 			}
 
 			var f *thrift_reflection.FieldDescriptor
@@ -191,10 +191,6 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 
 			all := cur.All()
-			if all {
-				return errPath(stok, "conflicts with previously-set all (*) index")
-			}
-
 			ids := []int{}
 			empty := true
 			// iter indexies...
@@ -214,7 +210,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				empty = false
 
-				if all || typ == pathTypeElem {
+				if typ == pathTypeElem {
 					continue
 				}
 
@@ -225,9 +221,14 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					continue
 				}
 
+				if all {
+					return errPath(tok, "id conflicts with previously settled '*'")
+				}
+
 				if typ != pathTypeLitInt {
 					return errPath(tok, "isn't literal")
 				}
+
 				id := tok.val.Int()
 				ids = append(ids, id)
 			}
@@ -257,7 +258,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			if !curDesc.IsMap() {
 				return errDesc(curDesc, "isn't MAP")
 			}
-			if cur.typ != FtIntMap && cur.typ != FtStrMap {
+			if cur.typ != FtIntMap && cur.typ != FtStrMap && cur.typ != FtScalar {
 				return errDesc(curDesc, "expect MAP")
 			}
 
@@ -277,10 +278,6 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			}
 
 			all := cur.All()
-			if all {
-				return errPath(stok, "conflicts with previously-set all (*) keys")
-			}
-
 			isInt := cur.typ == FtIntMap
 			isStr := cur.typ == FtStrMap
 			empty := true
@@ -302,7 +299,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				}
 				empty = false
 
-				if all || typ == pathTypeElem {
+				if typ == pathTypeElem {
 					continue
 				}
 
@@ -315,20 +312,24 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					continue
 				}
 
+				if all {
+					return errPath(tok, "key conflicts with previous settled '*'")
+				}
+
 				if typ == pathTypeLitInt {
-					if isStr {
+					if !isInt {
 						return errPath(tok, "expect string but got integer")
 					}
 					id := tok.val.Int()
 					ids = append(ids, id)
 				} else if typ == pathTypeStr {
-					if isInt {
+					if !isStr {
 						return errPath(tok, "expect integer but got string")
 					}
 					id := tok.val.Str()
 					strs = append(strs, id)
 				} else {
-					return errPath(tok, "expect integer or string element")
+					return errPath(tok, "expect integer or string or '*' as key")
 				}
 			}
 

@@ -77,7 +77,7 @@ func (self *FieldMask) marshalBegin(buf *[]byte) error {
 }
 
 func (self *FieldMask) marshalRec(buf *[]byte) error {
-	if self.typ == FtScalar || (self.isAll && self.all == nil) {
+	if self.All() && self.all == nil {
 		write(buf, "}")
 		return nil
 	}
@@ -208,7 +208,16 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 		return nil
 	}
 
-	if s.Type == FtStruct {
+	if s.Type == FtScalar {
+		is, err := self.checkAll(&s.Children[0])
+		if err != nil {
+			return err
+		}
+		if !is {
+			return errors.New("expect * for the child")
+		}
+		return nil
+	} else if s.Type == FtStruct {
 		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
 				return err

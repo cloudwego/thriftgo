@@ -15,12 +15,14 @@
 package fieldmask
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"testing"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/fieldmask"
+	"github.com/davecgh/go-spew/spew"
 
 	// abase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-go/base"
 	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-new/base"
@@ -30,7 +32,7 @@ import (
 
 var fieldmaskCache sync.Map
 
-func init() {
+func initFielMask() {
 	// new a obj to get its TypeDescriptor
 	obj := nbase.NewBase()
 
@@ -46,6 +48,7 @@ func init() {
 }
 
 func TestFieldMask_Write(t *testing.T) {
+	initFielMask()
 	// biz logic: handle and get final response object
 	obj := SampleNewBase()
 
@@ -93,19 +96,17 @@ func TestFieldMask_Read(t *testing.T) {
 	buf := thrift.NewTMemoryBufferLen(1024)
 	prot := thrift.NewTBinaryProtocol(buf, true, true)
 
-	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
-		"$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	if err := obj.Write(prot); err != nil {
 		t.Fatal(err)
 	}
 
 	obj2 := nbase.NewBase()
-	obj2.Set_FieldMask(fm)
-	err = obj2.Read(prot)
+	fm, _ := fieldmaskCache.Load("Mask1ForBase")
+	if fm != nil {
+		obj2.Set_FieldMask(fm.(*fieldmask.FieldMask))
+	}
+
+	err := obj2.Read(prot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,6 +126,58 @@ func TestFieldMask_Read(t *testing.T) {
 	require.Equal(t, 1, len(obj2.Meta.List))
 	require.Equal(t, "b", obj2.Meta.Set[0].ID)
 	require.Equal(t, 1, len(obj2.Meta.Set))
+}
+
+func TestMaskRequired(t *testing.T) {
+	fm, err := fieldmask.NewFieldMask(nbase.NewBaseResp().GetTypeDescriptor(), "$.F1", "$.F8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spew.Dump(fm)
+	j, err := fm.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	println(string(j))
+	nf, ex := fm.Field(111)
+	if !ex {
+		t.Fatal(nf)
+	}
+
+	t.Run("read", func(t *testing.T) {
+		obj := nbase.NewBaseResp()
+		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
+		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		buf := thrift.NewTMemoryBufferLen(1024)
+		prot := thrift.NewTBinaryProtocol(buf, true, true)
+		if err := obj.Write(prot); err != nil {
+			t.Fatal(err)
+		}
+		obj2 := nbase.NewBaseResp()
+		obj2.Set_FieldMask(fm)
+		if err := obj2.Read(prot); err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("%#v\n", obj2)
+	})
+
+	// t.Run("write", func(t *testing.T) {
+	// 	obj := nbase.NewBaseResp()
+	// 	obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
+	// 	obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+	// 	obj.Set_FieldMask(fm)
+	// 	buf := thrift.NewTMemoryBufferLen(1024)
+	// 	prot := thrift.NewTBinaryProtocol(buf, true, true)
+	// 	if err := obj.Write(prot); err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// 	obj2 := nbase.NewBaseResp()
+	// 	if err := obj2.Read(prot); err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// 	fmt.Printf("%#v\n", obj2)
+	// })
+
 }
 
 func SampleNewBase() *nbase.Base {

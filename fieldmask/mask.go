@@ -68,7 +68,7 @@ func (ft *FieldMaskType) UnmarshalText(in []byte) error {
 const (
 	// Invalid or unsupported thrift type
 	FtInvalid FieldMaskType = iota
-	// thrift scalar types, including BOOL/I8/I16/I32/I64/DOUBLE/STRING/BINARY
+	// thrift scalar types, including BOOL/I8/I16/I32/I64/DOUBLE/STRING/BINARY, or neither-string-nor-integer-typed-key MAP
 	FtScalar
 	// thrift LIST/SET
 	FtList

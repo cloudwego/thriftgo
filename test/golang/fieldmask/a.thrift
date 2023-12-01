@@ -59,6 +59,7 @@ typedef Val Key
 
 struct Val {
 	1: string id
+	2: string name
 }
 
 typedef double Float
@@ -98,5 +99,6 @@ struct BaseResp {
 	110: map<Ex, string> F7
 	111: map<double, list<Str>> F8
 	112: list<map<Float, list<Str>>> F9
+	113: map<Key, Val> F10
 }
 
