@@ -179,17 +179,9 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 		{{- $isBaseVal := .Type | IsBaseType}}
 		case {{.ID}}:
 			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }} {
-				{{- if Features.WithFieldMask}}
-				if {{if $isBaseVal}}_{{else}}nfm{{end}}, ex := p._fieldmask.Field(fieldId); ex {
-				{{- end}}
-				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask (not $isBaseVal)}}, nfm{{end}}); err != nil {
+				if err = p.{{.Reader}}(iprot); err != nil {
 					goto ReadFieldError
 				}
-				{{- if Features.WithFieldMask}}
-				} else if err = iprot.Skip(fieldTypeId); err != nil {
-					goto SkipFieldError
-				}
-				{{- end}}
 				{{- if .Requiredness.IsRequired}}
 				isset{{.GoName}} = true
 				{{- end}}
@@ -279,9 +271,17 @@ var StructLikeReadField = `
 {{- range .Fields}}
 {{$FieldName := .GoName}}
 {{- $isBaseVal := .Type | IsBaseType -}}
-func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol{{if and Features.WithFieldMask (not $isBaseVal)}}, fm *fieldmask.FieldMask{{end}}) error {
+func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
+	{{- if Features.WithFieldMask}}
+	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex {
+	{{- end}}
 	{{$ctx := (MkRWCtx .).WithFieldMask "fm"}}
 	{{- template "FieldRead" $ctx}}
+	{{- if Features.WithFieldMask}}
+	} else if err := iprot.Skip(thrift.{{.Type | GetTypeIDConstant}}); err != nil {
+		return err
+	}
+	{{- end}}
 	return nil
 }
 {{- end}}{{/* range .Fields */}}

@@ -22,7 +22,6 @@ import (
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/fieldmask"
-	"github.com/davecgh/go-spew/spew"
 
 	// abase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-go/base"
 	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-new/base"
@@ -133,7 +132,6 @@ func TestMaskRequired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	spew.Dump(fm)
 	j, err := fm.MarshalJSON()
 	if err != nil {
 		t.Fatal(err)
