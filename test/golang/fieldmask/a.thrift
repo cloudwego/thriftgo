@@ -77,7 +77,7 @@ struct BaseResp {
 	1: required string StatusMessage = "",
 	2: required i32 StatusCode = 0,
 	3: required bool R3,
-	4: required i8 R4,
+	4: required byte R4,
 	5: required i16 R5,
 	6: required i64 R6,
 	7: required double R7,
