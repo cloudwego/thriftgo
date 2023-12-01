@@ -54,8 +54,13 @@ $ | the root object,every path must start with it.
 [`index`,`index`...] | get any number of elements in an List/Set corepsonding to indices. Indices must be integer.For example: `$.FieldList[1,3,4]` .Notice: a index beyond actual list size can written but is useless.
 {"`key`","`key`"...} | get any number of values corepsonding to key in a string-typed-key map. For example: `$.StrMap{"abcd","1234"}` 
 {`id`,`id`...} | get the child field with specific id in a integer-typed-key map. For example, `$.IntMap{1,2}` 
-\* | get **ALL** fields/elements, that is: `$.StrMap{*}.FieldX` menas gets all the elements' FieldX in a map Root.StrMap; `$.List[*].FieldX` means get all the elements' FieldX in a list Root.List
+\* | get **ALL** fields/elements, that is: `$.StrMap{*}.FieldX` menas gets all the elements' FieldX in a map Root.StrMap; `$.List[*].FieldX` means get all the elements' FieldX in a list Root.List. 
 </byte-sheet-html-origin><!--EndFragment-->
+
+#### Agreement Of Implementation
+- A field in mask means "PASS" (**will be** serialized/deserialized),  and the other field not in mask means "Filtered" ((**won't be** serialized/deserialized))
+- A empty mask means "PASS ALL" (all field is "PASS")
+- For map of neither-string-nor-integer typed key, only syntax token of all '*' (see above) is allowed in
 
 ### Type Descriptor
 Type descriptor is the runtime representation of a message definition, in aligned with [Protobuf Descriptor](https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto). To get a type descriptor, you must enable thrift reflection feature first, which was introduced in thriftgo [v0.3.0](https://github.com/cloudwego/thriftgo/pull/83). you can generate related codes for this feature using option `with_reflection`.
