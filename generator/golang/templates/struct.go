@@ -185,15 +185,15 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 				if err = p.{{.Reader}}(iprot{{if and Features.WithFieldMask (not $isBaseVal)}}, nfm{{end}}); err != nil {
 					goto ReadFieldError
 				}
+				{{- if Features.WithFieldMask}}
+				} else if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+				{{- end}}
 				{{- if .Requiredness.IsRequired}}
 				isset{{.GoName}} = true
 				{{- end}}
-				break
-				{{- if Features.WithFieldMask}}
-				}
-				{{- end}}
-			}
-			if err = iprot.Skip(fieldTypeId); err != nil {
+			} else if err = iprot.Skip(fieldTypeId); err != nil {
 				goto SkipFieldError
 			}
 		{{- end}}{{/* range .Fields */}}
@@ -308,17 +308,11 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	}
 	if p != nil {
 		{{- range .Fields}}
-		{{- $isBaseVal := .Type | IsBaseType}}
-		{{- if Features.WithFieldMask}}
-		if {{if $isBaseVal}}_{{else}}nfm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex { 
-		{{- end}}
-		if err = p.{{.Writer}}(oprot{{if and Features.WithFieldMask (not $isBaseVal)}}, nfm{{end}}); err != nil {
+		if err = p.{{.Writer}}(oprot); err != nil {
 			fieldId = {{.ID}}
 			goto WriteFieldError
 		}
-		{{- if Features.WithFieldMask}}
-		}
-		{{- end}}
+		
 		{{- end}}{{/* range .Fields */}}
 		{{- if Features.KeepUnknownFields}}
 		if err = p._unknownFields.Write(oprot); err != nil {
@@ -365,9 +359,12 @@ var StructLikeWriteField = `
 {{- $IsSetName := .IsSetter}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
 {{- $isBaseVal := .Type | IsBaseType -}}
-func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol{{if and Features.WithFieldMask (not $isBaseVal)}}, fm *fieldmask.FieldMask{{end}}) (err error) {
+func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
+	{{- end}}
+	{{- if Features.WithFieldMask}}
+	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex { 
 	{{- end}}
 	if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 		goto WriteFieldBeginError
@@ -377,6 +374,21 @@ func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol{{if and Features.With
 	if err = oprot.WriteFieldEnd(); err != nil {
 		goto WriteFieldEndError
 	}
+	{{- if Features.WithFieldMask}}
+	{{- if .Requiredness.IsRequired}}
+	} else {
+		if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
+			goto WriteFieldBeginError
+		}
+		{{ ZeroWriter .Type "oprot" "WriteFieldBeginError" Features.EnumAsINT32 }}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	{{- else}}
+	}
+	{{- end}}
+	{{- end}}
 	{{- if .Requiredness.IsOptional}}
 	}
 	{{- end}}
@@ -589,6 +601,7 @@ var FieldReadMap = `
 		} else {
 		{{- else}}
 		{{$curFieldMask}} = nil
+		_ = {{$curFieldMask}}
 		{{- end}}
 		{{- end}}{{/* end WithFieldMask */}}
 		{{/* line break */}}
@@ -800,6 +813,7 @@ var FieldWriteMap = `
 		} else {
 		{{- else}}
 		{{$curFieldMask}} = nil
+		_ = {{$curFieldMask}}
 		{{- end}}
 		{{- end}}{{/* end Features.WithFieldMask */}}
 		{{- $ctx := .KeyCtx.WithTarget "k" -}}

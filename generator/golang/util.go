@@ -381,12 +381,14 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		},
 
 		"IsBaseType":        IsBaseType,
+		"ZeroWriter":        ZeroWriter,
 		"NeedRedirect":      NeedRedirect,
 		"IsFixedLengthType": IsFixedLengthType,
 		"SupportIsSet":      SupportIsSet,
 		"GetTypeIDConstant": GetTypeIDConstant,
 		"IsIntType":         IsIntType,
 		"IsStrType":         IsStrType,
+		"IsFieldMaskType":   IsFieldMaskType,
 		"UseStdLibrary": func(libs ...string) string {
 			cu.rootScope.imports.UseStdLibrary(libs...)
 			return ""

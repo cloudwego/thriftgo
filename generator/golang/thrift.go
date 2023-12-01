@@ -51,7 +51,71 @@ func IsBaseType(t *parser.Type) bool {
 	return false
 }
 
+func checkErrorTPL(assign string, err string) string {
+	return "if err := " + assign + "; err != nil {\n goto " + err + "\n}\n"
+}
+
 // IsBaseType determines whether the given type is a base type.
+func ZeroWriter(t *parser.Type, oprot string, err string, enumAsI32 bool) string {
+	switch t.GetCategory() {
+	case parser.Category_Bool:
+		return checkErrorTPL(oprot+".WriteBool(false)", err)
+	case parser.Category_Byte:
+		return checkErrorTPL(oprot+".WriteByte(0)", err)
+	case parser.Category_I16:
+		return checkErrorTPL(oprot+".WriteI16(0)", err)
+	case parser.Category_I32:
+		return checkErrorTPL(oprot+".WriteI32(0)", err)
+	case parser.Category_I64:
+		return checkErrorTPL(oprot+".WriteI64(0)", err)
+	case parser.Category_Double:
+		return checkErrorTPL(oprot+".WriteDouble(0)", err)
+	case parser.Category_String:
+		return checkErrorTPL(oprot+".WriteString(\"\")", err)
+	case parser.Category_Binary:
+		return checkErrorTPL(oprot+".WriteBinary([]byte{})", err)
+	case parser.Category_Enum:
+		if enumAsI32 {
+			return checkErrorTPL(oprot+".WriteI32(0)", err)
+		} else {
+			return checkErrorTPL(oprot+".WriteI64(0)", err)
+		}
+	case parser.Category_Map:
+		return checkErrorTPL(oprot+".WriteMapBegin(thrift."+GetTypeIDConstant(t.GetKeyType())+
+			",thrift."+GetTypeIDConstant(t.GetValueType())+",0)", err) + checkErrorTPL(oprot+".WriteMapEnd()", err)
+	case parser.Category_List:
+		return checkErrorTPL(oprot+".WriteListBegin(thrift."+GetTypeIDConstant(t.GetValueType())+
+			",0)", err) + checkErrorTPL(oprot+".WriteListEnd()", err)
+	case parser.Category_Set:
+		return checkErrorTPL(oprot+".WriteSetBegin(thrift."+GetTypeIDConstant(t.GetValueType())+
+			",0)", err) + checkErrorTPL(oprot+".WriteSetEnd()", err)
+	case parser.Category_Struct:
+		return checkErrorTPL(oprot+".WriteStructBegin(\"\")", err) + checkErrorTPL(oprot+".WriteFieldStop()", err) +
+			checkErrorTPL(oprot+".WriteStructEnd()", err)
+	default:
+		panic("unsuported type zero writer for" + t.Name)
+	}
+}
+
+// IsBaseType determines whether the given type is a base type.
+func IsFieldMaskType(t *parser.Type) bool {
+	switch t.Category {
+	case parser.Category_Bool, parser.Category_Byte, parser.Category_I16, parser.Category_I32,
+		parser.Category_I64, parser.Category_Double, parser.Category_Enum, parser.Category_Binary, parser.Category_String:
+		return false
+	case parser.Category_List, parser.Category_Set, parser.Category_Struct:
+		return true
+	case parser.Category_Map:
+		if IsStrType(t.GetKeyType()) || IsIntType(t.GetKeyType()) {
+			return true
+		}
+		return false
+	default:
+		panic("unexpected type:" + t.GetName())
+	}
+}
+
+// IsIntType determines whether the given type is a Int type.
 func IsIntType(t *parser.Type) bool {
 	switch t.Category {
 	case parser.Category_Byte, parser.Category_I16, parser.Category_I32, parser.Category_I64, parser.Category_Enum:
@@ -61,7 +125,7 @@ func IsIntType(t *parser.Type) bool {
 	}
 }
 
-// IsBaseType determines whether the given type is a base type.
+// IsStrType determines whether the given type is a Str type.
 func IsStrType(t *parser.Type) bool {
 	switch t.Category {
 	case parser.Category_String, parser.Category_Binary:

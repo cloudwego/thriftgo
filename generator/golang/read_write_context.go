@@ -63,6 +63,10 @@ func (c *ReadWriteContext) WithFieldMask(fm string) *ReadWriteContext {
 	return c
 }
 
+func (c *ReadWriteContext) NeedFielMask() bool {
+	return c.FieldMask != ""
+}
+
 // WithTarget sets the target name.
 func (c *ReadWriteContext) WithTarget(t string) *ReadWriteContext {
 	c.Target = t

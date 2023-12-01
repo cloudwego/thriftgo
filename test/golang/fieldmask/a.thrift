@@ -24,7 +24,7 @@ struct TrafficEnv {
 }
 
 struct Base {
-	0: string Addr = "",
+	0: required string Addr = "",
 	1: string LogID = "",
 	2: string Caller = "",
 	5: optional TrafficEnv TrafficEnv,
@@ -74,17 +74,29 @@ enum Ex {
 }
 
 struct BaseResp {
-	1: string StatusMessage = "",
-	2: i32 StatusCode = 0,
-	3: optional map<string, string> Extra,
+	1: required string StatusMessage = "",
+	2: required i32 StatusCode = 0,
+	3: required bool R3,
+	4: required i8 R4,
+	5: required i16 R5,
+	6: required i64 R6,
+	7: required double R7,
+	8: required string R8,
+	9: required Ex R9,
+	10: required list<Val> R10,
+	11: required set<Val> R11,
+	12: required TrafficEnv R12,
+	13: required map<string, Key> R13,
+	0: required Key R0,
 
-	4: map<Str, Str> F1
-	5: map<Int, string> F2,
-	6: list<string> F3
-	7: set<string> F4,
-	8: map<Float, Val> F5
-	9: map<double, string> F6
-	10: map<Ex, string> F7
-	11: map<double, list<Str>> F8
-	12: list<map<Float, list<Str>>> F9
+	14: map<Str, Str> F1
+	15: map<Int, string> F2,
+	16: list<string> F3
+	17: set<string> F4,
+	18: map<Float, Val> F5
+	19: map<double, string> F6
+	110: map<Ex, string> F7
+	111: map<double, list<Str>> F8
+	112: list<map<Float, list<Str>>> F9
 }
+
