@@ -158,25 +158,33 @@ func TestMaskRequired(t *testing.T) {
 		if err := obj2.Read(prot); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Printf("%#v\n", obj2)
+		require.Equal(t, obj.F1, obj2.F1)
+		require.Equal(t, obj.F8, obj2.F8)
 	})
 
-	// t.Run("write", func(t *testing.T) {
-	// 	obj := nbase.NewBaseResp()
-	// 	obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
-	// 	obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
-	// 	obj.Set_FieldMask(fm)
-	// 	buf := thrift.NewTMemoryBufferLen(1024)
-	// 	prot := thrift.NewTBinaryProtocol(buf, true, true)
-	// 	if err := obj.Write(prot); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	obj2 := nbase.NewBaseResp()
-	// 	if err := obj2.Read(prot); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	fmt.Printf("%#v\n", obj2)
-	// })
+	t.Run("write", func(t *testing.T) {
+		obj := nbase.NewBaseResp()
+		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
+		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		obj.Set_FieldMask(fm)
+		buf := thrift.NewTMemoryBufferLen(1024)
+		prot := thrift.NewTBinaryProtocol(buf, true, true)
+		if err := obj.Write(prot); err != nil {
+			t.Fatal(err)
+		}
+		// data := []byte(buf.String())
+		// v, err := dg.NewNode(dt.STRUCT, data).Interface(&dg.Options{})
+		// if err != nil {
+		// 	t.Fatal(err)
+		// }
+		// spew.Dump(v)
+
+		obj2 := nbase.NewBaseResp()
+		if err := obj2.Read(prot); err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("%#v\n", obj2)
+	})
 
 }
 

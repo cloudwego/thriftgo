@@ -358,7 +358,7 @@ var StructLikeWriteField = `
 {{- $FieldName := .GoName}}
 {{- $IsSetName := .IsSetter}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
-{{- $isBaseVal := .Type | IsBaseType -}}
+{{- $isBaseVal := .Type | IsBaseType }}
 func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
@@ -380,7 +380,7 @@ func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 		if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 			goto WriteFieldBeginError
 		}
-		{{ ZeroWriter .Type "oprot" "WriteFieldBeginError" Features.EnumAsINT32 }}
+		{{ ZeroWriter .Type "oprot" "WriteFieldBeginError" }}
 		if err = oprot.WriteFieldEnd(); err != nil {
 			goto WriteFieldEndError
 		}

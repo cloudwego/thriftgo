@@ -329,9 +329,9 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			return false
 		}
 		styp := stok.Type()
-		println("stoken: ", stok.String())
-		j, _ := cur.MarshalJSON()
-		println("cur mask: ", string(j), cur.isAll, cur.all)
+		// println("stoken: ", stok.String())
+		// j, _ := cur.MarshalJSON()
+		// println("cur mask: ", string(j), cur.isAll, cur.all)
 
 		if styp == pathTypeRoot {
 			continue
@@ -341,7 +341,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			if err != nil {
 				return false
 			}
-			println("struct: ", st.Name)
+			// println("struct: ", st.Name)
 			if cur.typ != FtStruct {
 				return false
 			}
@@ -351,7 +351,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 			typ := tok.Type()
-			println("token", tok.String())
+			// println("token", tok.String())
 
 			var f *thrift_reflection.FieldDescriptor
 			if typ == pathTypeLitInt {
@@ -375,10 +375,10 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 
 			// println("all", all, "FieldInMask:", cur.FieldInMask(int32(f.GetID())))
 			// check if name set mask
-			println("field ", f.GetID())
+			// println("field ", f.GetID())
 			nextFm, exist := cur.Field(int16(f.GetID()))
 			if !exist {
-				println("return false")
+				// println("return false")
 				return false
 			}
 
@@ -468,14 +468,12 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				if tok.Err() != nil {
 					return false
 				}
-				println("token", tok.String())
+				// println("token", tok.String())
 
 				if typ == pathTypeMapR {
-					println("break")
 					break
 				}
 				if cur.All() || typ == pathTypeElem {
-					println("continue")
 					continue
 				}
 				if typ == pathTypeAny {

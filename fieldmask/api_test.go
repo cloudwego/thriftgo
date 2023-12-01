@@ -221,17 +221,17 @@ func TestNewFieldMask(t *testing.T) {
 			retry := true
 		begin:
 
-			println("fieldmask:")
-			println(got.String(st))
+			// println("fieldmask:")
+			// println(got.String(st))
 			// spew.Dump(got)
 
 			// test marshal json
-			println("marshal:")
+			// println("marshal:")
 			out, err := got.MarshalJSON()
 			if err != nil {
 				t.Fatal(err)
 			}
-			println(string(out))
+			// println(string(out))
 			if !json.Valid(out) {
 				t.Fatal("not invalid json")
 			}

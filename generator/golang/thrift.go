@@ -56,7 +56,7 @@ func checkErrorTPL(assign string, err string) string {
 }
 
 // IsBaseType determines whether the given type is a base type.
-func ZeroWriter(t *parser.Type, oprot string, err string, enumAsI32 bool) string {
+func ZeroWriter(t *parser.Type, oprot string, err string) string {
 	switch t.GetCategory() {
 	case parser.Category_Bool:
 		return checkErrorTPL(oprot+".WriteBool(false)", err)
@@ -64,7 +64,7 @@ func ZeroWriter(t *parser.Type, oprot string, err string, enumAsI32 bool) string
 		return checkErrorTPL(oprot+".WriteByte(0)", err)
 	case parser.Category_I16:
 		return checkErrorTPL(oprot+".WriteI16(0)", err)
-	case parser.Category_I32:
+	case parser.Category_Enum, parser.Category_I32:
 		return checkErrorTPL(oprot+".WriteI32(0)", err)
 	case parser.Category_I64:
 		return checkErrorTPL(oprot+".WriteI64(0)", err)
@@ -74,12 +74,6 @@ func ZeroWriter(t *parser.Type, oprot string, err string, enumAsI32 bool) string
 		return checkErrorTPL(oprot+".WriteString(\"\")", err)
 	case parser.Category_Binary:
 		return checkErrorTPL(oprot+".WriteBinary([]byte{})", err)
-	case parser.Category_Enum:
-		if enumAsI32 {
-			return checkErrorTPL(oprot+".WriteI32(0)", err)
-		} else {
-			return checkErrorTPL(oprot+".WriteI64(0)", err)
-		}
 	case parser.Category_Map:
 		return checkErrorTPL(oprot+".WriteMapBegin(thrift."+GetTypeIDConstant(t.GetKeyType())+
 			",thrift."+GetTypeIDConstant(t.GetValueType())+",0)", err) + checkErrorTPL(oprot+".WriteMapEnd()", err)
@@ -94,24 +88,6 @@ func ZeroWriter(t *parser.Type, oprot string, err string, enumAsI32 bool) string
 			checkErrorTPL(oprot+".WriteStructEnd()", err)
 	default:
 		panic("unsuported type zero writer for" + t.Name)
-	}
-}
-
-// IsBaseType determines whether the given type is a base type.
-func IsFieldMaskType(t *parser.Type) bool {
-	switch t.Category {
-	case parser.Category_Bool, parser.Category_Byte, parser.Category_I16, parser.Category_I32,
-		parser.Category_I64, parser.Category_Double, parser.Category_Enum, parser.Category_Binary, parser.Category_String:
-		return false
-	case parser.Category_List, parser.Category_Set, parser.Category_Struct:
-		return true
-	case parser.Category_Map:
-		if IsStrType(t.GetKeyType()) || IsIntType(t.GetKeyType()) {
-			return true
-		}
-		return false
-	default:
-		panic("unexpected type:" + t.GetName())
 	}
 }
 

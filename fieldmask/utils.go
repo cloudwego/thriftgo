@@ -80,7 +80,7 @@ func unwrapDesc(desc *thrift_reflection.TypeDescriptor) *thrift_reflection.TypeD
 }
 
 func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescriptor) error {
-	println("[SetPath]: ", path)
+	// println("[SetPath]: ", path)
 
 	curDesc = unwrapDesc(curDesc)
 	if curDesc == nil {
@@ -96,7 +96,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			return errPath(stok, "")
 		}
 		styp := stok.Type()
-		println("stoken: ", stok.String())
+		// println("stoken: ", stok.String())
 
 		if styp == pathTypeRoot {
 			cur.typ = switchFt(curDesc)
@@ -112,7 +112,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 			if cur.typ != FtStruct {
 				return errDesc(curDesc, "expect STRUCT")
 			}
-			println("struct: ", st.Name)
+			// println("struct: ", st.Name)
 
 			// get field name or field id
 			tok := it.Next()
@@ -120,7 +120,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 				return errPath(tok, "isn't field-name or field-id")
 			}
 			typ := tok.Type()
-			println("token: ", tok.String())
+			// println("token: ", tok.String())
 
 			all := cur.All()
 			if all {

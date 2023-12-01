@@ -388,7 +388,6 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"GetTypeIDConstant": GetTypeIDConstant,
 		"IsIntType":         IsIntType,
 		"IsStrType":         IsStrType,
-		"IsFieldMaskType":   IsFieldMaskType,
 		"UseStdLibrary": func(libs ...string) string {
 			cu.rootScope.imports.UseStdLibrary(libs...)
 			return ""
