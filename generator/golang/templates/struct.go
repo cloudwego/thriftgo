@@ -83,9 +83,23 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 
 {{if Features.WithFieldMask}}
 func (p *{{$TypeName}}) Get_FieldMask() *fieldmask.FieldMask {
+	if p == nil {
+		return nil
+	}
 	return p._fieldmask
 }
+
 func (p *{{$TypeName}}) Set_FieldMask(fm *fieldmask.FieldMask) {
+	if p == nil {
+		return
+	}
+	p._fieldmask = fm
+}
+
+func (p *{{$TypeName}}) Pass_FieldMask(fm *fieldmask.FieldMask) {
+	if p == nil || p._fieldmask != nil {
+		return
+	}
 	p._fieldmask = fm
 }
 {{end}}{{/* if Features.WithFieldMask */}}
@@ -518,7 +532,9 @@ var FieldRead = `
 var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
 	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
-	{{if Features.WithFieldMask}}{{.Target}}.Set_FieldMask({{.FieldMask}}){{end}}
+	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
+	{{.Target}}.Pass_FieldMask({{.FieldMask}})
+	{{- end}}
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
 	}
@@ -721,10 +737,8 @@ var FieldWrite = `
 // FieldWriteStructLike .
 var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
-	{{- if Features.WithFieldMask}}
-	if {{.Target}} != nil {
-		{{.Target}}.Set_FieldMask({{.FieldMask}})
-	}
+	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
+	{{.Target}}.Pass_FieldMask({{.FieldMask}})
 	{{- end}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err

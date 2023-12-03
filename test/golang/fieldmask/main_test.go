@@ -183,7 +183,12 @@ func TestMaskRequired(t *testing.T) {
 		}
 		fmt.Printf("%#v\n", obj2)
 	})
+}
 
+func TestMaskHalfway(t *testing.T) {
+	// obj := nbase.NewBase()
+	// obj.Extra = nbase.NewExtraInfo()
+	// fm, err := fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor())
 }
 
 func SampleNewBase() *nbase.Base {
