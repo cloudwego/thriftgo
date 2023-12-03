@@ -1,4 +1,4 @@
-#! /bin/bash -e
+#! /bin/bash
 
 # Copyright 2022 CloudWeGo Authors
 #
@@ -15,20 +15,19 @@
 # limitations under the License.
 
 generate () {
-    xxx=$1
-    out=gen-${xxx}
-    opt="go:package_prefix=example.com/test/${out}"
+    out=gen-$1
+    opt="go:package_prefix=example.com/test/$out"
     idl=a.thrift
-    if [ -d ${out} ]; then
-        rm -rf ${out}
+    if [ -d $out ]; then
+        rm -rf $out
     fi
     mkdir -p $out
 
-    if [[ $xxx == new ]]; then
-        opt=$opt,with_field_mask,with_reflection
+    if [ "$1" = "new" ]; then
+        opt="$opt,with_field_mask,with_reflection"
     fi
-    echo "thriftgo -g $opt -o ${out} $idl"
-    thriftgo -g "$opt" -o ${out} $idl
+    echo "thriftgo -g $opt -o $out $idl"
+    thriftgo -g "$opt" -o $out $idl
 }
 
 generate old

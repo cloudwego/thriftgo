@@ -185,10 +185,45 @@ func TestMaskRequired(t *testing.T) {
 	})
 }
 
-func TestMaskHalfway(t *testing.T) {
-	// obj := nbase.NewBase()
-	// obj.Extra = nbase.NewExtraInfo()
-	// fm, err := fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor())
+func TestSetMaskHalfway(t *testing.T) {
+	obj := nbase.NewBase()
+	obj.Extra = nbase.NewExtraInfo()
+	obj.Extra.F1 = map[string]string{"a": "b"}
+	obj.Extra.F8 = map[int64][]*nbase.Key{1: []*nbase.Key{nbase.NewKey()}}
+
+	fm, err := fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor(), "$.F1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj.Extra.Set_FieldMask(fm)
+	buf := thrift.NewTMemoryBufferLen(1024)
+	prot := thrift.NewTBinaryProtocol(buf, true, true)
+	if err := obj.Write(prot); err != nil {
+		t.Fatal(err)
+	}
+
+	obj2 := nbase.NewBase()
+	if err := obj2.Read(prot); err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, obj.Extra.F1, obj2.Extra.F1)
+	require.Equal(t, map[int64][]*nbase.Key(nil), obj2.Extra.F8)
+
+	fm, err = fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor(), "$.F8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj.Extra.Set_FieldMask(fm)
+	if err := obj.Write(prot); err != nil {
+		t.Fatal(err)
+	}
+
+	obj2 = nbase.NewBase()
+	if err := obj2.Read(prot); err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, map[string]string(nil), obj2.Extra.F1)
+	require.Equal(t, obj.Extra.F8, obj2.Extra.F8)
 }
 
 func SampleNewBase() *nbase.Base {
