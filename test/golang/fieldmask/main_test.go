@@ -37,7 +37,7 @@ func initFielMask() {
 
 	// construct a fieldmask with TypeDescriptor and thrift pathes
 	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
-		"$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[1]")
+		"$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[0].id", "$.Meta.Set[1].name")
 	if err != nil {
 		panic(err)
 	}
@@ -84,13 +84,18 @@ func TestFieldMask_Write(t *testing.T) {
 	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.IntMap[0])
 	require.Equal(t, obj.Meta.StrMap["1234"].ID, obj2.Meta.StrMap["1234"].ID)
 	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.StrMap["abcd"])
-	require.Equal(t, "b", obj2.Meta.List[0].ID)
 	require.Equal(t, 1, len(obj2.Meta.List))
-	require.Equal(t, "b", obj2.Meta.Set[0].ID)
-	require.Equal(t, 1, len(obj2.Meta.Set))
+	require.Equal(t, "b", obj2.Meta.List[0].ID)
+	require.Equal(t, "b", obj2.Meta.List[0].Name)
+	require.Equal(t, 2, len(obj2.Meta.Set))
+	require.Equal(t, "a", obj2.Meta.Set[0].ID)
+	require.Equal(t, "", obj2.Meta.Set[0].Name)
+	require.Equal(t, "", obj2.Meta.Set[1].ID)
+	require.Equal(t, "b", obj2.Meta.Set[1].Name)
 }
 
 func TestFieldMask_Read(t *testing.T) {
+	initFielMask()
 	obj := SampleNewBase()
 	buf := thrift.NewTMemoryBufferLen(1024)
 	prot := thrift.NewTBinaryProtocol(buf, true, true)
@@ -121,10 +126,14 @@ func TestFieldMask_Read(t *testing.T) {
 	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.IntMap[0])
 	require.Equal(t, obj.Meta.StrMap["1234"].ID, obj2.Meta.StrMap["1234"].ID)
 	require.Equal(t, (*nbase.Val)(nil), obj2.Meta.StrMap["abcd"])
-	require.Equal(t, "b", obj2.Meta.List[0].ID)
 	require.Equal(t, 1, len(obj2.Meta.List))
-	require.Equal(t, "b", obj2.Meta.Set[0].ID)
-	require.Equal(t, 1, len(obj2.Meta.Set))
+	require.Equal(t, "b", obj2.Meta.List[0].ID)
+	require.Equal(t, "b", obj2.Meta.List[0].Name)
+	require.Equal(t, 2, len(obj2.Meta.Set))
+	require.Equal(t, "a", obj2.Meta.Set[0].ID)
+	require.Equal(t, "", obj2.Meta.Set[0].Name)
+	require.Equal(t, "", obj2.Meta.Set[1].ID)
+	require.Equal(t, "b", obj2.Meta.Set[1].Name)
 }
 
 func TestMaskRequired(t *testing.T) {
@@ -242,9 +251,17 @@ func SampleNewBase() *nbase.Base {
 	}
 	v0 := nbase.NewVal()
 	v0.ID = "a"
+	v0.Name = "a"
 	v1 := nbase.NewVal()
 	v1.ID = "b"
+	v1.Name = "b"
 	obj.Meta.List = []*nbase.Val{v0, v1}
+	v0 = nbase.NewVal()
+	v0.ID = "a"
+	v0.Name = "a"
+	v1 = nbase.NewVal()
+	v1.ID = "b"
+	v1.Name = "b"
 	obj.Meta.Set = []*nbase.Val{v0, v1}
 	// obj.Extra = nbase.NewExtraInfo()
 	obj.TrafficEnv = nbase.NewTrafficEnv()
@@ -272,8 +289,10 @@ func SampleOldBase() *obase.Base {
 	}
 	v0 := obase.NewVal()
 	v0.ID = "a"
+	v0.Name = "a"
 	v1 := obase.NewVal()
 	v1.ID = "b"
+	v1.Name = "b"
 	obj.Meta.List = []*obase.Val{v0, v1}
 	obj.Meta.Set = []*obase.Val{v0, v1}
 	// obj.Extra = obase.NewExtraInfo()
