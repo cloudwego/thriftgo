@@ -170,10 +170,14 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 
 {{- range .Functions}}
 {{$ArgsType := .ArgType}}
+{{- $withFieldMask := (SetWithFieldMask false) }}
 {{template "StructLike" $ArgsType}}
+{{- $_ := (SetWithFieldMask $withFieldMask) }}
 {{- if not .Oneway}}
 	{{$ResType := .ResType}}
+	{{- $withFieldMask := (SetWithFieldMask false) }}
 	{{template "StructLike" $ResType}}
+	{{- $_ := (SetWithFieldMask $withFieldMask) }}
 {{- end}}
 {{- end}}{{/* range .Functions */}}
 {{- end}}{{/* define "Processor" */}}

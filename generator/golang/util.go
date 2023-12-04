@@ -85,6 +85,12 @@ func (cu *CodeUtils) SetFeatures(fs Features) {
 	cu.features = fs
 }
 
+func (cu *CodeUtils) SetWithFieldMask(enable bool) bool {
+	ret := cu.features.WithFieldMask
+	cu.features.WithFieldMask = enable
+	return ret
+}
+
 // Features returns the current settings of generator features.
 func (cu *CodeUtils) Features() Features {
 	return cu.features
@@ -371,11 +377,12 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"InsertionPoint": plugin.InsertionPoint,
 		"Unexport":       common.Unexport,
 
-		"Debug":          cu.Debug,
-		"Features":       cu.Features,
-		"GetPackageName": cu.GetPackageName,
-		"GenTags":        cu.GenTags,
-		"GenFieldTags":   cu.GenFieldTags,
+		"Debug":            cu.Debug,
+		"Features":         cu.Features,
+		"SetWithFieldMask": cu.SetWithFieldMask,
+		"GetPackageName":   cu.GetPackageName,
+		"GenTags":          cu.GenTags,
+		"GenFieldTags":     cu.GenFieldTags,
 		"MkRWCtx": func(f *Field) (*ReadWriteContext, error) {
 			return cu.MkRWCtx(cu.rootScope, f)
 		},
