@@ -56,8 +56,10 @@ type Features struct {
 	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 
-	JSONStringer  bool `json_stringer:"Generate the JSON marshal method in String() method."`
-	WithFieldMask bool `with_field_mask:"Support field-mask for generated code."`
+	JSONStringer bool `json_stringer:"Generate the JSON marshal method in String() method."`
+
+	WithFieldMask    bool `with_field_mask:"Support field-mask for generated code."`
+	FieldMaskHalfway bool `field_mask_halfway:"Support set field-mask on not-root struct."`
 }
 
 var defaultFeatures = Features{
@@ -90,6 +92,7 @@ var defaultFeatures = Features{
 	TrimIDL:                false,
 	JSONStringer:           false,
 	WithFieldMask:          false,
+	FieldMaskHalfway:       false,
 }
 
 type param struct {

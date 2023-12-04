@@ -96,12 +96,14 @@ func (p *{{$TypeName}}) Set_FieldMask(fm *fieldmask.FieldMask) {
 	p._fieldmask = fm
 }
 
+{{- if Features.FieldMaskHalfway}}
 func (p *{{$TypeName}}) Pass_FieldMask(fm *fieldmask.FieldMask) {
 	if p == nil || p._fieldmask != nil {
 		return
 	}
 	p._fieldmask = fm
 }
+{{- end}}
 {{end}}{{/* if Features.WithFieldMask */}}
 
 var fieldIDToName_{{$TypeName}} = map[int16]string{
@@ -533,7 +535,11 @@ var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
 	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
 	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
+	{{- if Features.FieldMaskHalfway}}
 	{{.Target}}.Pass_FieldMask({{.FieldMask}})
+	{{- else}}
+	{{.Target}}.Set_FieldMask({{.FieldMask}})
+	{{- end}}
 	{{- end}}
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
@@ -738,7 +744,11 @@ var FieldWrite = `
 var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
 	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
+	{{- if Features.FieldMaskHalfway}}
 	{{.Target}}.Pass_FieldMask({{.FieldMask}})
+	{{- else}}
+	{{.Target}}.Set_FieldMask({{.FieldMask}})
+	{{- end}}
 	{{- end}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err

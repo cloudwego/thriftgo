@@ -23,7 +23,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/fieldmask"
 
-	// abase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-go/base"
+	hbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-halfway/base"
 	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-new/base"
 	obase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-old/base"
 	"github.com/stretchr/testify/require"
@@ -37,7 +37,8 @@ func initFielMask() {
 
 	// construct a fieldmask with TypeDescriptor and thrift pathes
 	fm, err := fieldmask.NewFieldMask(obj.GetTypeDescriptor(),
-		"$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}", "$.Meta.List[1]", "$.Meta.Set[0].id", "$.Meta.Set[1].name")
+		"$.LogID", "$.TrafficEnv.Code", "$.Meta.IntMap{1}", "$.Meta.StrMap{\"1234\"}",
+		"$.Meta.List[1]", "$.Meta.Set[0].id", "$.Meta.Set[1].name")
 	if err != nil {
 		panic(err)
 	}
@@ -195,10 +196,10 @@ func TestMaskRequired(t *testing.T) {
 }
 
 func TestSetMaskHalfway(t *testing.T) {
-	obj := nbase.NewBase()
-	obj.Extra = nbase.NewExtraInfo()
+	obj := hbase.NewBase()
+	obj.Extra = hbase.NewExtraInfo()
 	obj.Extra.F1 = map[string]string{"a": "b"}
-	obj.Extra.F8 = map[int64][]*nbase.Key{1: []*nbase.Key{nbase.NewKey()}}
+	obj.Extra.F8 = map[int64][]*hbase.Key{1: []*hbase.Key{hbase.NewKey()}}
 
 	fm, err := fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor(), "$.F1")
 	if err != nil {
@@ -211,12 +212,12 @@ func TestSetMaskHalfway(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	obj2 := nbase.NewBase()
+	obj2 := hbase.NewBase()
 	if err := obj2.Read(prot); err != nil {
 		t.Fatal(err)
 	}
 	require.Equal(t, obj.Extra.F1, obj2.Extra.F1)
-	require.Equal(t, map[int64][]*nbase.Key(nil), obj2.Extra.F8)
+	require.Equal(t, map[int64][]*hbase.Key(nil), obj2.Extra.F8)
 
 	fm, err = fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor(), "$.F8")
 	if err != nil {
@@ -227,7 +228,7 @@ func TestSetMaskHalfway(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	obj2 = nbase.NewBase()
+	obj2 = hbase.NewBase()
 	if err := obj2.Read(prot); err != nil {
 		t.Fatal(err)
 	}
@@ -256,12 +257,12 @@ func SampleNewBase() *nbase.Base {
 	v1.ID = "b"
 	v1.Name = "b"
 	obj.Meta.List = []*nbase.Val{v0, v1}
-	v0 = nbase.NewVal()
-	v0.ID = "a"
-	v0.Name = "a"
-	v1 = nbase.NewVal()
-	v1.ID = "b"
-	v1.Name = "b"
+	// v0 = nbase.NewVal()
+	// v0.ID = "a"
+	// v0.Name = "a"
+	// v1 = nbase.NewVal()
+	// v1.ID = "b"
+	// v1.Name = "b"
 	obj.Meta.Set = []*nbase.Val{v0, v1}
 	// obj.Extra = nbase.NewExtraInfo()
 	obj.TrafficEnv = nbase.NewTrafficEnv()

@@ -96,7 +96,7 @@ func init() {
 	fieldmaskCache.Store("Mask1ForBase", fm)
 }
 ```
-3. Now you can use fieldmask in both client-side and server-side
+3. Now you can use fieldmask in either client-side or server-side
   - For server-side, you can set fieldmask with generated API `Set_FieldMask()` on your response object. Then the object itself will notice the fieldmask and using it during its serialization
   ```go
   func bizHandler(req any) (*nbase.Base) {
@@ -130,12 +130,12 @@ goos: darwin
 goarch: amd64
 pkg: github.com/cloudwego/thriftgo/test/golang/fieldmask
 cpu: Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz
-BenchmarkWriteWithFieldMask/old-16               1447 ns/op               0 B/op          0 allocs/op
-BenchmarkWriteWithFieldMask/new-16               1513 ns/op               0 B/op          0 allocs/op
-BenchmarkWriteWithFieldMask/new-mask-half-16      710.4 ns/op             0 B/op          0 allocs/op
-BenchmarkReadWithFieldMask/old-16                3832 ns/op            1628 B/op         36 allocs/op
-BenchmarkReadWithFieldMask/new-16                3697 ns/op            1708 B/op         36 allocs/op
-BenchmarkReadWithFieldMask/new-mask-half-16      3436 ns/op            1212 B/op         27 allocs/op
+BenchmarkWriteWithFieldMask/old-16         	     2188 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWriteWithFieldMask/new-16         	     2281 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWriteWithFieldMask/new-mask-half-16     1055 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReadWithFieldMask/old-16                6187 ns/op	    2124 B/op	      41 allocs/op
+BenchmarkReadWithFieldMask/new-16                5675 ns/op	    2268 B/op	      41 allocs/op
+BenchmarkReadWithFieldMask/new-mask-half-16      4762 ns/op	    1564 B/op	      31 allocs/op
 ```
 Explain case names:
 - Write: serialization test

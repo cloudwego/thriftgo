@@ -14,23 +14,31 @@
 
 package fieldmask
 
-import (
-	"testing"
+// import (
+// 	"testing"
 
-	"github.com/cloudwego/thriftgo/internal/test_util"
-	"github.com/cloudwego/thriftgo/plugin"
-)
+// 	"github.com/cloudwego/thriftgo/internal/test_util"
+// 	"github.com/cloudwego/thriftgo/plugin"
+// )
 
-func TestGen(t *testing.T) {
-	g, r := test_util.GenerateGolang("a.thrift", "gen-old/", nil, nil)
-	if err := g.Persist(r); err != nil {
-		panic(err)
-	}
-	g, r = test_util.GenerateGolang("a.thrift", "gen-new/", []plugin.Option{
-		{"with_field_mask", ""},
-		{"with_reflection", ""},
-	}, nil)
-	if err := g.Persist(r); err != nil {
-		panic(err)
-	}
-}
+// func TestGen(t *testing.T) {
+// 	g, r := test_util.GenerateGolang("a.thrift", "gen-old/", nil, nil)
+// 	if err := g.Persist(r); err != nil {
+// 		panic(err)
+// 	}
+// 	g, r = test_util.GenerateGolang("a.thrift", "gen-new/", []plugin.Option{
+// 		{"with_field_mask", ""},
+// 		{"with_reflection", ""},
+// 	}, nil)
+// 	if err := g.Persist(r); err != nil {
+// 		panic(err)
+// 	}
+// 	g, r = test_util.GenerateGolang("b.thrift", "gen-halfway/", []plugin.Option{
+// 		{"with_field_mask", ""},
+// 		{"field_mask_halfway", ""},
+// 		{"with_reflection", ""},
+// 	}, nil)
+// 	if err := g.Persist(r); err != nil {
+// 		panic(err)
+// 	}
+// }
