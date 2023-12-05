@@ -14,4 +14,4 @@
 
 package version
 
-const ThriftgoVersion = "0.3.3"
+const ThriftgoVersion = "0.3.4"
