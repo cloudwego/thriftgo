@@ -19,28 +19,73 @@ package fieldmask
 import (
 	"fmt"
 	"strings"
-	"sync"
 
+	"github.com/cloudwego/thriftgo/internal/utils"
 	"github.com/cloudwego/thriftgo/thrift_reflection"
 )
 
-type fieldMaskType uint8
+// FieldMaskType indicates the corresponding thrift message type for a fieldmask
+type FieldMaskType uint8
 
+// MarshalText implements encoding.TextMarshaler
+func (ft FieldMaskType) MarshalText() ([]byte, error) {
+	switch ft {
+	case FtScalar:
+		return utils.S2B("Scalar"), nil
+	case FtList:
+		return utils.S2B("List"), nil
+	case FtStruct:
+		return utils.S2B("Struct"), nil
+	case FtStrMap:
+		return utils.S2B("StrMap"), nil
+	case FtIntMap:
+		return utils.S2B("IntMap"), nil
+	default:
+		return utils.S2B("Invalid"), nil
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (ft *FieldMaskType) UnmarshalText(in []byte) error {
+	switch utils.B2S(in) {
+	case "Scalar":
+		*ft = FtScalar
+	case "List":
+		*ft = FtList
+	case "Struct":
+		*ft = FtStruct
+	case "StrMap":
+		*ft = FtStrMap
+	case "IntMap":
+		*ft = FtIntMap
+	default:
+		*ft = FtInvalid
+	}
+	return nil
+}
+
+// FieldMaskType Enums
 const (
-	ftInvalid fieldMaskType = iota
-	ftScalar
-	ftArray
-	ftStruct
-	ftStrMap
-	ftIntMap
+	// Invalid or unsupported thrift type
+	FtInvalid FieldMaskType = iota
+	// thrift scalar types, including BOOL/I8/I16/I32/I64/DOUBLE/STRING/BINARY, or neither-string-nor-integer-typed-key MAP
+	FtScalar
+	// thrift LIST/SET
+	FtList
+	// thrift STRUCT
+	FtStruct
+	// thrift MAP with string-typed key
+	FtStrMap
+	// thrift MAP with integer-typed key
+	FtIntMap
 )
 
 // FieldMask represents a collection of thrift pathes
 // See
 type FieldMask struct {
-	typ fieldMaskType
-
 	isAll bool
+
+	typ FieldMaskType
 
 	all *FieldMask
 
@@ -51,12 +96,6 @@ type FieldMask struct {
 	intMask intMap
 }
 
-var fmsPool = sync.Pool{
-	New: func() interface{} {
-		return &FieldMask{}
-	},
-}
-
 // NewFieldMask create a new fieldmask
 func NewFieldMask(desc *thrift_reflection.TypeDescriptor, pathes ...string) (*FieldMask, error) {
 	ret := FieldMask{}
@@ -65,22 +104,6 @@ func NewFieldMask(desc *thrift_reflection.TypeDescriptor, pathes ...string) (*Fi
 		return nil, err
 	}
 	return &ret, nil
-}
-
-// GetFieldMask reuse fieldmask from pool
-func GetFieldMask(desc *thrift_reflection.TypeDescriptor, paths ...string) (*FieldMask, error) {
-	ret := fmsPool.Get().(*FieldMask)
-	err := ret.init(desc, paths...)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
-// Recycle puts fieldmask into pool
-func (self *FieldMask) Recycle() {
-	self.reset()
-	fmsPool.Put(self)
 }
 
 // reset clears fieldmask's all path
@@ -106,20 +129,6 @@ func (self *FieldMask) init(desc *thrift_reflection.TypeDescriptor, paths ...str
 }
 
 // String pretty prints the structure a FieldMask represents
-//
-// For example:
-// pathes `[]string{"$.Extra[0].List", "$.Extra[*].Set", "$.Meta.F2{0}", "$.Meta.F2{*}.Addr"}` will print:
-//
-//	  (Base)
-//		.Extra (list<ExtraInfo>)
-//		[
-//		  *
-//		]
-//		.Meta (MetaInfo)
-//		  .F2 (map<i8,Base>)
-//		  {
-//		    *
-//		  }
 //
 // WARING: This is unstable API, the printer format is not guaranteed
 func (self FieldMask) String(desc *thrift_reflection.TypeDescriptor) string {
@@ -178,7 +187,7 @@ func (self *FieldMask) All() bool {
 		return true
 	}
 	switch self.typ {
-	case ftStruct, ftArray, ftIntMap, ftStrMap:
+	case FtStruct, FtList, FtIntMap, FtStrMap:
 		return self.isAll
 	default:
 		return true
