@@ -71,6 +71,7 @@ run_cases() {
 }
 
 run() {
+    go mod edit -replace github.com/cloudwego/thriftgo=../../..
     out=$(run_cases 2>$errors)
     if [ -n "$out" ]; then
         echo
