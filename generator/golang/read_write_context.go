@@ -63,6 +63,10 @@ func (c *ReadWriteContext) WithFieldMask(fm string) *ReadWriteContext {
 	return c
 }
 
+func (c *ReadWriteContext) NeedFieldMask() bool {
+	return c.FieldMask != ""
+}
+
 // WithTarget sets the target name.
 func (c *ReadWriteContext) WithTarget(t string) *ReadWriteContext {
 	c.Target = t
@@ -128,6 +132,5 @@ func mkRWCtx(r *Resolver, s *Scope, t *parser.Type, top *ReadWriteContext) (*Rea
 		}
 	}
 
-	ctx.FieldMask = "fm"
 	return ctx, nil
 }

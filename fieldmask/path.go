@@ -59,6 +59,11 @@ const (
 	pathSepSlash      = '\\'
 )
 
+const (
+	jsonPathAny  = `*`
+	jsonPathRoot = `$`
+)
+
 type pathValue struct {
 	pv unsafe.Pointer
 	iv int
@@ -325,6 +330,8 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 		}
 		styp := stok.Type()
 		// println("stoken: ", stok.String())
+		// j, _ := cur.MarshalJSON()
+		// println("cur mask: ", string(j), cur.isAll, cur.all)
 
 		if styp == pathTypeRoot {
 			continue
@@ -335,7 +342,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 			// println("struct: ", st.Name)
-			if cur.typ != ftStruct {
+			if cur.typ != FtStruct {
 				return false
 			}
 
@@ -352,7 +359,6 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				if f == nil {
 					return false
 				}
-
 			} else if typ == pathTypeLitStr {
 				name := tok.val.Str()
 				f = st.GetFieldByName(name)
@@ -369,8 +375,10 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 
 			// println("all", all, "FieldInMask:", cur.FieldInMask(int32(f.GetID())))
 			// check if name set mask
+			// println("field ", f.GetID())
 			nextFm, exist := cur.Field(int16(f.GetID()))
 			if !exist {
+				// println("return false")
 				return false
 			}
 
@@ -392,7 +400,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				return false
 			}
 
-			if cur.typ != ftArray {
+			if cur.typ != FtList {
 				return false
 			}
 
@@ -433,7 +441,6 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			// next fieldmask
 			curDesc = et
 			cur = next
-
 		} else if styp == pathTypeMapL {
 			// get element and key desc
 			if !curDesc.IsMap() {
@@ -449,10 +456,10 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			}
 
 			// println("cur.typ::", cur.typ, "cur::", cur.String(curDesc))
-			if cur.typ != ftIntMap && cur.typ != ftStrMap {
+			if cur.typ != FtIntMap && cur.typ != FtStrMap && cur.typ != FtScalar {
 				return false
 			}
-
+			// spew.Dump("cur ", cur)
 			next := cur.all
 			// iter indexies...
 			for it.HasNext() {
@@ -474,7 +481,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 				}
 
 				if typ == pathTypeLitInt {
-					if cur.typ != ftIntMap {
+					if cur.typ != FtIntMap {
 						return false
 					}
 					v := tok.val.Int()
@@ -485,7 +492,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 					// NOTICE: always use last elem's fieldmask
 					next = nextFm
 				} else if typ == pathTypeStr {
-					if cur.typ != ftStrMap {
+					if cur.typ != FtStrMap {
 						return false
 					}
 					v := tok.val.Str()
@@ -503,6 +510,7 @@ func (cur *FieldMask) PathInMask(curDesc *thrift_reflection.TypeDescriptor, path
 			// next fieldmask
 			curDesc = et
 			cur = next
+			// spew.Dump("next ", cur)
 		} else {
 			return false
 		}
