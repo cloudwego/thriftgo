@@ -285,6 +285,22 @@ func TestNewFieldMask(t *testing.T) {
 	}
 }
 
+func TestMarshalJSONStable(t *testing.T) {
+	st := GetDescriptor(baseIDL, "MetaInfo")
+	fm, err := NewFieldMask(st, "$.F2{4,1,3}", "$.F2{0,2}", `$.F1{"c","d","b"}`, `$.F1{"a"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jo, err := fm.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	println(string(jo))
+	if string(jo) != (`{"path":"$","type":"Struct","children":[{"path":1,"type":"StrMap","children":[{"path":"a","type":"Struct"},{"path":"b","type":"Struct"},{"path":"c","type":"Struct"},{"path":"d","type":"Struct"}]},{"path":2,"type":"IntMap","children":[{"path":0,"type":"Struct"},{"path":1,"type":"Struct"},{"path":2,"type":"Struct"},{"path":3,"type":"Struct"},{"path":4,"type":"Struct"}]}]}`) {
+		t.Fatal(string(jo))
+	}
+}
+
 func TestErrors(t *testing.T) {
 	type args struct {
 		IDL        string

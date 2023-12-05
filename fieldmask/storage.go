@@ -25,9 +25,9 @@ type fieldMap struct {
 	tail map[fieldID]*FieldMask
 }
 
-func makeFieldMaskMap(count int) fieldMap {
+func makeFieldMaskMap() fieldMap {
 	return fieldMap{
-		tail: make(map[fieldID]*FieldMask, count),
+		tail: make(map[fieldID]*FieldMask),
 	}
 }
 
@@ -87,10 +87,10 @@ func (self *fieldMap) Get(f fieldID) (ret *FieldMask) {
 }
 
 // setFieldID ensure a fieldmask slot for f
-func (self *FieldMask) setFieldID(f fieldID, ft FieldMaskType, cap int) *FieldMask {
+func (self *FieldMask) setFieldID(f fieldID, ft FieldMaskType) *FieldMask {
 	if self.fdMask == nil {
 		// println("new fdmask")
-		m := makeFieldMaskMap(cap)
+		m := makeFieldMaskMap()
 		self.fdMask = &m
 	}
 	return self.fdMask.SetIfNotExist(fieldID(f), ft)

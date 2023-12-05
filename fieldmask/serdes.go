@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 
@@ -76,6 +77,44 @@ func (self *FieldMask) marshalBegin(buf *[]byte) error {
 	return self.marshalRec(buf)
 }
 
+type ivalue struct {
+	id int
+	fm *FieldMask
+}
+
+type isorter []ivalue
+
+func (self isorter) Len() int {
+	return len(self)
+}
+
+func (self isorter) Less(i, j int) bool {
+	return self[i].id < self[j].id
+}
+
+func (self isorter) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+type svalue struct {
+	id string
+	fm *FieldMask
+}
+
+type ssorter []svalue
+
+func (self ssorter) Len() int {
+	return len(self)
+}
+
+func (self ssorter) Less(i, j int) bool {
+	return self[i].id < self[j].id
+}
+
+func (self ssorter) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
 func (self *FieldMask) marshalRec(buf *[]byte) error {
 	if self.All() && self.all == nil {
 		write(buf, "}")
@@ -125,17 +164,22 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		}
 
 	} else if self.typ == FtStruct {
+		fds := make(isorter, 0, len(self.fdMask.tail)*2)
 		for id, f := range self.fdMask.head {
-			cont, err := writer(id, f)
-			if err != nil {
-				return err
+			if !f.Exist() {
+				continue
 			}
-			if !cont {
-				break
-			}
+			fds = append(fds, ivalue{id, f})
 		}
 		for id, f := range self.fdMask.tail {
-			cont, err := writer(int(id), f)
+			if !f.Exist() {
+				continue
+			}
+			fds = append(fds, ivalue{int(id), f})
+		}
+		sort.Stable(fds)
+		for _, v := range fds {
+			cont, err := writer(v.id, v.fm)
 			if err != nil {
 				return err
 			}
@@ -145,8 +189,16 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		}
 
 	} else if self.typ == FtList || self.typ == FtIntMap {
+		fds := make(isorter, 0, len(self.intMask))
 		for k, f := range self.intMask {
-			cont, err := writer(k, f)
+			if !f.Exist() {
+				continue
+			}
+			fds = append(fds, ivalue{int(k), f})
+		}
+		sort.Stable(fds)
+		for _, v := range fds {
+			cont, err := writer(v.id, v.fm)
 			if err != nil {
 				return err
 			}
@@ -156,8 +208,16 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		}
 
 	} else if self.typ == FtStrMap {
+		fds := make(ssorter, 0, len(self.strMask))
 		for k, f := range self.strMask {
-			cont, err := writer(k, f)
+			if !f.Exist() {
+				continue
+			}
+			fds = append(fds, svalue{k, f})
+		}
+		sort.Stable(fds)
+		for _, v := range fds {
+			cont, err := writer(v.id, v.fm)
 			if err != nil {
 				return err
 			}
@@ -165,6 +225,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 				break
 			}
 		}
+
 	} else {
 		return errors.New("invalid fieldmask type")
 	}
@@ -228,7 +289,7 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			if !ok {
 				return fmt.Errorf("expect number but got %#v", n.Path)
 			}
-			next := self.setFieldID(fieldID(id), n.Type, len(s.Children))
+			next := self.setFieldID(fieldID(id), n.Type)
 			if err := next.fromShadow(&n); err != nil {
 				return err
 			}

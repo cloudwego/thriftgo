@@ -165,7 +165,7 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 					return errDesc(curDesc, "field '"+f.GetName()+"' has nil type descriptor")
 				}
 
-				cur = cur.setFieldID(fieldID(f.GetID()), switchFt(st.GetFieldById(int32(f.GetID())).GetType()), len(st.GetFields()))
+				cur = cur.setFieldID(fieldID(f.GetID()), switchFt(st.GetFieldById(int32(f.GetID())).GetType()))
 				// cur.path = strconv.Itoa(int(f.GetID()))
 			}
 			// continue for deeper path..
