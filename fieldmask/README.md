@@ -44,6 +44,7 @@ Here are basic hypothesis:
 - `index` is the index of a element in a list or set, it **MUST ONLY** contain integer numbers.
 - `key` is the string-typed key of a element in a map, it can contain any letters, but it **MUST** be a quoted string.
 - `id` is the integer-typed key of a element in a map, it **MUST ONLY** contain integer numbers.
+- except `key`, ThriftPath shouldn't contains any blank chars (\n\r\b\t).
 
 Here is detailed syntax:
 <!--StartFragment--><byte-sheet-html-origin data-id="1700208276535" data-version="4" data-is-embed="true" data-grid-line-hidden="false" data-copy-type="col">
@@ -60,7 +61,10 @@ $ | the root object,every path must start with it.
 #### Agreement Of Implementation
 - A field in mask means "PASS" (**will be** serialized/deserialized),  and the other field not in mask means "Filtered" ((**won't be** serialized/deserialized))
 - A empty mask means "PASS ALL" (all field is "PASS")
-- For map of neither-string-nor-integer typed key, only syntax token of all '*' (see above) is allowed in
+- For map of neither-string-nor-integer typed key, only syntax token of all '*' (see above) is allowed in.
+- Required fields CAN be not in mask ("Filtered") while they will still be written as zero values.
+- FieldMask settings must start from the root object.
+  - Tips: If you want to set FieldMask from a non-root object and make it effective, you need to add `field_mask_halfway` option and regenerate the codes. However, there is a latent risk: if different parent objects reference the same child object, and these two parent objects set different fieldmasks, only one parent object's fieldmask relative to this child object will be effective.
 
 ### Type Descriptor
 Type descriptor is the runtime representation of a message definition, in aligned with [Protobuf Descriptor](https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto). To get a type descriptor, you must enable thrift reflection feature first, which was introduced in thriftgo [v0.3.0](https://github.com/cloudwego/thriftgo/pull/83). you can generate related codes for this feature using option `with_reflection`.
