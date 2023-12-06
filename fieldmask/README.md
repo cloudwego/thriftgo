@@ -62,7 +62,9 @@ $ | the root object,every path must start with it.
 - A field in mask means "PASS" (**will be** serialized/deserialized),  and the other field not in mask means "Filtered" ((**won't be** serialized/deserialized))
 - A empty mask means "PASS ALL" (all field is "PASS")
 - For map of neither-string-nor-integer typed key, only syntax token of all '*' (see above) is allowed in.
-- Required fields CAN be not in mask ("Filtered") while they will still be written as zero values.
+- For safty, required fields which are not in mask ("Filtered") will still be written into message:
+  - by default, write **current value** of the required field;
+  - add generate option `field_mask_zero_required`: write **zero value** of the required field
 - FieldMask settings must start from the root object.
   - Tips: If you want to set FieldMask from a non-root object and make it effective, you need to add `field_mask_halfway` option and regenerate the codes. However, there is a latent risk: if different parent objects reference the same child object, and these two parent objects set different fieldmasks, only one parent object's fieldmask relative to this child object will be effective.
 
