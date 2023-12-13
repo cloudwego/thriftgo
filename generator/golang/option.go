@@ -58,8 +58,9 @@ type Features struct {
 
 	JSONStringer bool `json_stringer:"Generate the JSON marshal method in String() method."`
 
-	WithFieldMask    bool `with_field_mask:"Support field-mask for generated code."`
-	FieldMaskHalfway bool `field_mask_halfway:"Support set field-mask on not-root struct."`
+	WithFieldMask         bool `with_field_mask:"Support field-mask for generated code."`
+	FieldMaskHalfway      bool `field_mask_halfway:"Support set field-mask on not-root struct."`
+	FieldMaskZeroRequired bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
 }
 
 var defaultFeatures = Features{
@@ -93,6 +94,7 @@ var defaultFeatures = Features{
 	JSONStringer:           false,
 	WithFieldMask:          false,
 	FieldMaskHalfway:       false,
+	FieldMaskZeroRequired:  false,
 }
 
 type param struct {
