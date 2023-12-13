@@ -18,7 +18,7 @@ struct TrafficEnv {
 	0: string Name = "",
 	1: bool Open = false,
 	2: string Env = "",
-	256: i64 Code,
+	256: required i64 Code,
 }
 
 struct Base {

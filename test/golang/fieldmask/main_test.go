@@ -26,6 +26,7 @@ import (
 	hbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-halfway/base"
 	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-new/base"
 	obase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-old/base"
+	zbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-zero/base"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,7 +75,7 @@ func TestFieldMask_Write(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, "", obj2.Addr)
+	require.Equal(t, obj.Addr, obj2.Addr)
 	require.Equal(t, obj.LogID, obj2.LogID)
 	require.Equal(t, "", obj2.Caller)
 	require.Equal(t, "", obj2.TrafficEnv.Name)
@@ -138,7 +139,7 @@ func TestFieldMask_Read(t *testing.T) {
 }
 
 func TestMaskRequired(t *testing.T) {
-	fm, err := fieldmask.NewFieldMask(nbase.NewBaseResp().GetTypeDescriptor(), "$.F1", "$.F8")
+	fm, err := fieldmask.NewFieldMask(nbase.NewBaseResp().GetTypeDescriptor(), "$.F1", "$.F8", "$.R12.Env")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,6 +157,9 @@ func TestMaskRequired(t *testing.T) {
 		obj := nbase.NewBaseResp()
 		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
 		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		obj.R12 = nbase.NewTrafficEnv()
+		obj.R12.Name = "a"
+		obj.R12.Env = "a"
 		buf := thrift.NewTMemoryBufferLen(1024)
 		prot := thrift.NewTBinaryProtocol(buf, true, true)
 		if err := obj.Write(prot); err != nil {
@@ -168,30 +172,110 @@ func TestMaskRequired(t *testing.T) {
 		}
 		require.Equal(t, obj.F1, obj2.F1)
 		require.Equal(t, obj.F8, obj2.F8)
+		require.Equal(t, "", obj2.R12.Name)
+		require.Equal(t, obj.R12.Env, obj2.R12.Env)
 	})
 
-	t.Run("write", func(t *testing.T) {
+	t.Run("current-write", func(t *testing.T) {
 		obj := nbase.NewBaseResp()
-		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
+		obj.StatusCode = 1
+		obj.R3 = true
+		obj.R4 = 1
+		obj.R5 = 1
+		obj.R6 = 1
+		obj.R7 = 1
+		obj.R8 = "R8"
+		obj.R9 = nbase.Ex_B
+		v := nbase.NewVal()
+		v.ID = "a"
+		obj.R10 = []*nbase.Val{v}
+		obj.R11 = []*nbase.Val{v}
+		obj.R12 = nbase.NewTrafficEnv()
+		obj.R12.Name = "a"
+		obj.R12.Env = "a"
+		obj.R13 = map[string]*nbase.Key{"a": v}
 		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
+
 		obj.Set_FieldMask(fm)
 		buf := thrift.NewTMemoryBufferLen(1024)
 		prot := thrift.NewTBinaryProtocol(buf, true, true)
 		if err := obj.Write(prot); err != nil {
 			t.Fatal(err)
 		}
-		// data := []byte(buf.String())
-		// v, err := dg.NewNode(dt.STRUCT, data).Interface(&dg.Options{})
-		// if err != nil {
-		// 	t.Fatal(err)
-		// }
-		// spew.Dump(v)
 
 		obj2 := nbase.NewBaseResp()
 		if err := obj2.Read(prot); err != nil {
 			t.Fatal(err)
 		}
+
+		require.Equal(t, obj.F1, obj2.F1)
+		require.Equal(t, obj.F8, obj2.F8)
+		require.Equal(t, obj.StatusCode, obj2.StatusCode)
+		require.Equal(t, obj.R3, obj2.R3)
+		require.Equal(t, obj.R4, obj2.R4)
+		require.Equal(t, obj.R5, obj2.R5)
+		require.Equal(t, obj.R6, obj2.R6)
+		require.Equal(t, obj.R7, obj2.R7)
+		require.Equal(t, obj.R8, obj2.R8)
+		require.Equal(t, obj.R9, obj2.R9)
+		require.Equal(t, obj.R10, obj2.R10)
+		require.Equal(t, obj.R11, obj2.R11)
+		require.Equal(t, "", obj2.R12.Name)
+		require.Equal(t, obj.R12.Env, obj2.R12.Env)
+		require.Equal(t, obj.R13, obj2.R13)
+	})
+
+	t.Run("zero-required-write", func(t *testing.T) {
+		fm, err := fieldmask.NewFieldMask(nbase.NewBaseResp().GetTypeDescriptor(), "$.F1", "$.F8", "$.R12")
+		if err != nil {
+			t.Fatal(err)
+		}
+		obj := zbase.NewBaseResp()
+		obj.F1 = map[zbase.Str]zbase.Str{"a": "b"}
+		obj.F8 = map[float64][]zbase.Str{1.0: []zbase.Str{"a"}}
+		obj.StatusCode = 1
+		obj.R3 = true
+		obj.R4 = 1
+		obj.R5 = 1
+		obj.R6 = 1
+		obj.R7 = 1
+		obj.R8 = "R8"
+		obj.R9 = zbase.Ex_B
+		v := zbase.NewVal()
+		v.ID = "a"
+		obj.R10 = []*zbase.Val{v}
+		obj.R11 = []*zbase.Val{v}
+		obj.R12 = zbase.NewTrafficEnv()
+		obj.R13 = map[string]*zbase.Key{"a": v}
+
+		obj.Set_FieldMask(fm)
+		buf := thrift.NewTMemoryBufferLen(1024)
+		prot := thrift.NewTBinaryProtocol(buf, true, true)
+		if err := obj.Write(prot); err != nil {
+			t.Fatal(err)
+		}
+		obj2 := zbase.NewBaseResp()
+		if err := obj2.Read(prot); err != nil {
+			t.Fatal(err)
+		}
 		fmt.Printf("%#v\n", obj2)
+
+		require.Equal(t, obj.F1, obj2.F1)
+		require.Equal(t, obj.F8, obj2.F8)
+		require.Equal(t, int32(0), obj2.StatusCode)
+		require.Equal(t, false, obj2.R3)
+		require.Equal(t, int8(0), obj2.R4)
+		require.Equal(t, int16(0), obj2.R5)
+		require.Equal(t, int64(0), obj2.R6)
+		require.Equal(t, float64(0), obj2.R7)
+		require.Equal(t, "", obj2.R8)
+		require.Equal(t, zbase.Ex(0), obj2.R9)
+		require.Equal(t, []*zbase.Val{}, obj2.R10)
+		require.Equal(t, []*zbase.Val{}, obj2.R11)
+		obj.R12.Set_FieldMask(nil)
+		require.Equal(t, obj.R12, obj2.R12)
+		require.Equal(t, map[string]*zbase.Key{}, obj2.R13)
 	})
 }
 

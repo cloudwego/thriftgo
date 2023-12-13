@@ -16,7 +16,7 @@
 
 generate () {
     out=gen-$1
-    opt="go:package_prefix=example.com/test/$out"
+    opt="go:package_prefix=github.com/cloudwego/thriftgo/test/golang/fieldmask/$out"
     idl=$2
     if [ -d $out ]; then
         rm -rf $out
@@ -29,6 +29,9 @@ generate () {
     if [ "$1" = "halfway" ]; then
         opt="$opt,with_field_mask,field_mask_halfway,with_reflection"
     fi
+    if [ "$1" = "zero" ]; then
+        opt="$opt,with_field_mask,field_mask_zero_required,with_reflection"
+    fi
     echo "thriftgo -g $opt -o $out $idl"
     thriftgo -g "$opt" -o $out $idl
 }
@@ -36,5 +39,6 @@ generate () {
 generate old a.thrift
 generate new a.thrift
 generate halfway b.thrift
+generate zero c.thrift
 go mod tidy
 go test -v ./...

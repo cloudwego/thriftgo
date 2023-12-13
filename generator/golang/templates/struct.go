@@ -380,7 +380,13 @@ func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	if p.{{$IsSetName}}() {
 	{{- end}}
 	{{- if Features.WithFieldMask}}
+	{{- if and .Requiredness.IsRequired (not Features.FieldMaskZeroRequired)}}
+	{{- if not $isBaseVal}}
+	fm, _ := p._fieldmask.Field({{.ID}})
+	{{- end}}
+	{{- else}}
 	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex { 
+	{{- end}}
 	{{- end}}
 	if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 		goto WriteFieldBeginError
@@ -391,7 +397,7 @@ func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 		goto WriteFieldEndError
 	}
 	{{- if Features.WithFieldMask}}
-	{{- if .Requiredness.IsRequired}}
+	{{- if Features.FieldMaskZeroRequired}}
 	} else {
 		if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 			goto WriteFieldBeginError
@@ -401,7 +407,7 @@ func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 			goto WriteFieldEndError
 		}
 	}
-	{{- else}}
+	{{- else if not .Requiredness.IsRequired}}
 	}
 	{{- end}}
 	{{- end}}
