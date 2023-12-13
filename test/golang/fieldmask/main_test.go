@@ -139,7 +139,7 @@ func TestFieldMask_Read(t *testing.T) {
 }
 
 func TestMaskRequired(t *testing.T) {
-	fm, err := fieldmask.NewFieldMask(nbase.NewBaseResp().GetTypeDescriptor(), "$.F1", "$.F8")
+	fm, err := fieldmask.NewFieldMask(nbase.NewBaseResp().GetTypeDescriptor(), "$.F1", "$.F8", "$.R12.Env")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,6 +157,9 @@ func TestMaskRequired(t *testing.T) {
 		obj := nbase.NewBaseResp()
 		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
 		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		obj.R12 = nbase.NewTrafficEnv()
+		obj.R12.Name = "a"
+		obj.R12.Env = "a"
 		buf := thrift.NewTMemoryBufferLen(1024)
 		prot := thrift.NewTBinaryProtocol(buf, true, true)
 		if err := obj.Write(prot); err != nil {
@@ -169,6 +172,8 @@ func TestMaskRequired(t *testing.T) {
 		}
 		require.Equal(t, obj.F1, obj2.F1)
 		require.Equal(t, obj.F8, obj2.F8)
+		require.Equal(t, "", obj2.R12.Name)
+		require.Equal(t, obj.R12.Env, obj2.R12.Env)
 	})
 
 	t.Run("current-write", func(t *testing.T) {
@@ -186,6 +191,8 @@ func TestMaskRequired(t *testing.T) {
 		obj.R10 = []*nbase.Val{v}
 		obj.R11 = []*nbase.Val{v}
 		obj.R12 = nbase.NewTrafficEnv()
+		obj.R12.Name = "a"
+		obj.R12.Env = "a"
 		obj.R13 = map[string]*nbase.Key{"a": v}
 		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
 		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
@@ -214,7 +221,8 @@ func TestMaskRequired(t *testing.T) {
 		require.Equal(t, obj.R9, obj2.R9)
 		require.Equal(t, obj.R10, obj2.R10)
 		require.Equal(t, obj.R11, obj2.R11)
-		require.Equal(t, obj.R12, obj2.R12)
+		require.Equal(t, "", obj2.R12.Name)
+		require.Equal(t, obj.R12.Env, obj2.R12.Env)
 		require.Equal(t, obj.R13, obj2.R13)
 	})
 
