@@ -139,11 +139,16 @@ func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	}
 	out, err := dump.DumpIDL(ast)
 	check(err)
-	relativeUrl, err := filepath.Rel(sourceDir, ast.Filename)
+	absFileName, err := filepath.Abs(ast.Filename)
+	check(err)
+	absSourceDir, err := filepath.Abs(sourceDir)
+	check(err)
+	relativeUrl, err := filepath.Rel(absSourceDir, absFileName)
 	if err != nil {
 		println("-r input err, range should cover all the target IDLs;", err.Error())
 		os.Exit(2)
 	}
+
 	outputFileUrl := filepath.Join(outDir, relativeUrl)
 	err = os.MkdirAll(filepath.Dir(outputFileUrl), os.ModePerm)
 	if err != nil {
