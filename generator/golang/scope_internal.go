@@ -27,10 +27,8 @@ import (
 const (
 	// A prefix to denote synthesized identifiers.
 	prefix = "$"
-	// A nestedSuffix to denote the field is nested.
-	nestedSuffix = "nested"
-	//
-	nestedSuffixLen = 6
+	// nestedAnnotation is to denote the field is nested type.
+	nestedAnnotation = "thrift.nested"
 )
 
 func _p(id string) string {
@@ -327,7 +325,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	// reserve method names
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
-		if cu.Features().EnableNestedStruct && isNestedField(f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f) {
 			// EnableNestedStruct, the type name needs to be used when retrieving the value for getter&setter
 			fn = s.identify(cu, f.Type.Name)
 			if strings.Contains(fn, ".") {
@@ -355,7 +353,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
 		isNested := false
-		if cu.Features().EnableNestedStruct && isNestedField(f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f) {
 			isNested = true
 		}
 		fn = st.scope.Add(fn, f.Name)
@@ -425,7 +423,7 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 		// type T struct {
 		// 	*Nested
 		// }
-		if cu.Features().EnableNestedStruct && isNestedField(f.Name) {
+		if cu.Features().EnableNestedStruct && isNestedField(f.Field) {
 			name := f.typeName.Deref().String()
 			if strings.Contains(name, ".") {
 				names := strings.Split(name, ".")
@@ -483,6 +481,13 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	}
 }
 
-func isNestedField(fieldName string) bool {
-	return len(fieldName) >= nestedSuffixLen && strings.EqualFold(fieldName[len(fieldName)-nestedSuffixLen:], nestedSuffix)
+func isNestedField(f *parser.Field) bool {
+	annos := f.Annotations.Get(nestedAnnotation)
+	if len(annos) == 0 {
+		return false
+	}
+	if strings.EqualFold(annos[0], "true") {
+		return true
+	}
+	return false
 }
