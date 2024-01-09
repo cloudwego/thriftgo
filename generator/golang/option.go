@@ -55,12 +55,11 @@ type Features struct {
 	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
 	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
-
-	JSONStringer bool `json_stringer:"Generate the JSON marshal method in String() method."`
-
-	WithFieldMask         bool `with_field_mask:"Support field-mask for generated code."`
-	FieldMaskHalfway      bool `field_mask_halfway:"Support set field-mask on not-root struct."`
-	FieldMaskZeroRequired bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
+	EnableNestedStruct     bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim template'"`
+	JSONStringer           bool `json_stringer:"Generate the JSON marshal method in String() method."`
+	WithFieldMask          bool `with_field_mask:"Support field-mask for generated code."`
+	FieldMaskHalfway       bool `field_mask_halfway:"Support set field-mask on not-root struct."`
+	FieldMaskZeroRequired  bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
 }
 
 var defaultFeatures = Features{
@@ -95,6 +94,7 @@ var defaultFeatures = Features{
 	WithFieldMask:          false,
 	FieldMaskHalfway:       false,
 	FieldMaskZeroRequired:  false,
+	EnableNestedStruct:     false,
 }
 
 type param struct {

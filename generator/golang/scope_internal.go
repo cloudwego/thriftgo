@@ -24,8 +24,12 @@ import (
 	"github.com/cloudwego/thriftgo/pkg/namespace"
 )
 
-// A prefix to denote synthesized identifiers.
-const prefix = "$"
+const (
+	// A prefix to denote synthesized identifiers.
+	prefix = "$"
+	// nestedAnnotation is to denote the field is nested type.
+	nestedAnnotation = "thrift.nested"
+)
 
 func _p(id string) string {
 	return prefix + id
@@ -321,6 +325,15 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	// reserve method names
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
+		if cu.Features().EnableNestedStruct && isNestedField(f) {
+			// EnableNestedStruct, the type name needs to be used when retrieving the value for getter&setter
+			fn = s.identify(cu, f.Type.Name)
+			if strings.Contains(fn, ".") {
+				fns := strings.Split(fn, ".")
+				fn = s.identify(cu, fns[len(fns)-1])
+			}
+		}
+
 		st.scope.Add("Get"+fn, _p("get:"+f.Name))
 		if cu.Features().GenerateSetter {
 			st.scope.Add("Set"+fn, _p("set:"+f.Name))
@@ -339,6 +352,10 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 	// field names
 	for _, f := range v.Fields {
 		fn := s.identify(cu, f.Name)
+		isNested := false
+		if cu.Features().EnableNestedStruct && isNestedField(f) {
+			isNested = true
+		}
 		fn = st.scope.Add(fn, f.Name)
 		id := id2str(f.ID)
 		st.fields = append(st.fields, &Field{
@@ -350,6 +367,7 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 			setter:    Name(st.scope.Get(_p("set:" + f.Name))),
 			isset:     Name(st.scope.Get(_p("isset:" + f.Name))),
 			deepEqual: Name(st.scope.Get(_p("deepequal:" + id))),
+			isNested:  isNested,
 		})
 	}
 
@@ -401,6 +419,18 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 	for f := range ff {
 		v := f.Field
 		f.typeName = ensureType(resolver.ResolveFieldTypeName(v))
+		// This is used to set the real field name for nested struct, ex.
+		// type T struct {
+		// 	*Nested
+		// }
+		if cu.Features().EnableNestedStruct && isNestedField(f.Field) {
+			name := f.typeName.Deref().String()
+			if strings.Contains(name, ".") {
+				names := strings.Split(name, ".")
+				name = names[len(names)-1]
+			}
+			f.name = Name(name)
+		}
 		f.frugalTypeName = ensureType(frugalResolver.ResolveFrugalTypeName(v.Type))
 		f.defaultTypeName = ensureType(resolver.GetDefaultValueTypeName(v))
 		if f.IsSetDefault() {
@@ -449,4 +479,15 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 			}
 		}
 	}
+}
+
+func isNestedField(f *parser.Field) bool {
+	annos := f.Annotations.Get(nestedAnnotation)
+	if len(annos) == 0 {
+		return false
+	}
+	if strings.EqualFold(annos[0], "true") {
+		return true
+	}
+	return false
 }

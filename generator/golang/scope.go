@@ -496,6 +496,7 @@ type Field struct {
 	setter          Name
 	isset           Name
 	deepEqual       Name
+	isNested        bool
 }
 
 // GoName returns the name in go code of the field.
@@ -553,6 +554,11 @@ func (f *Field) IsSetter() Name {
 // DeepEqual returns the deep compare method's name for the field.
 func (f *Field) DeepEqual() Name {
 	return f.deepEqual
+}
+
+// IsNested returns whether the field is a nested type.
+func (f *Field) IsNested() bool {
+	return f.isNested
 }
 
 // StructLike is a wrapper for the parser.StructLike.
