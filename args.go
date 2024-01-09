@@ -27,6 +27,7 @@ import (
 
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/backend"
+	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/plugin"
 )
 
@@ -99,7 +100,12 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 		if err != nil {
 			return nil, err
 		}
-
+		opts, err := a.checkOptions(desc.Options)
+		if err != nil {
+			return nil, err
+		}
+		// checkOptions may modify the content of the options
+		desc.Options = opts
 		spec := &generator.LangSpec{
 			Language: desc.Name,
 			Options:  desc.Options,
@@ -107,6 +113,33 @@ func (a *Arguments) Targets() (specs []*generator.LangSpec, err error) {
 		specs = append(specs, spec)
 	}
 	return
+}
+
+// checkOptions used to validate the command parameters.
+func (a *Arguments) checkOptions(opts []plugin.Option) ([]plugin.Option, error) {
+	params := plugin.Pack(opts)
+	cu := golang.NewCodeUtils(backend.DummyLogFunc())
+	cu.HandleOptions(params)
+	if cu.Features().EnableNestedStruct {
+		// In nested mode, if template is not 'slim', it is automatically converted to slim
+		if cu.Template() != "slim" {
+			found := false
+			for _, opt := range opts {
+				if opt.Name == "template" {
+					log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+					opt.Desc = "slim"
+					found = true
+					break
+				}
+			}
+			if !found {
+				log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+				opts = append(opts, plugin.Option{Name: "template", Desc: "slim"})
+			}
+
+		}
+	}
+	return opts, nil
 }
 
 // MakeLogFunc creates logging functions according to command line flags.

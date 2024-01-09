@@ -38,7 +38,11 @@ type {{$TypeName}} struct {
 	{{- if and Features.ReserveComments .ReservedComments}}
 	{{.ReservedComments}}
 	{{- end}}
-	{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
+	{{- if .IsNested}}
+		{{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}}
+	{{else}}
+		{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}}
+	{{- end}}
 {{- end}}
 	{{- if Features.KeepUnknownFields}}
 	{{- UseStdLibrary "unknown"}}
