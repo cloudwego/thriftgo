@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cloudwego/thriftgo/generator/golang/streaming"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
 	"github.com/cloudwego/thriftgo/reflection"
@@ -652,11 +653,18 @@ type Function struct {
 	throws       []*Field
 	argType      *StructLike
 	resType      *StructLike
+	service      *Service
+	streaming    *streaming.Streaming
 }
 
 // GoName returns the go name of the function.
 func (f *Function) GoName() Name {
 	return f.name
+}
+
+// Service returns the service that the function is defined in.
+func (f *Function) Service() *Service {
+	return f.service
 }
 
 // ResponseGoTypeName returns the go type of the response type of the function.
@@ -682,6 +690,10 @@ func (f *Function) ArgType() *StructLike {
 // ResType returns the synthesized structure of arguments of the function.
 func (f *Function) ResType() *StructLike {
 	return f.resType
+}
+
+func (f *Function) Streaming() *streaming.Streaming {
+	return f.streaming
 }
 
 func buildSynthesized(v *parser.Function) (argType, resType *parser.StructLike) {

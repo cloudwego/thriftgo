@@ -16,7 +16,7 @@ package templates
 
 // Client .
 var Client = `
-{{define "Client"}}
+{{define "ThriftClient"}}
 {{- UseStdLibrary "thrift"}}
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
@@ -71,6 +71,9 @@ func (p *{{$ClientName}}) Client_() thrift.TClient {
 {{- $ArgType := .ArgType}} 
 {{- $ResType := .ResType}} 
 func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
+	{{if .Streaming.IsStreaming -}}
+	panic("streaming method {{$ServiceName}}.{{.Name}}(mode = {{.Streaming.Mode}}) not available, please use Kitex Thrift Streaming Client.")
+	{{else -}}
 	var _args {{$ArgType.GoName}}
 	{{- range .Arguments}}
 	_args.{{($ArgType.Field .Name).GoName}} = {{.GoName}}
@@ -112,7 +115,25 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 	{{- end}}
 	return _result.GetSuccess(), nil
 	{{- end}}{{/* If .Void */}}
+	{{- end}}{{/* If .Streaming.IsStreaming */ -}}
 }
+{{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
+{{- $arg := index .Arguments 0}}
+{{- $ResponseType := .FunctionType.Name}}
+type {{.Service.GoName}}_{{.Name}}Server interface {
+	{{- UseStdLibrary "streaming" -}}
+	streaming.Stream
+	{{if .Streaming.ClientStreaming }}
+	Recv() (*{{$arg.Type.Name}}, error)
+	{{end}}
+	{{if .Streaming.ServerStreaming}}
+	Send(*{{$ResponseType}}) error
+	{{end}}
+	{{if and .Streaming.ClientStreaming (not .Streaming.ServerStreaming) }}
+	SendAndClose(*{{$ResponseType}}) error
+	{{end}}
+}
+{{- end}}{{/* Streaming */}}
 {{- end}}{{/* range .Functions */}}
-{{- end}}{{/* define "Client" */}}
+{{- end}}{{/* define "ThriftClient" */}}
 `

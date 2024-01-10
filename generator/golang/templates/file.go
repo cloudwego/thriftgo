@@ -48,12 +48,12 @@ import (
 {{- end}}
 
 {{- range .Services}}
-{{template "Service" .}}
-{{template "Client" .}}
+{{template "ThriftService" .}}
+{{template "ThriftClient" .}}
 {{- end}}
 
 {{- range .Services}}
-{{template "Processor" .}}
+{{template "ThriftProcessor" .}}
 {{- end}}
 
 {{- if Features.GenerateReflectionInfo}}

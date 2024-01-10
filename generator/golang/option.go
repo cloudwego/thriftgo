@@ -60,6 +60,7 @@ type Features struct {
 	WithFieldMask          bool `with_field_mask:"Support field-mask for generated code."`
 	FieldMaskHalfway       bool `field_mask_halfway:"Support set field-mask on not-root struct."`
 	FieldMaskZeroRequired  bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
+	ThriftStreaming        bool `thrift_streaming:"Recognize thrift streaming annotation and generate streaming code."`
 }
 
 var defaultFeatures = Features{
@@ -88,6 +89,7 @@ var defaultFeatures = Features{
 	SnakeTyleJSONTag:       false,
 	LowerCamelCaseJSONTag:  false,
 	GenerateReflectionInfo: false,
+	ThriftStreaming:        false,
 	EnumAsINT32:            false,
 	TrimIDL:                false,
 	JSONStringer:           false,

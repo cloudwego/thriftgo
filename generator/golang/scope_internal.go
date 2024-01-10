@@ -16,10 +16,12 @@ package golang
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/generator/golang/common"
+	"github.com/cloudwego/thriftgo/generator/golang/streaming"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
 )
@@ -47,8 +49,8 @@ func newScope(ast *parser.Thrift) *Scope {
 
 func (s *Scope) init(cu *CodeUtils) (err error) {
 	defer func() {
-		if x, ok := recover().(error); ok && x != nil {
-			err = x
+		if r := recover(); r != nil {
+			err = fmt.Errorf("err = %v, stack = %s", r, debug.Stack())
 		}
 	}()
 	if cu.Features().ReorderFields {
@@ -62,7 +64,9 @@ func (s *Scope) init(cu *CodeUtils) (err error) {
 	}
 	s.imports.init(cu, s.ast)
 	s.buildIncludes(cu)
-	s.installNames(cu)
+	if err = s.installNames(cu); err != nil {
+		return err
+	}
 	s.resolveTypesAndValues(cu)
 	return nil
 }
@@ -108,9 +112,11 @@ func (s *Scope) includeIDL(cu *CodeUtils, t *parser.Thrift) (pkgName string) {
 	return inc.PackageName
 }
 
-func (s *Scope) installNames(cu *CodeUtils) {
+func (s *Scope) installNames(cu *CodeUtils) error {
 	for _, v := range s.ast.Services {
-		s.buildService(cu, v)
+		if err := s.buildService(cu, v); err != nil {
+			return err
+		}
 	}
 	for _, v := range s.ast.GetStructLikes() {
 		s.buildStructLike(cu, v)
@@ -124,6 +130,7 @@ func (s *Scope) installNames(cu *CodeUtils) {
 	for _, v := range s.ast.Constants {
 		s.buildConstant(cu, v)
 	}
+	return nil
 }
 
 func (s *Scope) identify(cu *CodeUtils, raw string) string {
@@ -139,7 +146,7 @@ func (s *Scope) identify(cu *CodeUtils, raw string) string {
 	return name
 }
 
-func (s *Scope) buildService(cu *CodeUtils, v *parser.Service) {
+func (s *Scope) buildService(cu *CodeUtils, v *parser.Service) error {
 	// service name
 	sn := s.identify(cu, v.Name)
 	sn = s.globals.Add(sn, v.Name)
@@ -156,10 +163,17 @@ func (s *Scope) buildService(cu *CodeUtils, v *parser.Service) {
 	for _, f := range v.Functions {
 		fn := s.identify(cu, f.Name)
 		fn = svc.scope.Add(fn, f.Name)
+		st, err := streaming.ParseStreaming(f)
+		if err != nil {
+			return fmt.Errorf("service %s: %s", v.Name, err.Error())
+		}
+
 		svc.functions = append(svc.functions, &Function{
-			Function: f,
-			scope:    namespace.NewNamespace(namespace.UnderscoreSuffix),
-			name:     Name(fn),
+			Function:  f,
+			scope:     namespace.NewNamespace(namespace.UnderscoreSuffix),
+			name:      Name(fn),
+			service:   svc,
+			streaming: st,
 		})
 	}
 
@@ -186,6 +200,7 @@ func (s *Scope) buildService(cu *CodeUtils, v *parser.Service) {
 	pn := sn + "Processor"
 	s.globals.MustReserve(cn, _p("client:"+v.Name))
 	s.globals.MustReserve(pn, _p("processor:"+v.Name))
+	return nil
 }
 
 // buildFunction builds a namespace for parameters of a Function.
