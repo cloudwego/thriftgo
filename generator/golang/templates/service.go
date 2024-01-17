@@ -22,7 +22,7 @@ var FunctionSignature = `
 	{{- $arg := index .Arguments 0}}
 	{{- .GoName}}(
 	{{- if and .Streaming.ServerStreaming (not .Streaming.ClientStreaming) -}}
-		req *{{$arg.Type}}, 
+		req {{$arg.GoTypeName}},
 	{{- end -}}
 		stream {{.Service.GoName}}_{{.Name}}Server) (err error)
 {{- else -}}
