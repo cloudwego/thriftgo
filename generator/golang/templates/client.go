@@ -119,18 +119,17 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 }
 {{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 {{- $arg := index .Arguments 0}}
-{{- $ResponseType := .FunctionType.Name}}
 type {{.Service.GoName}}_{{.Name}}Server interface {
 	{{- UseStdLibrary "streaming" -}}
 	streaming.Stream
 	{{if .Streaming.ClientStreaming }}
-	Recv() (*{{$arg.Type.Name}}, error)
+	Recv() ({{$arg.GoTypeName}}, error)
 	{{end}}
 	{{if .Streaming.ServerStreaming}}
-	Send(*{{$ResponseType}}) error
+	Send({{.ResponseGoTypeName}}) error
 	{{end}}
 	{{if and .Streaming.ClientStreaming (not .Streaming.ServerStreaming) }}
-	SendAndClose(*{{$ResponseType}}) error
+	SendAndClose({{.ResponseGoTypeName}}) error
 	{{end}}
 }
 {{- end}}{{/* Streaming */}}
