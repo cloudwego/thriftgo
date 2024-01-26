@@ -14,6 +14,10 @@
 
 package slim
 
+import (
+	"strings"
+)
+
 // Extension .
 func Extension() []string {
 	return []string{
@@ -21,6 +25,19 @@ func Extension() []string {
 		Client,
 		Processor,
 	}
+}
+
+func NoDefaultCodecExtension() []string {
+	return []string{
+		replaceInsertionPoint(StructLike, "ExtraFieldMap", extraMapFieldText),
+		replaceInsertionPoint(Client, "ExtraStruct", extraStructText),
+		Processor,
+	}
+}
+
+func replaceInsertionPoint(content, insertionPoint, replaceText string) string {
+	targetStr := "{{InsertionPoint \"" + insertionPoint + "\"}}"
+	return strings.ReplaceAll(content, targetStr, replaceText)
 }
 
 // Substitutions.
@@ -114,7 +131,7 @@ func (p *{{$TypeName}}) Error() string {
 	return p.String()
 }
 {{- end}}
-
+{{InsertionPoint "ExtraFieldMap"}}
 {{- end}}{{/* define "StructLike" */}}
 	`
 
@@ -122,6 +139,7 @@ func (p *{{$TypeName}}) Error() string {
 {{define "ThriftClient"}}
 {{InsertionPoint "slim.Client"}}
 {{- range .Functions}}
+{{InsertionPoint "ExtraStruct"}}
 {{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 {{- $arg := index .Arguments 0}}
 type {{.Service.GoName}}_{{.Name}}Server interface {
@@ -154,5 +172,22 @@ _ error = ({{.GoTypeName}})(nil)
 )
 {{- end}}{{/* if $throws */}}
 {{- end}}{{/* define "ThriftProcessor" */}}
+`
+
+	extraMapFieldText = `
+var fieldIDToName_{{$TypeName}} = map[int16]string{
+{{- range .Fields}}
+	{{.ID}}: "{{.Name}}",
+{{- end}}{{/* range .Fields */}}
+}
+`
+
+	extraStructText = `
+{{$ArgsType := .ArgType}}
+{{template "StructLike" $ArgsType}}
+{{- if not .Oneway}}
+	{{$ResType := .ResType}}	
+	{{template "StructLike" $ResType}}
+{{- end}}
 `
 )
