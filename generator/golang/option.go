@@ -61,6 +61,7 @@ type Features struct {
 	FieldMaskHalfway       bool `field_mask_halfway:"Support set field-mask on not-root struct."`
 	FieldMaskZeroRequired  bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
 	ThriftStreaming        bool `thrift_streaming:"Recognize thrift streaming annotation and generate streaming code."`
+	NoDefaultSerdes        bool `no_default_serdes:"Do not generate default thrift serdes code."`
 }
 
 var defaultFeatures = Features{

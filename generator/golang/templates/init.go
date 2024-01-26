@@ -14,7 +14,9 @@
 
 package templates
 
-import "github.com/cloudwego/thriftgo/generator/golang/templates/slim"
+import (
+	"github.com/cloudwego/thriftgo/generator/golang/templates/slim"
+)
 
 // Alternative returns all alternative templates.
 func Alternative() map[string][]string {

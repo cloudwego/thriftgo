@@ -22,6 +22,7 @@ import (
 	"text/template"
 
 	"github.com/cloudwego/thriftgo/generator/golang/streaming"
+	"github.com/cloudwego/thriftgo/generator/golang/templates/slim"
 	"github.com/cloudwego/thriftgo/tool/trimmer/trim"
 
 	ref_tpl "github.com/cloudwego/thriftgo/generator/golang/templates/ref"
@@ -126,6 +127,9 @@ func (g *GoBackend) prepareTemplates() {
 	all := template.New("thrift").Funcs(g.funcs)
 	tpls := templates.Templates()
 
+	if g.utils.Features().NoDefaultSerdes {
+		tpls = append(templates.Templates(), slim.NoDefaultCodecExtension()...)
+	}
 	if name := g.utils.Template(); name != defaultTemplate {
 		tpls = g.utils.alternative[name]
 	}
