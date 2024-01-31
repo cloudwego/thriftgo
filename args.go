@@ -240,6 +240,7 @@ Options:
                       Keys and values are options passed to the backend.
                       Many options will not require values. Boolean options accept
                       "false", "true" and "" (empty is treated as "true").
+                      Example: thriftgo -g go:naming_style=golint,ignore_initialisms,gen_setter,gen_deep_equal example.thrift
   -p, --plugin STR    Specify an external plugin to invoke.
                       STR has the form plugin[=path][:key1=val1[,key2[,key3=val3]]].
   --check-keywords    Check if any identifier using a keyword in common languages. 

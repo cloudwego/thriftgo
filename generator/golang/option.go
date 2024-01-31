@@ -32,11 +32,11 @@ type Features struct {
 	GenOmitEmptyTag        bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields."`
 	TypedefAsTypeAlias     bool `use_type_alias:"Generate type alias for typedef instead of type define."`
 	ValidateSet            bool `validate_set:"Generate codes to validate the uniqueness of set elements."`
-	ValueTypeForSIC        bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
+	ValueTypeForSIC        bool `value_type_in_container:"Generate value type for struct-like in container instead of pointer type."`
 	ScanValueForEnum       bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
 	ReorderFields          bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
 	TypedEnumString        bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
-	KeepUnknownFields      bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
+	KeepUnknownFields      bool `keep_unknown_fields:"Generate codes to store unrecognized fields in structs."`
 	GenDeepEqual           bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
 	CompatibleNames        bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
 	ReserveComments        bool `reserve_comments:"Reserve comments of definitions in thrift file"`
@@ -51,9 +51,9 @@ type Features struct {
 	GenerateReflectionInfo bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
 	WithReflection         bool `with_reflection:"Generate reflection info"`
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
-	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
-	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
-	KeepCodeRefName        bool `keep_code_ref_name:"Genenerate code ref but still keep file name."`
+	CodeRefSlim            bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
+	CodeRef                bool `code_ref:"Generate code ref by given idl-ref.yaml"`
+	KeepCodeRefName        bool `keep_code_ref_name:"Generate code ref but still keep file name."`
 	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 	EnableNestedStruct     bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim template'"`
 	JSONStringer           bool `json_stringer:"Generate the JSON marshal method in String() method."`
