@@ -51,6 +51,7 @@ type Features struct {
 	GenerateReflectionInfo bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
 	WithReflection         bool `with_reflection:"Generate reflection info"`
 	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
+	ExpCodeRef             bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but remind some struct as local.( this is a exp feature )"`
 	CodeRefSlim            bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                bool `code_ref:"Generate code ref by given idl-ref.yaml"`
 	KeepCodeRefName        bool `keep_code_ref_name:"Generate code ref but still keep file name."`
