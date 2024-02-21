@@ -38,7 +38,7 @@ func DumpIDL(ast *parser.Thrift) (string, error) {
 		return "", err
 	}
 	// deal with \\
-	escapedString := strings.Replace(buf.String(), "&#34;", "\\\"", -1)
+	escapedString := strings.Replace(buf.String(), "&#34;", "\"", -1)
 	outString := strings.Replace(escapedString, "#OUTQUOTES", "\"", -1)
 	return html.UnescapeString(outString), nil
 }
