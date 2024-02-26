@@ -14,6 +14,7 @@
 
 include "sample1b.thrift"
 include "sample1c.thrift"
+include "sample1d.thrift"
 
 namespace go sample1a (a = "b\"c\"")
 //test

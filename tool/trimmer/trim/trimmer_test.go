@@ -48,7 +48,7 @@ func testSingleFile(t *testing.T) {
 	trimmer.traversal(ast, ast.Filename)
 
 	test.Assert(t, len(ast.Structs) == 7)
-	test.Assert(t, len(ast.Includes) == 1)
+	test.Assert(t, len(ast.Includes) == 2)
 	test.Assert(t, len(ast.Typedefs) == 5)
 	test.Assert(t, len(ast.Namespaces) == 1)
 	test.Assert(t, len(ast.Includes[0].Reference.Structs) == 2)
@@ -82,7 +82,7 @@ func TestInclude(t *testing.T) {
 	check(semantic.ResolveSymbols(ast))
 
 	test.Assert(t, len(ast.Structs) == 0)
-	test.Assert(t, len(ast.Includes) == 1)
+	test.Assert(t, len(ast.Includes) == 2)
 	test.Assert(t, ast.Includes[0].Used == nil)
 }
 

@@ -12,18 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trim
+namespace go sample1a
 
-import "github.com/cloudwego/thriftgo/parser"
-
-func (t *Trimmer) preProcess(ast *parser.Thrift, filename string) bool {
-	ret := t.markKeptPart(ast, filename)
-	for i, include := range ast.Includes {
-		marked := t.preProcess(include.Reference, filename)
-		if marked {
-			t.marks[filename][ast.Includes[i]] = true
-			ret = true
-		}
-	}
-	return ret
+// @preserve
+struct preservedStr{
 }
