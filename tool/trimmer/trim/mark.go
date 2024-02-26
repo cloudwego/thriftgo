@@ -181,34 +181,41 @@ func (t *Trimmer) markInclude(include *parser.Include, filename string) {
 	// t.markKeptPart(include.Reference, filename)
 }
 
-func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) {
+func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
+	ret := false
 	for _, constant := range ast.Constants {
 		t.markType(constant.Type, ast, filename)
+		ret = true
 	}
 
 	for _, typedef := range ast.Typedefs {
 		t.markType(typedef.Type, ast, filename)
+		ret = true
 	}
 
 	if !t.forceTrimming {
 		for _, str := range ast.Structs {
 			if !t.marks[filename][str] && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
+				ret = true
 			}
 		}
 
 		for _, str := range ast.Unions {
 			if !t.marks[filename][str] && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
+				ret = true
 			}
 		}
 
 		for _, str := range ast.Exceptions {
 			if !t.marks[filename][str] && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
+				ret = true
 			}
 		}
 	}
+	return ret
 }
 
 // for -m, trace the extends and find specified method to base on
