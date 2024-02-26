@@ -77,7 +77,7 @@ func TestInclude(t *testing.T) {
 	check(semantic.ResolveSymbols(ast))
 
 	test.Assert(t, len(ast.Structs) == 0)
-	test.Assert(t, len(ast.Includes) == 2)
+	test.Assert(t, len(ast.Includes) == 1)
 	test.Assert(t, ast.Includes[0].Used == nil)
 }
 
