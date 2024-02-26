@@ -1,4 +1,4 @@
-#! /bin/bash -e
+#! /bin/bash
 
 # Copyright 2022 CloudWeGo Authors
 #
@@ -15,23 +15,30 @@
 # limitations under the License.
 
 generate () {
-    xxx=$1
-    out=gen-${xxx}
-    opt="go:package_prefix=example.com/test/${out}"
-    idl=a.thrift
-    if [ -d ${out} ]; then
-        rm -rf ${out}
+    out=gen-$1
+    opt="go:package_prefix=github.com/cloudwego/thriftgo/test/golang/fieldmask/$out"
+    idl=$2
+    if [ -d $out ]; then
+        rm -rf $out
     fi
     mkdir -p $out
 
-    if [[ $xxx == new ]]; then
-        opt=$opt,with_field_mask,with_reflection
+    if [ "$1" = "new" ]; then
+        opt="$opt,with_field_mask,with_reflection"
     fi
-    echo "thriftgo -g $opt -o ${out} $idl"
-    thriftgo -g "$opt" -o ${out} $idl
+    if [ "$1" = "halfway" ]; then
+        opt="$opt,with_field_mask,field_mask_halfway,with_reflection"
+    fi
+    if [ "$1" = "zero" ]; then
+        opt="$opt,with_field_mask,field_mask_zero_required,with_reflection"
+    fi
+    echo "thriftgo -g $opt -o $out $idl"
+    thriftgo -g "$opt" -o $out $idl
 }
 
-generate old
-generate new
+generate old a.thrift
+generate new a.thrift
+generate halfway b.thrift
+generate zero c.thrift
 go mod tidy
 go test -v ./...

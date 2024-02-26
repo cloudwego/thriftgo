@@ -73,11 +73,13 @@ func main() {
 	_, err = checker.CheckAll(ast)
 	check(err)
 	check(semantic.ResolveSymbols(ast))
+	structs, fields := countStructs(ast)
 
 	// trim ast
-	check(trim.TrimAST(&trim.TrimASTArg{
+	_, _, err = trim.TrimAST(&trim.TrimASTArg{
 		Ast: ast, TrimMethods: a.Methods, Preserve: preserveInput,
-	}))
+	})
+	check(err)
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
@@ -123,6 +125,8 @@ func main() {
 		recurseDump(ast, a.Recurse, a.OutputFile)
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
+		structsNew, fieldsNew := countStructs(ast)
+		fmt.Printf("removed %d unused structures with %d fields\n", structs-structsNew, fields-fieldsNew)
 	}
 	println("success, dump to", a.OutputFile)
 
@@ -135,11 +139,16 @@ func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	}
 	out, err := dump.DumpIDL(ast)
 	check(err)
-	relativeUrl, err := filepath.Rel(sourceDir, ast.Filename)
+	absFileName, err := filepath.Abs(ast.Filename)
+	check(err)
+	absSourceDir, err := filepath.Abs(sourceDir)
+	check(err)
+	relativeUrl, err := filepath.Rel(absSourceDir, absFileName)
 	if err != nil {
 		println("-r input err, range should cover all the target IDLs;", err.Error())
 		os.Exit(2)
 	}
+
 	outputFileUrl := filepath.Join(outDir, relativeUrl)
 	err = os.MkdirAll(filepath.Dir(outputFileUrl), os.ModePerm)
 	if err != nil {
@@ -163,4 +172,21 @@ func writeStringToFile(filename, content string) error {
 		return err
 	}
 	return nil
+}
+
+func countStructs(ast *parser.Thrift) (structs, fields int) {
+	structs += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
+	for _, v := range ast.Structs {
+		fields += len(v.Fields)
+	}
+	for _, v := range ast.Services {
+		fields += len(v.Functions)
+	}
+	for _, v := range ast.Unions {
+		fields += len(v.Fields)
+	}
+	for _, v := range ast.Exceptions {
+		fields += len(v.Fields)
+	}
+	return structs, fields
 }

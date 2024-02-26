@@ -14,6 +14,10 @@
 
 package slim
 
+import (
+	"strings"
+)
+
 // Extension .
 func Extension() []string {
 	return []string{
@@ -21,6 +25,19 @@ func Extension() []string {
 		Client,
 		Processor,
 	}
+}
+
+func NoDefaultCodecExtension() []string {
+	return []string{
+		replaceInsertionPoint(StructLike, "ExtraFieldMap", extraMapFieldText),
+		replaceInsertionPoint(Client, "ExtraStruct", extraStructText),
+		Processor,
+	}
+}
+
+func replaceInsertionPoint(content, insertionPoint, replaceText string) string {
+	targetStr := "{{InsertionPoint \"" + insertionPoint + "\"}}"
+	return strings.ReplaceAll(content, targetStr, replaceText)
 }
 
 // Substitutions.
@@ -38,7 +55,11 @@ type {{$TypeName}} struct {
 	{{- if and Features.ReserveComments .ReservedComments}}
 	{{.ReservedComments}}
 	{{- end}}
-	{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}} 
+	{{- if .IsNested}}
+		{{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}}
+	{{else}}
+		{{(.GoName)}} {{.GoTypeName}} {{GenFieldTags . (InsertionPoint $.Category $.Name .Name "tag")}}
+	{{- end}}
 {{- end}}
 	{{- if Features.KeepUnknownFields}}
 	{{- UseStdLibrary "unknown"}}
@@ -92,11 +113,17 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 {{template "FieldIsSet" .}}
 
 func (p *{{$TypeName}}) String() string {
+	{{- if Features.JSONStringer}}
+	{{- UseStdLibrary "json_utils"}}
+	JsonBytes , _  := json_utils.JSONFunc(p)
+	return string(JsonBytes)	
+	{{- else}}
 	if p == nil {
 		return "<nil>"
 	}
 	{{- UseStdLibrary "fmt"}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
+	{{- end}}
 }
 
 {{- if eq .Category "exception"}}
@@ -105,16 +132,42 @@ func (p *{{$TypeName}}) Error() string {
 }
 {{- end}}
 
+{{- if Features.GenDeepEqual}}
+{{template "StructLikeDeepEqual" .}}
+
+{{template "StructLikeDeepEqualField" .}}
+{{- end}}
+
+{{InsertionPoint "ExtraFieldMap"}}
 {{- end}}{{/* define "StructLike" */}}
 	`
 
 	Client = `
-{{define "Client"}}
+{{define "ThriftClient"}}
 {{InsertionPoint "slim.Client"}}
-{{end}}{{/* define "Client" */}}`
+{{- range .Functions}}
+{{InsertionPoint "ExtraStruct"}}
+{{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
+{{- $arg := index .Arguments 0}}
+type {{.Service.GoName}}_{{.Name}}Server interface {
+	{{- UseStdLibrary "streaming" -}}
+	streaming.Stream
+	{{if .Streaming.ClientStreaming }}
+	Recv() ({{$arg.GoTypeName}}, error)
+	{{end}}
+	{{if .Streaming.ServerStreaming}}
+	Send({{.ResponseGoTypeName}}) error
+	{{end}}
+	{{if and .Streaming.ClientStreaming (not .Streaming.ServerStreaming) }}
+	SendAndClose({{.ResponseGoTypeName}}) error
+	{{end}}
+}
+{{- end}}{{/* Streaming */}}
+{{- end}}{{/* range .Functions */}}
+{{end}}{{/* define "ThriftClient" */}}`
 
 	Processor = `
-{{define "Processor"}}
+{{define "ThriftProcessor"}}
 {{InsertionPoint "slim.Processor"}}
 {{$throws := ServiceThrows .}}
 {{- if $throws}}
@@ -125,6 +178,23 @@ _ error = ({{.GoTypeName}})(nil)
 {{- end}}{{/* range $throws */}}
 )
 {{- end}}{{/* if $throws */}}
-{{- end}}{{/* define "Processor" */}}
+{{- end}}{{/* define "ThriftProcessor" */}}
+`
+
+	extraMapFieldText = `
+var fieldIDToName_{{$TypeName}} = map[int16]string{
+{{- range .Fields}}
+	{{.ID}}: "{{.Name}}",
+{{- end}}{{/* range .Fields */}}
+}
+`
+
+	extraStructText = `
+{{$ArgsType := .ArgType}}
+{{template "StructLike" $ArgsType}}
+{{- if not .Oneway}}
+	{{$ResType := .ResType}}	
+	{{template "StructLike" $ResType}}
+{{- end}}
 `
 )

@@ -54,14 +54,16 @@ func (c *checker) CheckAll(t *parser.Thrift) (warns []string, err error) {
 		c.CheckUnions,
 		c.CheckFunctions,
 	}
-	for _, f := range checks {
-		ws, err := f(t)
-		warns = append(warns, ws...)
-		if err != nil {
-			return warns, err
+	for tt := range t.DepthFirstSearch() {
+		for _, f := range checks {
+			ws, err := f(tt)
+			warns = append(warns, ws...)
+			if err != nil {
+				return warns, err
+			}
 		}
 	}
-	return
+	return warns, nil
 }
 
 func (c *checker) CheckGlobals(t *parser.Thrift) (warns []string, err error) {

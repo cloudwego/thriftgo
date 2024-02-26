@@ -46,6 +46,8 @@ const (
 	ThriftFieldMaskLib  = "github.com/cloudwego/thriftgo/fieldmask"
 	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
 	defaultTemplate     = "default"
+	ThriftJSONUtilLib   = "github.com/cloudwego/thriftgo/utils/json_utils"
+	KitexStreamingLib   = "github.com/cloudwego/kitex/pkg/streaming"
 )
 
 var escape = regexp.MustCompile(`\\.`)
@@ -82,6 +84,12 @@ func NewCodeUtils(log backend.LogFunc) *CodeUtils {
 // SetFeatures sets the feature set.
 func (cu *CodeUtils) SetFeatures(fs Features) {
 	cu.features = fs
+}
+
+func (cu *CodeUtils) SetWithFieldMask(enable bool) bool {
+	ret := cu.features.WithFieldMask
+	cu.features.WithFieldMask = enable
+	return ret
 }
 
 // Features returns the current settings of generator features.
@@ -370,16 +378,18 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"InsertionPoint": plugin.InsertionPoint,
 		"Unexport":       common.Unexport,
 
-		"Debug":          cu.Debug,
-		"Features":       cu.Features,
-		"GetPackageName": cu.GetPackageName,
-		"GenTags":        cu.GenTags,
-		"GenFieldTags":   cu.GenFieldTags,
+		"Debug":            cu.Debug,
+		"Features":         cu.Features,
+		"SetWithFieldMask": cu.SetWithFieldMask,
+		"GetPackageName":   cu.GetPackageName,
+		"GenTags":          cu.GenTags,
+		"GenFieldTags":     cu.GenFieldTags,
 		"MkRWCtx": func(f *Field) (*ReadWriteContext, error) {
 			return cu.MkRWCtx(cu.rootScope, f)
 		},
 
 		"IsBaseType":        IsBaseType,
+		"ZeroWriter":        ZeroWriter,
 		"NeedRedirect":      NeedRedirect,
 		"IsFixedLengthType": IsFixedLengthType,
 		"SupportIsSet":      SupportIsSet,

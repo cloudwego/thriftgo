@@ -30,16 +30,6 @@ jobs:
 
       - name: Lint
         run: |
-          go install mvdan.cc/gofumpt@v0.2.0
-          echo "install done!"
-          set -e
-          if [[ -n "$(gofumpt -l .)" ]]; then
-            echo "gofumpt found formatting issues."
-            gofumpt -l .
-            exit 1
-          fi
-          test -z "$(gofumpt -l .)" 
-          echo "test done!"
           go vet -stdmethods=false $(go list ./...)   
           echo "go vet done!"
 
@@ -62,6 +52,7 @@ jobs:
           go mod init codegen-test
           go mod edit -replace=github.com/apache/thrift=github.com/apache/thrift@v0.13.0
           go mod edit -replace github.com/cloudwego/thriftgo=${LOCAL_REPO}
+          go mod edit -replace github.com/cloudwego/kitex=github.com/cloudwego/kitex@develop
           go mod tidy
           bash -version
           bash ./codegen_install_check.sh

@@ -41,19 +41,17 @@ func ReplaceFileDescriptor(replacer *FileDescriptorReplacer) *FileDescriptor {
 		panic("not found remote fd")
 	}
 	var shadowDesc *FileDescriptor
-	// if filepath is the same as local，don't need to replace,because other can ref
-	if remoteDesc.Filepath == currentFilepath {
-		remoteDesc.setGoPkgPathRef(currentGoPkgPath)
-		return remoteDesc
-	} else {
-		// if filepath is not the same,then just replace the file descriptor's filepath is ok. since sub descriptor's filepath will lead to the real and same fd from remote
-		// just use shallow copy is ok, we only change extra and filepath
-		shadowDesc = new(FileDescriptor)
-		*shadowDesc = *remoteDesc
-		shadowDesc.Filepath = currentFilepath
-		shadowDesc.setGoPkgPathRef(currentGoPkgPath)
+
+	// make a copy from remoteDesc and replace metadata such as filepath、go pkg path to local's.
+	shadowDesc = new(FileDescriptor)
+	*shadowDesc = *remoteDesc
+	shadowDesc.Filepath = currentFilepath
+	shadowDesc.Extra = nil
+	shadowDesc.setGoPkgPathRef(currentGoPkgPath)
+
+	if remoteDesc.Filepath != currentFilepath {
+		checkDuplicateAndRegister(shadowDesc, currentGoPkgPath)
 	}
-	checkDuplicateAndRegister(shadowDesc, currentGoPkgPath)
 	return shadowDesc
 }
 
