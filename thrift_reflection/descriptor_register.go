@@ -16,6 +16,7 @@ package thrift_reflection
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/cloudwego/thriftgo/parser"
 )
@@ -24,14 +25,25 @@ var globalFD = map[string]*FileDescriptor{}
 
 func checkDuplicateAndRegister(f *FileDescriptor, currentGoPkgPath string) {
 	f.setGoPkgPath(currentGoPkgPath)
-	if previous, ok := globalFD[f.Filepath]; ok {
-		panicString := fmt.Sprintf("thrift reflection: file '%s' is already registered\n"+
-			"\tpreviously from: '%s'\n"+
-			"\tcurrently from '%s'\n"+
-			"To solve this, you need to remove one of the idl above.", f.Filepath, previous.getGoPkgPath(), f.getGoPkgPath())
-		panic(panicString)
+	previous, ok := globalFD[f.Filepath]
+	if !ok {
+		globalFD[f.Filepath] = f
+		return
 	}
-	globalFD[f.Filepath] = f
+
+	// just check the content of thrift file
+	newFD := *f
+	newFD.Extra = nil
+	newPrevFD := *previous
+	newPrevFD.Extra = nil
+	if reflect.DeepEqual(newFD, newPrevFD) {
+		return
+	}
+	panicString := fmt.Sprintf("thrift reflection: file '%s' is already registered\n"+
+		"\tpreviously from: '%s'\n"+
+		"\tcurrently from '%s'\n"+
+		"To solve this, you need to remove one of the idl above.", f.Filepath, previous.getGoPkgPath(), f.getGoPkgPath())
+	panic(panicString)
 }
 
 func BuildFileDescriptor(builder *FileDescriptorBuilder) *FileDescriptor {
