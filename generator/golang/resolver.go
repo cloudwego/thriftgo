@@ -71,7 +71,7 @@ func (r *Resolver) ResolveFieldTypeName(f *parser.Field) (TypeName, error) {
 		return "", err
 	}
 
-	if NeedRedirect(f) {
+	if NeedRedirect(f) && !checkRefInterfaceType(r.util, r.root, f.Type) {
 		return "*" + tn.Deref(), nil
 	}
 	return tn, nil
@@ -83,7 +83,7 @@ func (r *Resolver) ResolveTypeName(t *parser.Type) (TypeName, error) {
 	if err != nil {
 		return "", err
 	}
-	if t.Category.IsStructLike() {
+	if t.Category.IsStructLike() && !checkRefInterfaceType(r.util, r.root, t) {
 		return "*" + tn, nil
 	}
 	return tn, nil
@@ -132,7 +132,7 @@ func (r *Resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, 
 			if err != nil {
 				return "", fmt.Errorf("resolve key type of '%s' failed: %w", t, err)
 			}
-			if t.KeyType.Category.IsStructLike() {
+			if t.KeyType.Category.IsStructLike() && !checkRefInterfaceType(r.util, g, t.KeyType) {
 				// when a struct-like is used as key of a map, it must
 				// generte a pointer type instead of the struct itself
 				k = "*" + k
@@ -148,7 +148,7 @@ func (r *Resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, 
 		return "", fmt.Errorf("resolve value type of '%s' failed: %w", t, err)
 	}
 
-	if t.ValueType.Category.IsStructLike() && !r.util.Features().ValueTypeForSIC {
+	if t.ValueType.Category.IsStructLike() && !r.util.Features().ValueTypeForSIC && !checkRefInterfaceType(r.util, g, t.ValueType) {
 		v = "*" + v // generate pointer type for struct-like by default
 	}
 	return name + v, nil // map[k]v or []v
@@ -502,4 +502,47 @@ func (r *Resolver) bin2str(t *parser.Type) *parser.Type {
 		return &r
 	}
 	return t
+}
+
+// getRefTypeAnnotation returns annotations of t's referring type
+func getRefTypeAnnotation(g *Scope, t *parser.Type) parser.Annotations {
+	ref := t.GetReference()
+	if ref == nil {
+		return nil
+	}
+	refScope := g.includes[ref.Index].Scope
+	switch t.Category {
+	case parser.Category_Constant:
+		if c := refScope.Constant(ref.Name); c != nil {
+			return c.Annotations
+		}
+	case parser.Category_Enum:
+		if e := refScope.Enum(ref.Name); e != nil {
+			return e.Annotations
+		}
+	case parser.Category_Struct:
+		fallthrough
+	case parser.Category_Union:
+		fallthrough
+	case parser.Category_Exception:
+		if st := refScope.StructLike(ref.Name); st != nil {
+			return st.Annotations
+		}
+	case parser.Category_Typedef:
+		if def := refScope.Typedef(ref.Name); def != nil {
+			return def.Annotations
+		}
+	}
+	return nil
+}
+
+// isRefInterfaceType verifies whether t refers Interface type
+func isRefInterfaceType(g *Scope, t *parser.Type) bool {
+	annos := getRefTypeAnnotation(g, t)
+	return annotationContainsTrue(annos, interfaceAnnotation)
+}
+
+// checkRefInterfaceType checks whether EnableRefInterface feature has been set and t refers Interface type
+func checkRefInterfaceType(cu *CodeUtils, g *Scope, t *parser.Type) bool {
+	return cu.Features().EnableRefInterface && isRefInterfaceType(g, t)
 }
