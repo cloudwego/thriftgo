@@ -565,9 +565,10 @@ func (f *Field) IsNested() bool {
 // StructLike is a wrapper for the parser.StructLike.
 type StructLike struct {
 	*parser.StructLike
-	scope  namespace.Namespace
-	name   Name
-	fields []*Field
+	scope   namespace.Namespace
+	name    Name
+	fields  []*Field
+	isAlias bool
 }
 
 // GoName returns the name in go code of the struct-like.
@@ -594,6 +595,11 @@ func (s *StructLike) Fields() []*Field {
 // Namespace returns the namescope of the struct-like.
 func (s *StructLike) Namespace() namespace.Namespace {
 	return s.scope
+}
+
+// IsAlias returns whether this type is alias of existing type
+func (s *StructLike) IsAlias() bool {
+	return s.isAlias
 }
 
 // Service is a wrapper for the parser.Service.
