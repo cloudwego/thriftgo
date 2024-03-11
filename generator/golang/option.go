@@ -63,6 +63,8 @@ type Features struct {
 	ThriftStreaming        bool `thrift_streaming:"Recognize thrift streaming annotation and generate streaming code."`
 	NoDefaultSerdes        bool `no_default_serdes:"Do not generate default thrift serdes code."`
 	NoDefaultString        bool `no_default_string:"Do not generate default thrift string code."`
+  NoAliasTypeReflectionMethod bool `no_alias_type_reflection_method:"Do not generate type related methods in <idl>_reflection.go when 'thrift.is_alias=\"true\"' annotation is set to types."`
+	EnableRefInterface          bool `enable_ref_interface:"Generate Interface field without pointer type when 'thrift.is_interface=\"true\"' annotation is set to types in referred thrift."`
 }
 
 var defaultFeatures = Features{
@@ -100,6 +102,8 @@ var defaultFeatures = Features{
 	FieldMaskZeroRequired:  false,
 	EnableNestedStruct:     false,
 	NoDefaultString:        false,
+	NoAliasTypeReflectionMethod: false,
+	EnableRefInterface:          false,
 }
 
 type param struct {

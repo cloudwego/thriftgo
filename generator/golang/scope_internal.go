@@ -16,6 +16,7 @@ package golang
 
 import (
 	"fmt"
+	"log"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -30,7 +31,9 @@ const (
 	// A prefix to denote synthesized identifiers.
 	prefix = "$"
 	// nestedAnnotation is to denote the field is nested type.
-	nestedAnnotation = "thrift.nested"
+	nestedAnnotation    = "thrift.nested"
+	interfaceAnnotation = "thrift.is_interface"
+	aliasAnnotation     = "thrift.is_alias"
 )
 
 func _p(id string) string {
@@ -386,6 +389,10 @@ func (s *Scope) buildStructLike(cu *CodeUtils, v *parser.StructLike, usedName ..
 		})
 	}
 
+	if cu.Features().NoAliasTypeReflectionMethod && isAliasType(v) {
+		st.isAlias = true
+	}
+
 	if len(usedName) > 0 {
 		s.synthesized = append(s.synthesized, st)
 	} else {
@@ -497,12 +504,29 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 }
 
 func isNestedField(f *parser.Field) bool {
-	annos := f.Annotations.Get(nestedAnnotation)
-	if len(annos) == 0 {
+	return annotationContainsTrue(f.Annotations, nestedAnnotation)
+}
+
+func isAliasType(s *parser.StructLike) bool {
+	return annotationContainsTrue(s.Annotations, aliasAnnotation)
+}
+
+func isRefInterfaceField(g *Scope, f *parser.Field) bool {
+	return isRefInterfaceType(g, f.Type)
+}
+
+func annotationContainsTrue(annos parser.Annotations, anno string) bool {
+	vals := annos.Get(anno)
+	if len(vals) == 0 {
 		return false
 	}
-	if strings.EqualFold(annos[0], "true") {
+	if len(vals) > 1 {
+		log.Printf("[WARN] %s annotation has been set multiple values", anno)
+		return false
+	}
+	if strings.EqualFold(vals[0], "true") {
 		return true
 	}
+
 	return false
 }
