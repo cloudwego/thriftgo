@@ -51,12 +51,12 @@ func IsBaseType(t *parser.Type) bool {
 	return false
 }
 
-func checkErrorTPL(assign string, err string) string {
+func checkErrorTPL(assign, err string) string {
 	return "if err := " + assign + "; err != nil {\n goto " + err + "\n}\n"
 }
 
 // IsBaseType determines whether the given type is a base type.
-func ZeroWriter(t *parser.Type, oprot string, err string) string {
+func ZeroWriter(t *parser.Type, oprot, err string) string {
 	switch t.GetCategory() {
 	case parser.Category_Bool:
 		return checkErrorTPL(oprot+".WriteBool(false)", err)

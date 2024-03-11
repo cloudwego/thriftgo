@@ -62,6 +62,7 @@ type Features struct {
 	FieldMaskZeroRequired  bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
 	ThriftStreaming        bool `thrift_streaming:"Recognize thrift streaming annotation and generate streaming code."`
 	NoDefaultSerdes        bool `no_default_serdes:"Do not generate default thrift serdes code."`
+	NoDefaultString        bool `no_default_string:"Do not generate default thrift string code."`
 }
 
 var defaultFeatures = Features{
@@ -98,6 +99,7 @@ var defaultFeatures = Features{
 	FieldMaskHalfway:       false,
 	FieldMaskZeroRequired:  false,
 	EnableNestedStruct:     false,
+	NoDefaultString:        false,
 }
 
 type param struct {

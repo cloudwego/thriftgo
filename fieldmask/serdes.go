@@ -122,7 +122,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	}
 
 	var start bool
-	var writer = func(path interface{}, f *FieldMask) (bool, error) {
+	writer := func(path interface{}, f *FieldMask) (bool, error) {
 		if !f.Exist() {
 			return true, nil
 		}
@@ -247,7 +247,7 @@ func (self *FieldMask) UnmarshalJSON(in []byte) error {
 	if self == nil {
 		return errors.New("nil memory address")
 	}
-	var s = new(shadowFieldMask)
+	s := new(shadowFieldMask)
 	if err := json.Unmarshal(in, &s); err != nil {
 		return err
 	}
@@ -294,7 +294,6 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 				return err
 			}
 		}
-
 	} else if s.Type == FtList || s.Type == FtIntMap {
 		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
@@ -311,7 +310,6 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 				return err
 			}
 		}
-
 	} else if s.Type == FtStrMap {
 		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
@@ -375,7 +373,7 @@ func Unmarshal(data []byte) (*FieldMask, error) {
 		return fm.(*FieldMask), nil
 	}
 	// slow-path: unmarshal from json
-	var fm = new(FieldMask)
+	fm := new(FieldMask)
 	err := fm.UnmarshalJSON(data)
 	if err != nil {
 		return nil, err

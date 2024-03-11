@@ -96,7 +96,7 @@ struct BaseResp {
 }
 `
 
-func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
+func GetDescriptor(IDL, root string) *thrift_reflection.TypeDescriptor {
 	ast, err := parser.ParseString("a.thrift", IDL)
 	if err != nil {
 		panic(err.Error())

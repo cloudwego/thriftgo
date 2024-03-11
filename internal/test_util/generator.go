@@ -23,7 +23,7 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 )
 
-func GenerateGolang(idl string, output string, genOpts []plugin.Option, pluginOpts []*plugin.Desc) (generator.Generator, *plugin.Response) {
+func GenerateGolang(idl, output string, genOpts []plugin.Option, pluginOpts []*plugin.Desc) (generator.Generator, *plugin.Response) {
 	ast, err := parser.ParseFile(idl, nil, true)
 	if err != nil {
 		panic(err)

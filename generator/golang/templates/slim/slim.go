@@ -112,6 +112,7 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 
 {{template "FieldIsSet" .}}
 
+{{- if not Features.NoDefaultString}}
 func (p *{{$TypeName}}) String() string {
 	{{- if Features.JSONStringer}}
 	{{- UseStdLibrary "json_utils"}}
@@ -126,9 +127,15 @@ func (p *{{$TypeName}}) String() string {
 	{{- end}}
 }
 
+{{end}}{{/* if not Features.NoDefaultString */}}
+
 {{- if eq .Category "exception"}}
 func (p *{{$TypeName}}) Error() string {
+{{- if not Features.NoDefaultString}}
 	return p.String()
+{{- else}}
+    return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
+{{end}}{{/* if not Features.NoDefaultString */}}
 }
 {{- end}}
 

@@ -156,7 +156,7 @@ func TestMaskRequired(t *testing.T) {
 	t.Run("read", func(t *testing.T) {
 		obj := nbase.NewBaseResp()
 		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
-		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		obj.F8 = map[float64][]nbase.Str{1.0: {"a"}}
 		obj.R12 = nbase.NewTrafficEnv()
 		obj.R12.Name = "a"
 		obj.R12.Env = "a"
@@ -194,7 +194,7 @@ func TestMaskRequired(t *testing.T) {
 		obj.R12.Name = "a"
 		obj.R12.Env = "a"
 		obj.R13 = map[string]*nbase.Key{"a": v}
-		obj.F8 = map[float64][]nbase.Str{1.0: []nbase.Str{"a"}}
+		obj.F8 = map[float64][]nbase.Str{1.0: {"a"}}
 		obj.F1 = map[nbase.Str]nbase.Str{"a": "b"}
 
 		obj.Set_FieldMask(fm)
@@ -233,7 +233,7 @@ func TestMaskRequired(t *testing.T) {
 		}
 		obj := zbase.NewBaseResp()
 		obj.F1 = map[zbase.Str]zbase.Str{"a": "b"}
-		obj.F8 = map[float64][]zbase.Str{1.0: []zbase.Str{"a"}}
+		obj.F8 = map[float64][]zbase.Str{1.0: {"a"}}
 		obj.StatusCode = 1
 		obj.R3 = true
 		obj.R4 = 1
@@ -283,7 +283,7 @@ func TestSetMaskHalfway(t *testing.T) {
 	obj := hbase.NewBase()
 	obj.Extra = hbase.NewExtraInfo()
 	obj.Extra.F1 = map[string]string{"a": "b"}
-	obj.Extra.F8 = map[int64][]*hbase.Key{1: []*hbase.Key{hbase.NewKey()}}
+	obj.Extra.F8 = map[int64][]*hbase.Key{1: {hbase.NewKey()}}
 
 	fm, err := fieldmask.NewFieldMask(obj.Extra.GetTypeDescriptor(), "$.F1")
 	if err != nil {

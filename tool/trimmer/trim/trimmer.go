@@ -50,7 +50,7 @@ type TrimASTArg struct {
 }
 
 // TrimAST parse the cfg and trim the single AST
-func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error) {
+func TrimAST(arg *TrimASTArg) (structureTrimmed, fieldTrimmed int, err error) {
 	var preservedStructs []string
 	if wd, err := os.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
@@ -74,7 +74,8 @@ func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error
 
 // doTrimAST trim the single AST, pass method names if -m specified
 func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, preservedStructs []string) (
-	structureTrimmed int, fieldTrimmed int, err error) {
+	structureTrimmed, fieldTrimmed int, err error,
+) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return 0, 0, err
