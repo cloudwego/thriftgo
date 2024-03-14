@@ -45,9 +45,11 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 			funcName := svc.Name + "." + function.Name
 			for i, method := range t.trimMethods {
 				if ok, _ := method.MatchString(funcName); ok {
-					t.marks[filename][svc] = true
-					t.markFunction(function, ast, filename)
-					t.trimMethodValid[i] = true
+					if funcName == method.String() || !strings.HasPrefix(funcName, method.String()) {
+						t.marks[filename][svc] = true
+						t.markFunction(function, ast, filename)
+						t.trimMethodValid[i] = true
+					}
 				}
 			}
 			continue
