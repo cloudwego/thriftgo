@@ -24,64 +24,86 @@ import (
 
 // Features controls the behavior of CodeUtils.
 type Features struct {
-	MarshalEnumToText      bool `json_enum_as_text:"Generate MarshalText for enum values"`
-	GenerateSetter         bool `gen_setter:"Generate Set* methods for fields"`
-	GenDatabaseTag         bool `gen_db_tag:"Generate 'db:$field' tag"`
-	GenOmitEmptyTag        bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields."`
-	TypedefAsTypeAlias     bool `use_type_alias:"Generate type alias for typedef instead of type define."`
-	ValidateSet            bool `validate_set:"Generate codes to validate the uniqueness of set elements."`
-	ValueTypeForSIC        bool `value_type_in_container:"Genenerate value type for struct-like in container instead of pointer type."`
-	ScanValueForEnum       bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
-	ReorderFields          bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
-	TypedEnumString        bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
-	KeepUnknownFields      bool `keep_unknown_fields:"Genenerate codes to store unrecognized fields in structs."`
-	GenDeepEqual           bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
-	CompatibleNames        bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
-	ReserveComments        bool `reserve_comments:"Reserve comments of definitions in thrift file"`
-	NilSafe                bool `nil_safe:"Generate nil-safe getters."`
-	FrugalTag              bool `frugal_tag:"Generate 'frugal' tags."`
-	EscapeDoubleInTag      bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
-	GenerateTypeMeta       bool `gen_type_meta:"Generate and register type meta for structures."`
-	GenerateJSONTag        bool `gen_json_tag:"Generate struct with 'json' tag"`
-	AlwaysGenerateJSONTag  bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
-	SnakeTyleJSONTag       bool `snake_style_json_tag:"Generate snake style json tag"`
-	LowerCamelCaseJSONTag  bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
-	GenerateReflectionInfo bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
-	WithReflection         bool `with_reflection:"Generate reflection info"`
-	EnumAsINT32            bool `enum_as_int_32:"Generate enum type as int32"`
-	CodeRefSlim            bool `code_ref_slim:"Genenerate code ref by given idl-ref.yaml with less refs to avoid conflict"`
-	CodeRef                bool `code_ref:"Genenerate code ref by given idl-ref.yaml"`
-	TrimIDL                bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
+	MarshalEnumToText           bool `json_enum_as_text:"Generate MarshalText and UnmarshalText for enum values"`
+	MarshalEnum                 bool `enum_marshal:"Generate MarshalText for enum values"`
+	UnmarshalEnum               bool `enum_unmarshal:"Generate UnmarshalText for enum values"`
+	GenerateSetter              bool `gen_setter:"Generate Set* methods for fields"`
+	GenDatabaseTag              bool `gen_db_tag:"Generate 'db:$field' tag"`
+	GenOmitEmptyTag             bool `omitempty_for_optional:"Generate 'omitempty' tags for optional fields."`
+	TypedefAsTypeAlias          bool `use_type_alias:"Generate type alias for typedef instead of type define."`
+	ValidateSet                 bool `validate_set:"Generate codes to validate the uniqueness of set elements."`
+	ValueTypeForSIC             bool `value_type_in_container:"Generate value type for struct-like in container instead of pointer type."`
+	ScanValueForEnum            bool `scan_value_for_enum:"Generate Scan and Value methods for enums to implement interfaces in std sql library."`
+	ReorderFields               bool `reorder_fields:"Reorder fields of structs to improve memory usage."`
+	TypedEnumString             bool `typed_enum_string:"Add type prefix to the string representation of enum values."`
+	KeepUnknownFields           bool `keep_unknown_fields:"Generate codes to store unrecognized fields in structs."`
+	GenDeepEqual                bool `gen_deep_equal:"Generate DeepEqual function for struct/union/exception."`
+	CompatibleNames             bool `compatible_names:"Add a '_' suffix if an name has a prefix 'New' or suffix 'Args' or 'Result'."`
+	ReserveComments             bool `reserve_comments:"Reserve comments of definitions in thrift file"`
+	NilSafe                     bool `nil_safe:"Generate nil-safe getters."`
+	FrugalTag                   bool `frugal_tag:"Generate 'frugal' tags."`
+	EscapeDoubleInTag           bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
+	GenerateTypeMeta            bool `gen_type_meta:"Generate and register type meta for structures."`
+	GenerateJSONTag             bool `gen_json_tag:"Generate struct with 'json' tag"`
+	AlwaysGenerateJSONTag       bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
+	SnakeTyleJSONTag            bool `snake_style_json_tag:"Generate snake style json tag"`
+	LowerCamelCaseJSONTag       bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
+	GenerateReflectionInfo      bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
+	WithReflection              bool `with_reflection:"Generate reflection info"`
+	EnumAsINT32                 bool `enum_as_int_32:"Generate enum type as int32"`
+	CodeRefSlim                 bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
+	CodeRef                     bool `code_ref:"Generate code ref by given idl-ref.yaml"`
+	KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
+	TrimIDL                     bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
+	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim template'"`
+	JSONStringer                bool `json_stringer:"Generate the JSON marshal method in String() method."`
+	WithFieldMask               bool `with_field_mask:"Support field-mask for generated code."`
+	FieldMaskHalfway            bool `field_mask_halfway:"Support set field-mask on not-root struct."`
+	FieldMaskZeroRequired       bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
+	ThriftStreaming             bool `thrift_streaming:"Recognize thrift streaming annotation and generate streaming code."`
+	NoDefaultSerdes             bool `no_default_serdes:"Do not generate default thrift serdes code."`
+	NoAliasTypeReflectionMethod bool `no_alias_type_reflection_method:"Do not generate type related methods in <idl>_reflection.go when 'thrift.is_alias=\"true\"' annotation is set to types."`
+	EnableRefInterface          bool `enable_ref_interface:"Generate Interface field without pointer type when 'thrift.is_interface=\"true\"' annotation is set to types in referred thrift."`
 	UseOption              bool `use_option:"Parse specific Thrift annotations into struct-style option fields. If key not match, thriftgo will just ignore it."`
 	// ForceUseOption         bool `use_option:"Forcefully parse all Thrift annotations into struct-style option fields. If parsing is not possible, an error will be thrown."`
 }
 
 var defaultFeatures = Features{
-	MarshalEnumToText:      false,
-	GenerateSetter:         false,
-	GenDatabaseTag:         false,
-	GenOmitEmptyTag:        true,
-	TypedefAsTypeAlias:     true,
-	ValidateSet:            true,
-	ValueTypeForSIC:        false,
-	ScanValueForEnum:       true,
-	ReorderFields:          false,
-	TypedEnumString:        false,
-	KeepUnknownFields:      false,
-	GenDeepEqual:           false,
-	CompatibleNames:        false,
-	ReserveComments:        false,
-	NilSafe:                false,
-	FrugalTag:              false,
-	EscapeDoubleInTag:      true,
-	GenerateTypeMeta:       false,
-	GenerateJSONTag:        true,
-	AlwaysGenerateJSONTag:  false,
-	SnakeTyleJSONTag:       false,
-	LowerCamelCaseJSONTag:  false,
-	GenerateReflectionInfo: false,
-	EnumAsINT32:            false,
-	TrimIDL:                false,
+	MarshalEnumToText:           false,
+	MarshalEnum:                 false,
+	UnmarshalEnum:               false,
+	GenerateSetter:              false,
+	GenDatabaseTag:              false,
+	GenOmitEmptyTag:             true,
+	TypedefAsTypeAlias:          true,
+	ValidateSet:                 true,
+	ValueTypeForSIC:             false,
+	ScanValueForEnum:            true,
+	ReorderFields:               false,
+	TypedEnumString:             false,
+	KeepUnknownFields:           false,
+	GenDeepEqual:                false,
+	CompatibleNames:             false,
+	ReserveComments:             false,
+	NilSafe:                     false,
+	FrugalTag:                   false,
+	EscapeDoubleInTag:           true,
+	GenerateTypeMeta:            false,
+	GenerateJSONTag:             true,
+	AlwaysGenerateJSONTag:       false,
+	SnakeTyleJSONTag:            false,
+	LowerCamelCaseJSONTag:       false,
+	GenerateReflectionInfo:      false,
+	ThriftStreaming:             false,
+	EnumAsINT32:                 false,
+	TrimIDL:                     false,
+	JSONStringer:                false,
+	WithFieldMask:               false,
+	FieldMaskHalfway:            false,
+	FieldMaskZeroRequired:       false,
+	EnableNestedStruct:          false,
+	NoAliasTypeReflectionMethod: false,
+	EnableRefInterface:          false,
 }
 
 type param struct {

@@ -87,6 +87,9 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 		"unknown":           DefaultUnknownLib,
 		"meta":              DefaultMetaLib,
 		"thrift_reflection": ThriftReflectionLib,
+		"json_utils":        ThriftJSONUtilLib,
+		"fieldmask":         ThriftFieldMaskLib,
+		"streaming":         KitexStreamingLib,
 		"thrift_option":     ThriftOptionLib,
 	}
 	for pkg, path := range std {

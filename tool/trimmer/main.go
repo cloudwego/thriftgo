@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/generator"
@@ -52,6 +53,16 @@ func main() {
 		os.Exit(0)
 	}
 
+	var preserveInput *bool
+	if a.Preserve != "" {
+		preserve, err := strconv.ParseBool(a.Preserve)
+		if err != nil {
+			help()
+			os.Exit(2)
+		}
+		preserveInput = &preserve
+	}
+
 	// parse file to ast
 	ast, err := parser.ParseFile(a.IDL, nil, true)
 	check(err)
@@ -62,9 +73,13 @@ func main() {
 	_, err = checker.CheckAll(ast)
 	check(err)
 	check(semantic.ResolveSymbols(ast))
+	structs, fields := countStructs(ast)
 
 	// trim ast
-	check(trim.TrimAST(ast, a.Methods))
+	_, _, err = trim.TrimAST(&trim.TrimASTArg{
+		Ast: ast, TrimMethods: a.Methods, Preserve: preserveInput,
+	})
+	check(err)
 
 	// dump the trimmed ast to idl
 	idl, err := dump.DumpIDL(ast)
@@ -102,18 +117,16 @@ func main() {
 				os.Exit(2)
 			}
 		}
-		createDirTree(a.Recurse, a.OutputFile)
-		recurseDump(ast, a.Recurse, a.OutputFile)
-		relativePath, err := filepath.Rel(a.Recurse, a.IDL)
-		if err != nil {
-			println("-r input err, range should cover all the target IDLs;", err.Error())
+		relPath, err := filepath.Rel(a.Recurse, a.OutputFile)
+		if err == nil && (len(relPath) < 2 || relPath[:2] != "..") {
+			println("output-dir should be set outside of -r base-dir to avoid overlay")
 			os.Exit(2)
 		}
-		outputFileUrl := filepath.Join(a.OutputFile, relativePath)
-		check(writeStringToFile(outputFileUrl, idl))
-		removeEmptyDir(a.OutputFile)
+		recurseDump(ast, a.Recurse, a.OutputFile)
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
+		structsNew, fieldsNew := countStructs(ast)
+		fmt.Printf("removed %d unused structures with %d fields\n", structs-structsNew, fields-fieldsNew)
 	}
 	println("success, dump to", a.OutputFile)
 
@@ -124,16 +137,26 @@ func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	if ast == nil {
 		return
 	}
+	out, err := dump.DumpIDL(ast)
+	check(err)
+	absFileName, err := filepath.Abs(ast.Filename)
+	check(err)
+	absSourceDir, err := filepath.Abs(sourceDir)
+	check(err)
+	relativeUrl, err := filepath.Rel(absSourceDir, absFileName)
+	if err != nil {
+		println("-r input err, range should cover all the target IDLs;", err.Error())
+		os.Exit(2)
+	}
+
+	outputFileUrl := filepath.Join(outDir, relativeUrl)
+	err = os.MkdirAll(filepath.Dir(outputFileUrl), os.ModePerm)
+	if err != nil {
+		println("mkdir", filepath.Dir(outputFileUrl), "error:", err.Error())
+		os.Exit(2)
+	}
+	check(writeStringToFile(outputFileUrl, out))
 	for _, includes := range ast.Includes {
-		out, err := dump.DumpIDL(includes.Reference)
-		check(err)
-		relativeUrl, err := filepath.Rel(sourceDir, includes.Reference.Filename)
-		if err != nil {
-			println("-r input err, range should cover all the target IDLs;", err.Error())
-			os.Exit(2)
-		}
-		outputFileUrl := filepath.Join(outDir, relativeUrl)
-		check(writeStringToFile(outputFileUrl, out))
 		recurseDump(includes.Reference, sourceDir, outDir)
 	}
 }
@@ -149,4 +172,21 @@ func writeStringToFile(filename, content string) error {
 		return err
 	}
 	return nil
+}
+
+func countStructs(ast *parser.Thrift) (structs, fields int) {
+	structs += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
+	for _, v := range ast.Structs {
+		fields += len(v.Fields)
+	}
+	for _, v := range ast.Services {
+		fields += len(v.Functions)
+	}
+	for _, v := range ast.Unions {
+		fields += len(v.Fields)
+	}
+	for _, v := range ast.Exceptions {
+		fields += len(v.Fields)
+	}
+	return structs, fields
 }
