@@ -37,6 +37,8 @@ type ReadWriteContext struct {
 	NeedDecl bool   // Whether a declaration of target is needed
 
 	ids map[string]int // Prefix => local variable index
+
+	FieldMask string
 }
 
 // GenID returns a local variable with the given name as prefix.
@@ -53,6 +55,16 @@ func (c *ReadWriteContext) GenID(prefix string) (name string) {
 func (c *ReadWriteContext) WithDecl() *ReadWriteContext {
 	c.NeedDecl = true
 	return c
+}
+
+// WithDecl claims that the context needs a variable declaration.
+func (c *ReadWriteContext) WithFieldMask(fm string) *ReadWriteContext {
+	c.FieldMask = fm
+	return c
+}
+
+func (c *ReadWriteContext) NeedFieldMask() bool {
+	return c.FieldMask != ""
 }
 
 // WithTarget sets the target name.
@@ -119,5 +131,6 @@ func mkRWCtx(r *Resolver, s *Scope, t *parser.Type, top *ReadWriteContext) (*Rea
 			return nil, err
 		}
 	}
+
 	return ctx, nil
 }

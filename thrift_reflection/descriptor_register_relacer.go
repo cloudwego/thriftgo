@@ -36,31 +36,32 @@ func ReplaceFileDescriptor(replacer *FileDescriptorReplacer) *FileDescriptor {
 	currentGoPkgPath := replacer.CurrentGoPkgPath
 	currentFilepath := replacer.CurrentFilepath
 	matcher := replacer.Matcher
-	var remoteDesc *FileDescriptor
-	for _, fd := range defaultGlobalDescriptor.globalFD {
-		if fd.checkGoPkgPathWithRef(remoteGoPkgPath) && checkMatch(matcher, fd) {
-			remoteDesc = fd
-			break
-		}
-	}
+	remoteDesc := defaultGlobalDescriptor.matchRemoteFileDescriptor(remoteGoPkgPath, matcher)
 	if remoteDesc == nil {
 		panic("not found remote fd")
 	}
 	var shadowDesc *FileDescriptor
-	// if filepath is the same as local，don't need to replace,because other can ref
-	if remoteDesc.Filepath == currentFilepath {
-		remoteDesc.setGoPkgPathRef(currentGoPkgPath)
-		return remoteDesc
-	} else {
-		// if filepath is not the same,then just replace the file descriptor's filepath is ok. since sub descriptor's filepath will lead to the real and same fd from remote
-		// just use shallow copy is ok, we only change extra and filepath
-		shadowDesc = new(FileDescriptor)
-		*shadowDesc = *remoteDesc
-		shadowDesc.Filepath = currentFilepath
-		shadowDesc.setGoPkgPathRef(currentGoPkgPath)
+
+	// make a copy from remoteDesc and replace metadata such as filepath、go pkg path to local's.
+	shadowDesc = new(FileDescriptor)
+	*shadowDesc = *remoteDesc
+	shadowDesc.Filepath = currentFilepath
+	shadowDesc.Extra = nil
+	shadowDesc.setGoPkgPathRef(currentGoPkgPath)
+
+	if remoteDesc.Filepath != currentFilepath {
+		defaultGlobalDescriptor.checkDuplicateAndRegister(shadowDesc, currentGoPkgPath)
 	}
-	defaultGlobalDescriptor.checkDuplicateAndRegister(shadowDesc, currentGoPkgPath)
 	return shadowDesc
+}
+
+func (g *GlobalDescriptor) matchRemoteFileDescriptor(remoteGoPkgPath, matcher string) *FileDescriptor {
+	for k, fd := range g.globalFD {
+		if fd.checkGoPkgPathWithRef(remoteGoPkgPath) && checkMatch(matcher, fd) {
+			return g.globalFD[k]
+		}
+	}
+	return nil
 }
 
 func (f *FileDescriptor) setGoPkgPathRef(local string) {

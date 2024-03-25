@@ -162,6 +162,7 @@ const FunctionTemplate = `
 {{- if $index}},{{end -}}{{- template "SingleLineField" .}}
 {{- end}})
 {{- end}}
+{{- template "Annotations" .Annotations -}}
 {{- end -}}
 `
 

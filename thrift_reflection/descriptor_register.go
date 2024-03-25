@@ -157,14 +157,25 @@ func registerGlobalUUID(fd *FileDescriptor, uuid string) {
 
 func (gd *GlobalDescriptor) checkDuplicateAndRegister(f *FileDescriptor, currentGoPkgPath string) {
 	f.setGoPkgPath(currentGoPkgPath)
-	if previous, ok := gd.globalFD[f.Filepath]; ok {
-		panicString := fmt.Sprintf("thrift reflection: file '%s' is already registered\n"+
-			"\tpreviously from: '%s'\n"+
-			"\tcurrently from '%s'\n"+
-			"To solve this, you need to remove one of the idl above.", f.Filepath, previous.getGoPkgPath(), f.getGoPkgPath())
-		panic(panicString)
+	previous, ok := gd.globalFD[f.Filepath]
+	if !ok {
+		gd.globalFD[f.Filepath] = f
+		return
 	}
-	gd.globalFD[f.Filepath] = f
+
+	// just check the content of thrift file
+	newFD := *f
+	newFD.Extra = nil
+	newPrevFD := *previous
+	newPrevFD.Extra = nil
+	if reflect.DeepEqual(newFD, newPrevFD) {
+		return
+	}
+	panicString := fmt.Sprintf("thrift reflection: file '%s' is already registered\n"+
+		"\tpreviously from: '%s'\n"+
+		"\tcurrently from '%s'\n"+
+		"To solve this, you need to remove one of the idl above.", f.Filepath, previous.getGoPkgPath(), f.getGoPkgPath())
+	panic(panicString)
 }
 
 func BuildFileDescriptor(builder *FileDescriptorBuilder) *FileDescriptor {
