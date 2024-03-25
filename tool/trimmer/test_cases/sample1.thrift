@@ -117,14 +117,13 @@ service EmployeeService extends sample1b.GetPerson {
 service ProjectService {
     Project getProject(1: string id)
     oneway void addProject(1: Project project)
-    void updateProject(1: string id,
-    2: Project project)
+    void updateProject(1: string id, 2: Project project)
 }
 
 service CompanyService {
-    Company getCompany(1: string id)
-    void addCompany(1: Company company) throws(1: samlpe1bAnotherException exc)
-    void updateCompany(1: string id, 2: Company company)
+    Company getCompany(1: string id) (api.get = "/company")
+    void addCompany(1: Company company) throws(1: samlpe1bAnotherException exc) (api.put = "/company")
+    void updateCompany(1: string id, 2: Company company) (api.post = "/company")
     list<sample1b.Department> getDepartments(1: string company_id)
     void anotherUselessMethod(1: MaybeUseless useless)
 }
