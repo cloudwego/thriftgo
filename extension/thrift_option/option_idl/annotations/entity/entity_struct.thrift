@@ -1,4 +1,4 @@
-// Copyright 2023 CloudWeGo Authors
+// Copyright 2024 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+namespace go option_gen.annotation.entity
 
-const ThriftgoVersion = "0.3.8"
+struct InnerStruct{
+    1:required string email
+}

@@ -101,11 +101,12 @@ func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
 	if err != nil {
 		panic(err.Error())
 	}
-	fd := thrift_reflection.RegisterAST(ast)
+	_, fd := thrift_reflection.RegisterAST(ast)
 	st := fd.GetStructDescriptor(root)
 	return &thrift_reflection.TypeDescriptor{
 		Filepath: st.Filepath,
 		Name:     st.Name,
+		Extra:    map[string]string{thrift_reflection.GLOBAL_UUID_EXTRA_KEY: st.Extra[thrift_reflection.GLOBAL_UUID_EXTRA_KEY]},
 	}
 }
 

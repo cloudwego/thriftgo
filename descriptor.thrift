@@ -51,6 +51,7 @@ struct ConstValueDescriptor{
     6:optional list<ConstValueDescriptor> value_list // for list set
     7:optional map<ConstValueDescriptor,ConstValueDescriptor> value_map // for map
     8:required string value_identifier // for identifier, such as another constant's name
+    9:optional map<string,string> extra  // extra info
 }
 
 struct TypedefDescriptor{

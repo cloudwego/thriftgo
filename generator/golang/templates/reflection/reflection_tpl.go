@@ -88,7 +88,6 @@ func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
 {{- end}}
 {{- end}}
 {{- range .Enums}}
-{{- if not .IsAlias}}
 func (p {{.GoName}}) GetDescriptor() *thrift_reflection.EnumDescriptor{
 	return file_{{$IDLName}}_thrift.GetEnumDescriptor("{{.Name}}")
 }
@@ -99,7 +98,6 @@ func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
 	ret.Name = "{{.Name}}"
 	return ret
 }
-{{- end}}
 {{- end}}
 {{- range .Unions}}
 {{- if not .IsAlias}}

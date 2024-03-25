@@ -14,15 +14,23 @@
 
 package thrift_reflection
 
-func LookupFD(filepath string) *FileDescriptor {
-	return globalFD[filepath]
+import "errors"
+
+func (gd *GlobalDescriptor) LookupFD(filepath string) *FileDescriptor {
+	if gd == nil {
+		return nil
+	}
+	return gd.globalFD[filepath]
 }
 
-func LookupEnum(name, filepath string) *EnumDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetEnumDescriptor(name)
+func (gd *GlobalDescriptor) LookupEnum(name, filepath string) *EnumDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetEnumDescriptor(name)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetEnumDescriptor(name)
 		if val != nil {
 			return val
@@ -31,11 +39,14 @@ func LookupEnum(name, filepath string) *EnumDescriptor {
 	return nil
 }
 
-func LookupConst(name, filepath string) *ConstDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetConstDescriptor(name)
+func (gd *GlobalDescriptor) LookupConst(name, filepath string) *ConstDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetConstDescriptor(name)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetConstDescriptor(name)
 		if val != nil {
 			return val
@@ -44,11 +55,14 @@ func LookupConst(name, filepath string) *ConstDescriptor {
 	return nil
 }
 
-func LookupTypedef(alias, filepath string) *TypedefDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetTypedefDescriptor(alias)
+func (gd *GlobalDescriptor) LookupTypedef(alias, filepath string) *TypedefDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetTypedefDescriptor(alias)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetTypedefDescriptor(alias)
 		if val != nil {
 			return val
@@ -57,11 +71,14 @@ func LookupTypedef(alias, filepath string) *TypedefDescriptor {
 	return nil
 }
 
-func LookupStruct(name, filepath string) *StructDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetStructDescriptor(name)
+func (gd *GlobalDescriptor) LookupStruct(name, filepath string) *StructDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetStructDescriptor(name)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetStructDescriptor(name)
 		if val != nil {
 			return val
@@ -70,11 +87,14 @@ func LookupStruct(name, filepath string) *StructDescriptor {
 	return nil
 }
 
-func LookupUnion(name, filepath string) *StructDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetUnionDescriptor(name)
+func (gd *GlobalDescriptor) LookupUnion(name, filepath string) *StructDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetUnionDescriptor(name)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetUnionDescriptor(name)
 		if val != nil {
 			return val
@@ -83,11 +103,14 @@ func LookupUnion(name, filepath string) *StructDescriptor {
 	return nil
 }
 
-func LookupException(name, filepath string) *StructDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetExceptionDescriptor(name)
+func (gd *GlobalDescriptor) LookupException(name, filepath string) *StructDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetExceptionDescriptor(name)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetExceptionDescriptor(name)
 		if val != nil {
 			return val
@@ -96,11 +119,14 @@ func LookupException(name, filepath string) *StructDescriptor {
 	return nil
 }
 
-func LookupService(name, filepath string) *ServiceDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetServiceDescriptor(name)
+func (gd *GlobalDescriptor) LookupService(name, filepath string) *ServiceDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetServiceDescriptor(name)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetServiceDescriptor(name)
 		if val != nil {
 			return val
@@ -109,11 +135,14 @@ func LookupService(name, filepath string) *ServiceDescriptor {
 	return nil
 }
 
-func LookupMethod(method, service, filepath string) *MethodDescriptor {
-	if filepath != "" {
-		return LookupFD(filepath).GetMethodDescriptor(service, method)
+func (gd *GlobalDescriptor) LookupMethod(method, service, filepath string) *MethodDescriptor {
+	if gd == nil {
+		return nil
 	}
-	for _, fd := range globalFD {
+	if filepath != "" {
+		return gd.LookupFD(filepath).GetMethodDescriptor(service, method)
+	}
+	for _, fd := range gd.globalFD {
 		val := fd.GetMethodDescriptor(service, method)
 		if val != nil {
 			return val
@@ -122,7 +151,10 @@ func LookupMethod(method, service, filepath string) *MethodDescriptor {
 	return nil
 }
 
-func LookupIncludedStructsFromMethod(method *MethodDescriptor) ([]*StructDescriptor, error) {
+func (gd *GlobalDescriptor) LookupIncludedStructsFromMethod(method *MethodDescriptor) ([]*StructDescriptor, error) {
+	if gd == nil {
+		return nil, errors.New("global descriptor is nil")
+	}
 	structMap := map[*StructDescriptor]bool{}
 	typeArr := []*TypeDescriptor{}
 	typeArr = append(typeArr, method.GetResponse())
@@ -130,7 +162,7 @@ func LookupIncludedStructsFromMethod(method *MethodDescriptor) ([]*StructDescrip
 		typeArr = append(typeArr, arg.GetType())
 	}
 	for _, typeDesc := range typeArr {
-		err := lookupIncludedStructsFromType(typeDesc, structMap)
+		err := gd.lookupIncludedStructsFromType(typeDesc, structMap)
 		if err != nil {
 			return nil, err
 		}
@@ -143,9 +175,12 @@ func LookupIncludedStructsFromMethod(method *MethodDescriptor) ([]*StructDescrip
 }
 
 // LookupIncludedStructsFromStruct finds all struct descriptor included by this structDescriptor (and current struct descriptor is also included in the return result)
-func LookupIncludedStructsFromStruct(sd *StructDescriptor) ([]*StructDescriptor, error) {
+func (gd *GlobalDescriptor) LookupIncludedStructsFromStruct(sd *StructDescriptor) ([]*StructDescriptor, error) {
+	if gd == nil {
+		return nil, errors.New("global descriptor is nil")
+	}
 	structMap := map[*StructDescriptor]bool{}
-	err := lookupIncludedStructsFromStruct(sd, structMap)
+	err := gd.lookupIncludedStructsFromStruct(sd, structMap)
 	if err != nil {
 		return nil, err
 	}
@@ -156,9 +191,12 @@ func LookupIncludedStructsFromStruct(sd *StructDescriptor) ([]*StructDescriptor,
 	return structArr, nil
 }
 
-func LookupIncludedStructsFromType(td *TypeDescriptor) ([]*StructDescriptor, error) {
+func (gd *GlobalDescriptor) LookupIncludedStructsFromType(td *TypeDescriptor) ([]*StructDescriptor, error) {
+	if gd == nil {
+		return nil, errors.New("global descriptor is nil")
+	}
 	structMap := map[*StructDescriptor]bool{}
-	err := lookupIncludedStructsFromType(td, structMap)
+	err := gd.lookupIncludedStructsFromType(td, structMap)
 	if err != nil {
 		return nil, err
 	}
@@ -169,21 +207,24 @@ func LookupIncludedStructsFromType(td *TypeDescriptor) ([]*StructDescriptor, err
 	return structArr, nil
 }
 
-func lookupIncludedStructsFromType(typeDesc *TypeDescriptor, structMap map[*StructDescriptor]bool) error {
+func (gd *GlobalDescriptor) lookupIncludedStructsFromType(typeDesc *TypeDescriptor, structMap map[*StructDescriptor]bool) error {
+	if gd == nil {
+		return errors.New("global descriptor is nil")
+	}
 	if typeDesc.IsStruct() {
 		stDesc, err := typeDesc.GetStructDescriptor()
 		if err != nil {
 			return err
 		}
-		return lookupIncludedStructsFromStruct(stDesc, structMap)
+		return gd.lookupIncludedStructsFromStruct(stDesc, structMap)
 	}
 	if typeDesc.IsContainer() {
-		err := lookupIncludedStructsFromType(typeDesc.GetValueType(), structMap)
+		err := gd.lookupIncludedStructsFromType(typeDesc.GetValueType(), structMap)
 		if err != nil {
 			return err
 		}
 		if typeDesc.IsMap() {
-			er := lookupIncludedStructsFromType(typeDesc.GetKeyType(), structMap)
+			er := gd.lookupIncludedStructsFromType(typeDesc.GetKeyType(), structMap)
 			if er != nil {
 				return er
 			}
@@ -192,17 +233,69 @@ func lookupIncludedStructsFromType(typeDesc *TypeDescriptor, structMap map[*Stru
 	return nil
 }
 
-func lookupIncludedStructsFromStruct(sd *StructDescriptor, structMap map[*StructDescriptor]bool) error {
+func (gd *GlobalDescriptor) lookupIncludedStructsFromStruct(sd *StructDescriptor, structMap map[*StructDescriptor]bool) error {
+	if gd == nil {
+		return errors.New("global descriptor is nil")
+	}
 	if structMap[sd] {
 		return nil
 	}
 	structMap[sd] = true
 	for _, f := range sd.GetFields() {
 		typeDesc := f.GetType()
-		err := lookupIncludedStructsFromType(typeDesc, structMap)
+		err := gd.lookupIncludedStructsFromType(typeDesc, structMap)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func LookupFD(filepath string) *FileDescriptor {
+	return defaultGlobalDescriptor.LookupFD(filepath)
+}
+
+func LookupEnum(name, filepath string) *EnumDescriptor {
+	return defaultGlobalDescriptor.LookupEnum(name, filepath)
+}
+
+func LookupConst(name, filepath string) *ConstDescriptor {
+	return defaultGlobalDescriptor.LookupConst(name, filepath)
+}
+
+func LookupTypedef(alias, filepath string) *TypedefDescriptor {
+	return defaultGlobalDescriptor.LookupTypedef(alias, filepath)
+}
+
+func LookupStruct(name, filepath string) *StructDescriptor {
+	return defaultGlobalDescriptor.LookupStruct(name, filepath)
+}
+
+func LookupUnion(name, filepath string) *StructDescriptor {
+	return defaultGlobalDescriptor.LookupUnion(name, filepath)
+}
+
+func LookupException(name, filepath string) *StructDescriptor {
+	return defaultGlobalDescriptor.LookupException(name, filepath)
+}
+
+func LookupService(name, filepath string) *ServiceDescriptor {
+	return defaultGlobalDescriptor.LookupService(name, filepath)
+}
+
+func LookupMethod(method, service, filepath string) *MethodDescriptor {
+	return defaultGlobalDescriptor.LookupMethod(method, service, filepath)
+}
+
+func LookupIncludedStructsFromMethod(method *MethodDescriptor) ([]*StructDescriptor, error) {
+	return defaultGlobalDescriptor.LookupIncludedStructsFromMethod(method)
+}
+
+// LookupIncludedStructsFromStruct finds all struct descriptor included by this structDescriptor (and current struct descriptor is also included in the return result)
+func LookupIncludedStructsFromStruct(sd *StructDescriptor) ([]*StructDescriptor, error) {
+	return defaultGlobalDescriptor.LookupIncludedStructsFromStruct(sd)
+}
+
+func LookupIncludedStructsFromType(td *TypeDescriptor) ([]*StructDescriptor, error) {
+	return defaultGlobalDescriptor.LookupIncludedStructsFromType(td)
 }

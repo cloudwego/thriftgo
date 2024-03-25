@@ -38,6 +38,8 @@ struct s {
 	2: string f2 ( a = "a", b = "" );
 	3: string (str = "str") f3;
 	4: string f4;
+	5: string f5 ();
+	6: string f6 (  );
 } (
 	xxx = "",
 	yyy = "y",
@@ -104,7 +106,7 @@ func TestAnnotation(t *testing.T) {
 	test.Assert(t, has(ast.Structs[0].Annotations, "xxx", ""))
 	test.Assert(t, has(ast.Structs[0].Annotations, "yyy", "y"))
 	test.Assert(t, has(ast.Structs[0].Annotations, "zzz", "zzz"))
-	test.Assert(t, len(ast.Structs[0].Fields) == 4)
+	test.Assert(t, len(ast.Structs[0].Fields) == 6)
 	test.Assert(t, len(ast.Structs[0].Fields[0].Annotations) == 1)
 	test.Assert(t, len(ast.Structs[0].Fields[1].Annotations) == 2)
 	test.Assert(t, len(ast.Structs[0].Fields[2].Annotations) == 0)
@@ -113,6 +115,8 @@ func TestAnnotation(t *testing.T) {
 	test.Assert(t, has(ast.Structs[0].Fields[1].Annotations, "a", "a"))
 	test.Assert(t, has(ast.Structs[0].Fields[1].Annotations, "b", ""))
 	test.Assert(t, has(ast.Structs[0].Fields[2].Type.Annotations, "str", "str"))
+	test.Assert(t, ast.Structs[0].Fields[4].Annotations == nil)
+	test.Assert(t, ast.Structs[0].Fields[5].Annotations == nil)
 
 	test.Assert(t, len(ast.Exceptions) == 1)
 	test.Assert(t, len(ast.Exceptions[0].Annotations) == 1)

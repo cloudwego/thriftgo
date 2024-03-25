@@ -726,3 +726,40 @@ func buildSynthesized(v *parser.Function) (argType, resType *parser.StructLike) 
 	}
 	return
 }
+
+func (s *Scope) GetOption(filepath string) []string {
+	ods := []string{}
+	for _, st := range s.ast.Structs {
+		if st.Name == "_StructOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("STRUCT_OPTION_%s = thrift_option.NewStructOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_EnumOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("ENUM_OPTION_%s = thrift_option.NewEnumOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_FieldOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("FIELD_OPTION_%s = thrift_option.NewFieldOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_MethodOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("METHOD_OPTION_%s = thrift_option.NewMethodOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_ServiceOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("SERVICE_OPTION_%s = thrift_option.NewServiceOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_EnumValueOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("ENUM_VALUE_OPTION_%s = thrift_option.NewEnumValueOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+	}
+	return ods
+}
