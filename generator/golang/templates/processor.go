@@ -16,7 +16,7 @@ package templates
 
 // Processor .
 var Processor = `
-{{define "Processor"}}
+{{define "ThriftProcessor"}}
 {{- UseStdLibrary "thrift"}}
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
@@ -90,6 +90,9 @@ type {{$ProcessorName | Unexport}}{{$FuncName}} struct {
 
 {{- UseStdLibrary "context"}}
 func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+	{{if .Streaming.IsStreaming -}}
+	panic("streaming method {{$ServiceName}}.{{.Name}}(mode = {{.Streaming.Mode}}) not available, please use Kitex Thrift Streaming Client.")
+	{{else -}}
 	args := {{$ArgType.GoName}}{}
 	if err = args.Read(iprot); err != nil {
 		iprot.ReadMessageEnd()
@@ -165,16 +168,21 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 	}
 	return true, err
 	{{- end}}{{/* if .Oneway */}}
+	{{- end -}}{{- /* end if not Has Streaming */ -}}
 }
 {{- end}}{{/* range .Functions */}}
 
 {{- range .Functions}}
 {{$ArgsType := .ArgType}}
+{{- $withFieldMask := (SetWithFieldMask false) }}
 {{template "StructLike" $ArgsType}}
+{{- $_ := (SetWithFieldMask $withFieldMask) }}
 {{- if not .Oneway}}
 	{{$ResType := .ResType}}
+	{{- $withFieldMask := (SetWithFieldMask false) }}
 	{{template "StructLike" $ResType}}
+	{{- $_ := (SetWithFieldMask $withFieldMask) }}
 {{- end}}
 {{- end}}{{/* range .Functions */}}
-{{- end}}{{/* define "Processor" */}}
+{{- end}}{{/* define "ThriftProcessor" */}}
 `

@@ -32,6 +32,10 @@ type {{$TypeName}} struct {
 	{{- UseStdLibrary "unknown"}}
 	_unknownFields unknown.Fields
 	{{- end}}
+	{{- if Features.WithFieldMask}}
+	{{- UseStdLibrary "fieldmask"}}
+	_fieldmask *fieldmask.FieldMask
+	{{- end}}
 }
 
 {{- if Features.GenerateTypeMeta}}
@@ -77,6 +81,31 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 }
 {{end}}{{/* if Features.KeepUnknownFields */}}
 
+{{if Features.WithFieldMask}}
+func (p *{{$TypeName}}) Get_FieldMask() *fieldmask.FieldMask {
+	if p == nil {
+		return nil
+	}
+	return p._fieldmask
+}
+
+func (p *{{$TypeName}}) Set_FieldMask(fm *fieldmask.FieldMask) {
+	if p == nil {
+		return
+	}
+	p._fieldmask = fm
+}
+
+{{- if Features.FieldMaskHalfway}}
+func (p *{{$TypeName}}) Pass_FieldMask(fm *fieldmask.FieldMask) {
+	if p == nil || p._fieldmask != nil {
+		return
+	}
+	p._fieldmask = fm
+}
+{{- end}}
+{{end}}{{/* if Features.WithFieldMask */}}
+
 var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{- range .Fields}}
 	{{.ID}}: "{{.Name}}",
@@ -94,11 +123,18 @@ var fieldIDToName_{{$TypeName}} = map[int16]string{
 {{template "StructLikeWriteField" .}}
 
 func (p *{{$TypeName}}) String() string {
+	{{- if Features.JSONStringer}}
+	{{- UseStdLibrary "json_utils"}}
+		JsonBytes , _  := json_utils.JSONFunc(p)
+		return string(JsonBytes)
+	{{- else}}
 	if p == nil {
 		return "<nil>"
 	}
 	{{- UseStdLibrary "fmt"}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
+	{{- end}}
+
 }
 
 {{- if eq .Category "exception"}}
@@ -156,6 +192,7 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 		{{if or (gt (len .Fields) 0) Features.KeepUnknownFields}}
 		switch fieldId {
 		{{- range .Fields}}
+		{{- $isBaseVal := .Type | IsBaseType}}
 		case {{.ID}}:
 			if fieldTypeId == thrift.{{.Type | GetTypeIDConstant }} {
 				if err = p.{{.Reader}}(iprot); err != nil {
@@ -164,29 +201,18 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 				{{- if .Requiredness.IsRequired}}
 				isset{{.GoName}} = true
 				{{- end}}
-			} else {
-				if err = iprot.Skip(fieldTypeId); err != nil {
-					goto SkipFieldError
-				}
+			} else if err = iprot.Skip(fieldTypeId); err != nil {
+				goto SkipFieldError
 			}
 		{{- end}}{{/* range .Fields */}}
 		default:
-			{{- if Features.KeepUnknownFields}}
-			if err = p._unknownFields.Append(iprot, name, fieldTypeId, fieldId); err != nil {
-				goto UnknownFieldsAppendError
-			}
-			{{- else}}
-		    if err = iprot.Skip(fieldTypeId); err != nil {
-				goto SkipFieldError
-		    }
-			{{- end}}{{/* if Features.KeepUnknownFields */}}
+			{{- template "HandleUnknownFields"}}
 		}
 		{{- else -}}
 		if err = iprot.Skip(fieldTypeId); err != nil {
 		    goto SkipFieldTypeError
 		}
 		{{- end}}{{/* if len(.Fields) > 0 */}}
-
 		if err = iprot.ReadFieldEnd(); err != nil {
 		  goto ReadFieldEndError
 		}
@@ -239,6 +265,20 @@ RequiredFieldNotSetError:
 {{- end}}{{/* define "StructLikeRead" */}}
 `
 
+var HandleUnknownFields = `
+{{define "HandleUnknownFields"}}
+{{- if Features.KeepUnknownFields}}
+if err = p._unknownFields.Append(iprot, name, fieldTypeId, fieldId); err != nil {
+	goto UnknownFieldsAppendError
+}
+{{- else}}
+if err = iprot.Skip(fieldTypeId); err != nil {
+	goto SkipFieldError
+}
+{{- end}}{{/* if Features.KeepUnknownFields */}}
+{{- end}}{{/* define "HandleUnknownFields" */}}
+`
+
 // StructLikeReadField .
 var StructLikeReadField = `
 {{define "StructLikeReadField"}}
@@ -246,9 +286,18 @@ var StructLikeReadField = `
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
 {{$FieldName := .GoName}}
+{{- $isBaseVal := .Type | IsBaseType -}}
 func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
-	{{- $ctx := MkRWCtx .}}
+	{{- if Features.WithFieldMask}}
+	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex {
+	{{- end}}
+	{{$ctx := (MkRWCtx .).WithFieldMask "fm"}}
 	{{- template "FieldRead" $ctx}}
+	{{- if Features.WithFieldMask}}
+	} else if err := iprot.Skip(thrift.{{.Type | GetTypeIDConstant}}); err != nil {
+		return err
+	}
+	{{- end}}
 	return nil
 }
 {{- end}}{{/* range .Fields */}}
@@ -279,8 +328,9 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 			fieldId = {{.ID}}
 			goto WriteFieldError
 		}
-		{{- end}}
-		{{if Features.KeepUnknownFields}}
+		
+		{{- end}}{{/* range .Fields */}}
+		{{- if Features.KeepUnknownFields}}
 		if err = p._unknownFields.Write(oprot); err != nil {
 			goto UnknownFieldsWriteError
 		}
@@ -324,18 +374,43 @@ var StructLikeWriteField = `
 {{- $FieldName := .GoName}}
 {{- $IsSetName := .IsSetter}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
+{{- $isBaseVal := .Type | IsBaseType }}
 func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
 	{{- end}}
+	{{- if Features.WithFieldMask}}
+	{{- if and .Requiredness.IsRequired (not Features.FieldMaskZeroRequired)}}
+	{{- if not $isBaseVal}}
+	fm, _ := p._fieldmask.Field({{.ID}})
+	{{- end}}
+	{{- else}}
+	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex { 
+	{{- end}}
+	{{- end}}
 	if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
 		goto WriteFieldBeginError
 	}
-	{{- $ctx := MkRWCtx .}}
+	{{- $ctx := (MkRWCtx .).WithFieldMask "fm"}}
 	{{- template "FieldWrite" $ctx}}
 	if err = oprot.WriteFieldEnd(); err != nil {
 		goto WriteFieldEndError
 	}
+	{{- if Features.WithFieldMask}}
+	{{- if Features.FieldMaskZeroRequired}}
+	} else {
+		if err = oprot.WriteFieldBegin("{{.Name}}", thrift.{{$TypeID}}, {{.ID}}); err != nil {
+			goto WriteFieldBeginError
+		}
+		{{ ZeroWriter .Type "oprot" "WriteFieldBeginError" }}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	{{- else if not .Requiredness.IsRequired}}
+	}
+	{{- end}}
+	{{- end}}
 	{{- if .Requiredness.IsOptional}}
 	}
 	{{- end}}
@@ -465,6 +540,13 @@ var FieldRead = `
 var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
 	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
+	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
+	{{- if Features.FieldMaskHalfway}}
+	{{.Target}}.Pass_FieldMask({{.FieldMask}})
+	{{- else}}
+	{{.Target}}.Set_FieldMask({{.FieldMask}})
+	{{- end}}
+	{{- end}}
 	if err := {{.Target}}.Read(iprot); err != nil {
 		return err
 	}
@@ -515,6 +597,10 @@ var FieldReadContainer = `
 // FieldReadMap .
 var FieldReadMap = `
 {{define "FieldReadMap"}}
+{{- $isIntKey := .KeyCtx.Type | IsIntType -}}
+{{- $isStrKey := .KeyCtx.Type | IsStrType -}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := .FieldMask -}}
 	_, _, size, err := iprot.ReadMapBegin()
 	if err != nil {
 		return err
@@ -524,9 +610,34 @@ var FieldReadMap = `
 		{{- $key := .GenID "_key"}}
 		{{- $ctx := .KeyCtx.WithDecl.WithTarget $key}}
 		{{- template "FieldRead" $ctx}}
+		{{- if Features.WithFieldMask}}
+		{{- $curFieldMask = "nfm"}}
+		{{- if $isIntKey}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(int({{$key}})); !ex {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
+			continue
+		} else {
+		{{- else if $isStrKey}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Str(string({{$key}})); !ex {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
+			continue
+		} else {
+		{{- else}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(0); !ex {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
+			continue
+		} else {
+		{{- end}}
+		{{- end}}{{/* end WithFieldMask */}}
 		{{/* line break */}}
 		{{- $val := .GenID "_val"}}
-		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
+		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
 		{{- template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
@@ -534,6 +645,9 @@ var FieldReadMap = `
 		{{end}}
 
 		{{.Target}}[{{$key}}] = {{$val}}
+		{{- if and Features.WithFieldMask}}
+		}
+		{{- end}}
 	}
 	if err := iprot.ReadMapEnd(); err != nil {
 		return err
@@ -544,6 +658,8 @@ var FieldReadMap = `
 // FieldReadSet .
 var FieldReadSet = `
 {{define "FieldReadSet"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := .FieldMask -}}
 	_, size, err := iprot.ReadSetBegin()
 	if err != nil {
 		return err
@@ -551,14 +667,26 @@ var FieldReadSet = `
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
 	for i := 0; i < size; i++ {
 		{{- $val := .GenID "_elem"}}
-		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
-		{{- template "FieldRead" $ctx}}
+		{{- if Features.WithFieldMask}}
+		{{- $curFieldMask = "nfm"}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(i); !ex {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
+			continue
+		} else {
+		{{- end}}
+		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
 		{{end}}
 
 		{{.Target}} = append({{.Target}}, {{$val}})
+		{{- if Features.WithFieldMask}}
+		}
+		{{- end}}
 	}
 	if err := iprot.ReadSetEnd(); err != nil {
 		return err
@@ -569,6 +697,8 @@ var FieldReadSet = `
 // FieldReadList .
 var FieldReadList = `
 {{define "FieldReadList"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := .FieldMask -}}
 	_, size, err := iprot.ReadListBegin()
 	if err != nil {
 		return err
@@ -576,14 +706,26 @@ var FieldReadList = `
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
 	for i := 0; i < size; i++ {
 		{{- $val := .GenID "_elem"}}
-		{{- $ctx := .ValCtx.WithDecl.WithTarget $val}}
-		{{- template "FieldRead" $ctx}}
+		{{- if Features.WithFieldMask}}
+		{{- $curFieldMask = "nfm"}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(i); !ex {
+			if err := iprot.Skip(thrift.{{.ValCtx.Type | GetTypeIDConstant}}); err != nil {
+				return err
+			}
+			continue
+		} else {
+		{{- end}}
+		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
 		{{end}}
 
 		{{.Target}} = append({{.Target}}, {{$val}})
+		{{- if Features.WithFieldMask}}
+		}
+		{{- end}}
 	}
 	if err := iprot.ReadListEnd(); err != nil {
 		return err
@@ -607,6 +749,13 @@ var FieldWrite = `
 // FieldWriteStructLike .
 var FieldWriteStructLike = `
 {{define "FieldWriteStructLike"}}
+	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
+	{{- if Features.FieldMaskHalfway}}
+	{{.Target}}.Pass_FieldMask({{.FieldMask}})
+	{{- else}}
+	{{.Target}}.Set_FieldMask({{.FieldMask}})
+	{{- end}}
+	{{- end}}
 	if err := {{.Target}}.Write(oprot); err != nil {
 		return err
 	}
@@ -642,17 +791,71 @@ var FieldWriteContainer = `
 // FieldWriteMap .
 var FieldWriteMap = `
 {{define "FieldWriteMap"}}
+{{- $isIntKey := .KeyCtx.Type | IsIntType -}}
+{{- $isStrKey := .KeyCtx.Type | IsStrType -}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := .FieldMask -}}
+	{{- if and Features.WithFieldMask (or $isStrKey $isIntKey) }}
+	if !{{.FieldMask}}.All() {
+		l := len({{.Target}})
+		for k := range {{.Target}} {
+			{{- if $isIntKey}}
+			if _, ex := {{.FieldMask}}.Int(int(k)); !ex {
+				l--
+			}
+			{{- else if $isStrKey}}
+			if _, ex := {{.FieldMask}}.Str(string(k)); !ex {
+				l--
+			}
+			{{- end}}
+		}
+		if err := oprot.WriteMapBegin(thrift.
+			{{- .KeyCtx.Type | GetTypeIDConstant -}}
+			, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, l); err != nil {
+			return err
+		}
+	} else {
+		if err := oprot.WriteMapBegin(thrift.
+			{{- .KeyCtx.Type | GetTypeIDConstant -}}
+			, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, len({{.Target}})); err != nil {
+			return err
+		}
+	}
+	{{- else}}
 	if err := oprot.WriteMapBegin(thrift.
 		{{- .KeyCtx.Type | GetTypeIDConstant -}}
 		, thrift.{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 		return err
 	}
-	for k, v := range {{.Target}}{
-		{{$ctx := .KeyCtx.WithTarget "k"}}
+	{{- end}}
+	for k, v := range {{.Target}} {
+		{{- if Features.WithFieldMask}}
+		{{- $curFieldMask = "nfm"}}
+		{{- if $isIntKey}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(int(k)); !ex {
+			continue
+		} else {
+		{{- else if $isStrKey}}
+		ks := string(k)
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Str(ks); !ex {
+			continue
+		} else {
+		{{- else}}
+		if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(0); !ex {
+			continue
+		} else {
+		{{- end}}
+		{{- end}}{{/* end Features.WithFieldMask */}}
+		{{- $ctx := .KeyCtx.WithTarget "k" -}}
 		{{- template "FieldWrite" $ctx}}
-		{{$ctx := .ValCtx.WithTarget "v"}}
+		{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 		{{- template "FieldWrite" $ctx}}
+		{{- if and Features.WithFieldMask }}
+		}
+		{{- end}}
 	}
 	if err := oprot.WriteMapEnd(); err != nil {
 		return err
@@ -663,11 +866,35 @@ var FieldWriteMap = `
 // FieldWriteSet .
 var FieldWriteSet = `
 {{define "FieldWriteSet"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := .FieldMask -}}
+		{{- if Features.WithFieldMask}}
+		if !{{.FieldMask}}.All() {
+			l := len({{.Target}})
+			for i:=0; i < l; i++ {
+				if _, ex := {{.FieldMask}}.Int(i); !ex {
+					l--
+				}
+			}
+			if err := oprot.WriteSetBegin(thrift.
+			{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, l); err != nil {
+				return err
+			}
+		} else {
+			if err := oprot.WriteSetBegin(thrift.
+			{{- .ValCtx.Type | GetTypeIDConstant -}}
+			, len({{.Target}})); err != nil {
+				return err
+			}
+		}
+		{{- else}}
 		if err := oprot.WriteSetBegin(thrift.
 		{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 			return err
 		}
+		{{- end}}
 		{{- if Features.ValidateSet}}
 		{{- $ctx := (.ValCtx.WithTarget "tgt").WithSource "src"}}
 		for i := 0; i < len({{.Target}}); i++ {
@@ -687,9 +914,18 @@ var FieldWriteSet = `
 			}
 		}
 		{{- end}}
-		for _, v := range {{.Target}} {
-			{{- $ctx := .ValCtx.WithTarget "v"}}
+		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
+			{{- if Features.WithFieldMask}}
+			{{- $curFieldMask = "nfm"}}
+			if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(i); !ex {
+				continue
+			} else {
+			{{- end}}
+			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 			{{- template "FieldWrite" $ctx}}
+			{{- if Features.WithFieldMask}}
+			}
+			{{- end}}
 		}
 		if err := oprot.WriteSetEnd(); err != nil {
 			return err
@@ -700,14 +936,47 @@ var FieldWriteSet = `
 // FieldWriteList .
 var FieldWriteList = `
 {{define "FieldWriteList"}}
+{{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $curFieldMask := .FieldMask -}}
+	{{- if Features.WithFieldMask}}
+	if !{{.FieldMask}}.All() {
+		l := len({{.Target}})
+		for i:=0; i < l; i++ {
+			if _, ex := {{.FieldMask}}.Int(i); !ex {
+				l--
+			}
+		}
+		if err := oprot.WriteListBegin(thrift.
+		{{- .ValCtx.Type | GetTypeIDConstant -}}
+		, l); err != nil {
+			return err
+		}
+	} else {
 		if err := oprot.WriteListBegin(thrift.
 		{{- .ValCtx.Type | GetTypeIDConstant -}}
 		, len({{.Target}})); err != nil {
 			return err
 		}
-		for _, v := range {{.Target}} {
-			{{- $ctx := .ValCtx.WithTarget "v"}}
+	}
+	{{- else}}
+	if err := oprot.WriteListBegin(thrift.
+	{{- .ValCtx.Type | GetTypeIDConstant -}}
+	, len({{.Target}})); err != nil {
+		return err
+	}
+	{{- end}}
+		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
+			{{- if Features.WithFieldMask}}
+			{{- $curFieldMask = "nfm"}}
+			if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(i); !ex {
+				continue
+			} else {
+			{{- end}}
+			{{- $ctx := (.ValCtx.WithTarget "v").WithFieldMask $curFieldMask -}}
 			{{- template "FieldWrite" $ctx}}
+			{{- if Features.WithFieldMask}}
+			}
+			{{- end}}
 		}
 		if err := oprot.WriteListEnd(); err != nil {
 			return err

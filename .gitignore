@@ -7,3 +7,4 @@ gen-*
 .vscode
 .idea
 tool/trimmer/trimmer_test
+output

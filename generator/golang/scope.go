@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cloudwego/thriftgo/generator/golang/streaming"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/pkg/namespace"
 	"github.com/cloudwego/thriftgo/reflection"
@@ -496,6 +497,7 @@ type Field struct {
 	setter          Name
 	isset           Name
 	deepEqual       Name
+	isNested        bool
 }
 
 // GoName returns the name in go code of the field.
@@ -555,12 +557,18 @@ func (f *Field) DeepEqual() Name {
 	return f.deepEqual
 }
 
+// IsNested returns whether the field is a nested type.
+func (f *Field) IsNested() bool {
+	return f.isNested
+}
+
 // StructLike is a wrapper for the parser.StructLike.
 type StructLike struct {
 	*parser.StructLike
-	scope  namespace.Namespace
-	name   Name
-	fields []*Field
+	scope   namespace.Namespace
+	name    Name
+	fields  []*Field
+	isAlias bool
 }
 
 // GoName returns the name in go code of the struct-like.
@@ -587,6 +595,11 @@ func (s *StructLike) Fields() []*Field {
 // Namespace returns the namescope of the struct-like.
 func (s *StructLike) Namespace() namespace.Namespace {
 	return s.scope
+}
+
+// IsAlias returns whether this type is alias of existing type
+func (s *StructLike) IsAlias() bool {
+	return s.isAlias
 }
 
 // Service is a wrapper for the parser.Service.
@@ -646,11 +659,18 @@ type Function struct {
 	throws       []*Field
 	argType      *StructLike
 	resType      *StructLike
+	service      *Service
+	streaming    *streaming.Streaming
 }
 
 // GoName returns the go name of the function.
 func (f *Function) GoName() Name {
 	return f.name
+}
+
+// Service returns the service that the function is defined in.
+func (f *Function) Service() *Service {
+	return f.service
 }
 
 // ResponseGoTypeName returns the go type of the response type of the function.
@@ -676,6 +696,10 @@ func (f *Function) ArgType() *StructLike {
 // ResType returns the synthesized structure of arguments of the function.
 func (f *Function) ResType() *StructLike {
 	return f.resType
+}
+
+func (f *Function) Streaming() *streaming.Streaming {
+	return f.streaming
 }
 
 func buildSynthesized(v *parser.Function) (argType, resType *parser.StructLike) {
