@@ -254,6 +254,10 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 			}
 		}
 		back := t.traceExtendMethod(father, nextSvc, nextAst, filename)
+		if !back {
+			svc.Reference = nil
+			svc.Extends = ""
+		}
 		ret = back || ret
 	}
 	if ret {
