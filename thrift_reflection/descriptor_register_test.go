@@ -29,7 +29,7 @@ func Test_checkDuplicateAndRegister(t *testing.T) {
 	}
 	type x struct{}
 	pkgPath := reflect.TypeOf(x{}).PkgPath()
-	checkDuplicateAndRegister(testDesc, pkgPath)
+	defaultGlobalDescriptor.checkDuplicateAndRegister(testDesc, pkgPath)
 
 	// register the FileDescriptor with the same content and Filepath
 	sameDesc := &FileDescriptor{
@@ -38,7 +38,7 @@ func Test_checkDuplicateAndRegister(t *testing.T) {
 			"testKey": "testValue",
 		},
 	}
-	checkDuplicateAndRegister(sameDesc, pkgPath)
+	defaultGlobalDescriptor.checkDuplicateAndRegister(sameDesc, pkgPath)
 
 	// register the FileDescriptor with the same Filepath and different content
 	anotherDesc := &FileDescriptor{
@@ -52,5 +52,5 @@ func Test_checkDuplicateAndRegister(t *testing.T) {
 			t.Fatal("Register FileDescriptor with the same Filepath and different content should panic")
 		}
 	}()
-	checkDuplicateAndRegister(anotherDesc, pkgPath)
+	defaultGlobalDescriptor.checkDuplicateAndRegister(anotherDesc, pkgPath)
 }
