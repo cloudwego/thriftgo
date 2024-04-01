@@ -86,7 +86,7 @@ const EnumTemplate = `
 {{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{"\n"}}{{- end -}}
 {{- "enum"}} {{.Name}} {
 	{{- range .Values}}
-	{{- if .ReservedComments -}}{{- ReplaceQuotes .ReservedComments -}}{{- end}}
+	{{ if .ReservedComments }}{{ ReplaceQuotes .ReservedComments }}{{end}}
 	{{.Name}} = {{.Value}} {{template "Annotations" .Annotations -}}
 	{{- end}}
 } {{template "Annotations" .Annotations -}}{{"\n"}}
