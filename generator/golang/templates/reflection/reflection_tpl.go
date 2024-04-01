@@ -74,6 +74,7 @@ func GetFileDescriptorFor{{ToCamel $IDLName}}() *thrift_reflection.FileDescripto
 }
 
 {{- range .Structs}}
+{{- if not .IsAlias}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
 	return file_{{$IDLName}}_thrift.GetStructDescriptor("{{.Name}}")
 }
@@ -84,6 +85,7 @@ func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
 	ret.Name = "{{.Name}}"
 	return ret
 }
+{{- end}}
 {{- end}}
 {{- range .Enums}}
 func (p {{.GoName}}) GetDescriptor() *thrift_reflection.EnumDescriptor{
@@ -98,6 +100,7 @@ func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
 }
 {{- end}}
 {{- range .Unions}}
+{{- if not .IsAlias}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
 	return file_{{$IDLName}}_thrift.GetUnionDescriptor("{{.Name}}")
 }
@@ -109,7 +112,9 @@ func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
 	return ret
 }
 {{- end}}
+{{- end}}
 {{- range .Exceptions}}
+{{- if not .IsAlias}}
 func (p *{{.GoName}}) GetDescriptor() *thrift_reflection.StructDescriptor{
 	return file_{{$IDLName}}_thrift.GetExceptionDescriptor("{{.Name}}")
 }
@@ -120,6 +125,7 @@ func (p *{{.GoName}}) GetTypeDescriptor() *thrift_reflection.TypeDescriptor{
 	ret.Name = "{{.Name}}"
 	return ret
 }
+{{- end}}
 {{- end}}
 
 
