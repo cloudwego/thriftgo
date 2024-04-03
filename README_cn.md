@@ -1,5 +1,3 @@
-Please translate following sentence to Chinese:
-
 # Thriftgo
 
 [English](README.md) | 中文
