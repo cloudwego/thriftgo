@@ -122,18 +122,18 @@ func (a *Arguments) checkOptions(opts []plugin.Option) ([]plugin.Option, error) 
 	cu.HandleOptions(params)
 	if cu.Features().EnableNestedStruct {
 		// In nested mode, if template is not 'slim', it is automatically converted to slim
-		if cu.Template() != "slim" {
+		if cu.Template() != "slim" || cu.Template() != "raw_struct" {
 			found := false
 			for _, opt := range opts {
 				if opt.Name == "template" {
-					log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+					log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" and \"raw_struct\" template, so adapt the template to \"slim\"")
 					opt.Desc = "slim"
 					found = true
 					break
 				}
 			}
 			if !found {
-				log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+				log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" and \"raw_struct\"  template, so adapt the template to \"slim\"")
 				opts = append(opts, plugin.Option{Name: "template", Desc: "slim"})
 			}
 

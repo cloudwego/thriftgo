@@ -55,7 +55,7 @@ type Features struct {
 	CodeRef                     bool `code_ref:"Generate code ref by given idl-ref.yaml"`
 	KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
 	TrimIDL                     bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
-	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim template'"`
+	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim and raw_struct template'"`
 	JSONStringer                bool `json_stringer:"Generate the JSON marshal method in String() method."`
 	WithFieldMask               bool `with_field_mask:"Support field-mask for generated code."`
 	FieldMaskHalfway            bool `field_mask_halfway:"Support set field-mask on not-root struct."`
@@ -174,7 +174,7 @@ var codeUtilsParams = []*param{
 	},
 	{
 		name: "template",
-		desc: "Specify a different template to generate codes. (current available templates: 'slim')",
+		desc: "Specify a different template to generate codes. (current available templates: 'slim', 'raw_struct')",
 		action: func(value string, cu *CodeUtils) error {
 			return cu.UseTemplate(value)
 		},
