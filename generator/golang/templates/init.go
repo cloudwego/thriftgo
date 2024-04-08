@@ -15,13 +15,15 @@
 package templates
 
 import (
+	"github.com/cloudwego/thriftgo/generator/golang/templates/raw_struct"
 	"github.com/cloudwego/thriftgo/generator/golang/templates/slim"
 )
 
 // Alternative returns all alternative templates.
 func Alternative() map[string][]string {
 	return map[string][]string{
-		"slim": append(Templates(), slim.Extension()...),
+		"slim":       append(Templates(), slim.Extension()...),
+		"raw_struct": append(Templates(), raw_struct.Extension()...),
 	}
 }
 
