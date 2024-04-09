@@ -23,6 +23,7 @@ import (
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/generator/golang/templates"
+	"github.com/cloudwego/thriftgo/generator/golang/templates/raw_struct"
 )
 
 // forceSingleDefinition panics if the given template contains multiple definition.
@@ -69,7 +70,7 @@ func TestDefinitionNumber(t *testing.T) {
 	}
 	for pkg, tpls := range templates.Alternative() {
 		for _, tpl := range tpls {
-			if tpl != templates.File {
+			if !(tpl == templates.File || tpl == raw_struct.File) { // raw_struct rewrite 'template.File'
 				forceSingleDefinition(pkg, tpl, funcs)
 			}
 		}
