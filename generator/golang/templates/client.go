@@ -17,6 +17,7 @@ package templates
 // Client .
 var Client = `
 {{define "ThriftClient"}}
+{{- if not Features.NoProcessor}}
 {{- UseStdLibrary "thrift"}}
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
@@ -134,5 +135,6 @@ type {{.Service.GoName}}_{{.Name}}Server interface {
 }
 {{- end}}{{/* Streaming */}}
 {{- end}}{{/* range .Functions */}}
+{{- end}}{{/* if not Features.NoProcessor */}}
 {{- end}}{{/* define "ThriftClient" */}}
 `
