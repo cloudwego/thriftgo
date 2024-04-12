@@ -456,11 +456,18 @@ func (self *FieldMask) Exist() bool {
 	return self != nil && self.typ != 0
 }
 
+func (self *FieldMask) hasChild() bool {
+	return self.typ != 0 && (self.all != nil || self.fdMask != nil || self.intMask != nil || self.strMask != nil)
+}
+
 func (self *FieldMask) ret(fm *FieldMask) (*FieldMask, bool) {
 	if self.isBlack {
-		return fm, !fm.Exist()
+		// black list, only not-exist children or
+		// existing mediate children can pass
+		return fm, fm == nil || fm.hasChild()
 	} else {
-		return fm, fm.Exist()
+		// white-list, only exist child can pass
+		return fm, fm != nil
 	}
 }
 
@@ -470,7 +477,7 @@ func (self *FieldMask) Field(id int16) (*FieldMask, bool) {
 		return nil, true
 	}
 	if self.isAll {
-		return self.all, true
+		return self.all, !self.isBlack || self.hasChild()
 	}
 	fm := self.fdMask.Get(fieldID(id))
 	return self.ret(fm)
@@ -482,7 +489,7 @@ func (self *FieldMask) Int(id int) (*FieldMask, bool) {
 		return nil, true
 	}
 	if self.isAll {
-		return self.all, true
+		return self.all, !self.isBlack || self.hasChild()
 	}
 	fm := self.intMask.Get(id)
 	return self.ret(fm)
@@ -494,7 +501,7 @@ func (self *FieldMask) Str(id string) (*FieldMask, bool) {
 		return nil, true
 	}
 	if self.isAll {
-		return self.all, true
+		return self.all, !self.isBlack || self.hasChild()
 	}
 	fm := self.strMask.Get(id)
 	return self.ret(fm)

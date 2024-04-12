@@ -110,6 +110,162 @@ func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
 	}
 }
 
+func TestFieldMask_Single(t *testing.T) {
+	type args struct {
+		opts       Options
+		IDL        string
+		rootStruct string
+		paths      []string
+		inMasks    [][]interface{}
+		notInMasks [][]interface{}
+		err        []error
+	}
+	tests := []struct {
+		name string
+		args args
+		want *FieldMask
+	}{
+		{
+			name: "Base",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths: []string{
+					"$.LogID",
+					"$.TrafficEnv.Open",
+					"$.Extra[0]",
+					"$.Extra[1].List",
+					"$.Extra[1].Set[1].A",
+					"$.Extra[3].IntMap{1}",
+					"$.Extra[3].IntMap{3}.A",
+					"$.Extra[3].StrMap{\"x\"}",
+					"$.Extra[3].StrMap{\"y\"}.A",
+				},
+				inMasks: [][]interface{}{
+					{int16(1)},
+					{int16(5), int16(1)},
+					{int16(6), 0},
+					{int16(6), 1, int16(3)},
+					{int16(6), 1, int16(4), 1, int16(1)},
+					{int16(6), 3, int16(1), 1},
+					{int16(6), 3, int16(1), 3, int16(1)},
+					{int16(6), 3, int16(2), "x"},
+					{int16(6), 3, int16(2), "y", int16(1)},
+				},
+				notInMasks: [][]interface{}{
+					{int16(0)}, {int16(2)}, {int16(256)},
+					{int16(5), int16(0)}, {int16(5), int16(2)}, {int16(5), int16(256)},
+					{int16(6), 2},
+					{int16(6), 1, int16(1)}, {int16(6), 1, int16(2)},
+					{int16(6), 1, int16(4), 1, int16(2)},
+					{int16(6), 3, int16(1), 0}, {int16(6), 3, int16(1), 2},
+					{int16(6), 3, int16(1), 3, int16(2)},
+					{int16(6), 3, int16(2), "z"},
+					{int16(6), 3, int16(2), "y", int16(2)},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
+			BLACK_MODE := false
+
+		retry:
+			println("Black:", BLACK_MODE)
+			opts := tt.args.opts
+			opts.BlackListMode = BLACK_MODE
+			got, err := opts.NewFieldMask(st, tt.args.paths...)
+			if tt.args.err != nil {
+				if err == nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			out, err := got.MarshalJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			// println(string(out))
+			if !json.Valid(out) {
+				t.Fatal("not invalid json")
+			}
+
+			// test unmarshal json
+			nn := &FieldMask{}
+			if err := nn.UnmarshalJSON(out); err != nil {
+				t.Fatal(err)
+			}
+
+			if BLACK_MODE {
+				tt.args.inMasks, tt.args.notInMasks = tt.args.notInMasks, tt.args.inMasks
+			}
+
+			for _, path := range tt.args.inMasks {
+				cur := got
+				ok := false
+				for _, elem := range path {
+					// cj, err := cur.MarshalJSON()
+					// if err != nil {
+					// 	t.Fatal(err)
+					// }
+					// fmt.Printf("for elem %#v, cur %v, ok %v\n", elem, string(cj), ok)
+					switch p := elem.(type) {
+					case string:
+						cur, ok = cur.Str(p)
+					case int:
+						cur, ok = cur.Int(p)
+					case int16:
+						cur, ok = cur.Field(p)
+					default:
+						panic("elem type should be int or string or int16")
+					}
+
+					if !ok {
+						t.Fatalf("path %#v not exist!", path)
+					}
+				}
+			}
+
+			for _, path := range tt.args.notInMasks {
+				cur := got
+				ok := false
+				for i, elem := range path {
+					switch p := elem.(type) {
+					case string:
+						cur, ok = cur.Str(p)
+					case int:
+						cur, ok = cur.Int(p)
+					case int16:
+						cur, ok = cur.Field(p)
+					default:
+						panic("elem type should be int or string or int16")
+					}
+					if i < len(path)-1 {
+						if !ok {
+							t.Fatalf("path %#v not exist!", path)
+						}
+					} else {
+						if ok {
+							t.Fatalf("path %#v exist!", path)
+						}
+					}
+				}
+			}
+
+			if !BLACK_MODE {
+				BLACK_MODE = true
+				goto retry
+			}
+		})
+	}
+}
+
 func TestNewFieldMask(t *testing.T) {
 	type args struct {
 		opts       Options
