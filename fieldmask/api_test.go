@@ -112,6 +112,7 @@ func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
 
 func TestNewFieldMask(t *testing.T) {
 	type args struct {
+		opts       Options
 		IDL        string
 		rootStruct string
 		paths      []string
@@ -208,7 +209,7 @@ func TestNewFieldMask(t *testing.T) {
 			// }()
 
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
-			got, err := NewFieldMask(st, tt.args.paths...)
+			got, err := tt.args.opts.NewFieldMask(st, tt.args.paths...)
 			if tt.args.err != nil {
 				if err == nil {
 					t.Fatal(err)
@@ -222,9 +223,8 @@ func TestNewFieldMask(t *testing.T) {
 			retry := true
 		begin:
 
-			// println("fieldmask:")
-			// println(got.String(st))
-			// spew.Dump(got)
+			println("fieldmask:")
+			println(got.String(st))
 
 			// test marshal json
 			// println("marshal:")
