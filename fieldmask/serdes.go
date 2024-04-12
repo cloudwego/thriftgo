@@ -73,7 +73,8 @@ func (self *FieldMask) marshalBegin(buf *[]byte) error {
 	write(buf, `{"path":"$","type":"`)
 	out, _ := self.typ.MarshalText()
 	*buf = append(*buf, out...)
-	write(buf, `"`)
+	write(buf, `","is_black":`)
+	write(buf, strconv.FormatBool(self.isBlack))
 	return self.marshalRec(buf)
 }
 
@@ -127,7 +128,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 			return true, nil
 		}
 		if start {
-			write(buf, ",")
+			write(buf, `,`)
 		}
 
 		// write path
@@ -138,13 +139,16 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		case string:
 			*buf = strconv.AppendQuote(*buf, v)
 		}
-		write(buf, ",")
+		write(buf, `,`)
 
 		// write type
 		write(buf, `"type":"`)
 		typ, _ := f.typ.MarshalText()
 		*buf = append(*buf, typ...)
-		write(buf, `"`)
+
+		// write is_black
+		write(buf, `","is_black":`)
+		write(buf, strconv.FormatBool(f.isBlack))
 
 		if err := f.marshalRec(buf); err != nil {
 			return false, err
@@ -234,10 +238,12 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	return nil
 }
 
-type shadowFieldMask struct {
-	Path     interface{}       `json:"path"`
-	Type     FieldMaskType     `json:"type"`
-	Children []shadowFieldMask `json:"children"`
+// FieldMaskTransfer is the data struct being used to transfer and construct a fieldmask
+type FieldMaskTransfer struct {
+	Path     interface{}         `json:"path"` //NOTICE: must be float64 or string
+	Type     FieldMaskType       `json:"type"`
+	IsBlack  bool                `json:"is_black"`
+	Children []FieldMaskTransfer `json:"children"`
 }
 
 // UnmarshalJSON unmarshal the fieldmask from json.
@@ -247,7 +253,7 @@ func (self *FieldMask) UnmarshalJSON(in []byte) error {
 	if self == nil {
 		return errors.New("nil memory address")
 	}
-	var s = new(shadowFieldMask)
+	var s = new(FieldMaskTransfer)
 	if err := json.Unmarshal(in, &s); err != nil {
 		return err
 	}
@@ -255,14 +261,16 @@ func (self *FieldMask) UnmarshalJSON(in []byte) error {
 	if s.Path != jsonPathRoot {
 		return errors.New("fieldmask must begin with root path '$'")
 	}
-	return self.fromShadow(s)
+	return self.TransferFrom(s)
 }
 
-func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
+// TransferFrom transfroms a FieldMaskTransfer to the FieldMask
+func (self *FieldMask) TransferFrom(s *FieldMaskTransfer) error {
 	if s == nil || s.Type == FtInvalid {
 		return errors.New("invalid fieldmask type")
 	}
 	self.typ = s.Type
+	self.isBlack = s.IsBlack
 
 	if len(s.Children) == 0 {
 		self.isAll = true
@@ -290,7 +298,7 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 				return fmt.Errorf("expect number but got %#v", n.Path)
 			}
 			next := self.setFieldID(fieldID(id), n.Type)
-			if err := next.fromShadow(&n); err != nil {
+			if err := next.TransferFrom(&n); err != nil {
 				return err
 			}
 		}
@@ -307,7 +315,7 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 				return fmt.Errorf("expect number but got %#v", n.Path)
 			}
 			next := self.setInt(int(id), n.Type, len(s.Children))
-			if err := next.fromShadow(&n); err != nil {
+			if err := next.TransferFrom(&n); err != nil {
 				return err
 			}
 		}
@@ -324,7 +332,7 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 				return fmt.Errorf("expect string but got %#v", n.Path)
 			}
 			next := self.setStr(id, n.Type, len(s.Children))
-			if err := next.fromShadow(&n); err != nil {
+			if err := next.TransferFrom(&n); err != nil {
 				return err
 			}
 		}
@@ -333,11 +341,11 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 	return nil
 }
 
-func (self *FieldMask) checkAll(s *shadowFieldMask) (bool, error) {
+func (self *FieldMask) checkAll(s *FieldMaskTransfer) (bool, error) {
 	if s.Path == "*" {
 		self.isAll = true
 		self.all = &FieldMask{}
-		return true, self.all.fromShadow(s)
+		return true, self.all.TransferFrom(s)
 	}
 	return false, nil
 }

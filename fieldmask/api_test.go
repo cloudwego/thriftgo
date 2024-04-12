@@ -18,9 +18,11 @@ package fieldmask
 
 import (
 	"encoding/json"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -95,19 +97,23 @@ struct BaseResp {
 	113: map<Key, Val> F10
 }
 `
+var onceParse sync.Once
 
-func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
-	ast, err := parser.ParseString("a.thrift", IDL)
-	if err != nil {
-		panic(err.Error())
-	}
-	_, fd := thrift_reflection.RegisterAST(ast)
-	st := fd.GetStructDescriptor(root)
-	return &thrift_reflection.TypeDescriptor{
-		Filepath: st.Filepath,
-		Name:     st.Name,
-		Extra:    map[string]string{thrift_reflection.GLOBAL_UUID_EXTRA_KEY: st.Extra[thrift_reflection.GLOBAL_UUID_EXTRA_KEY]},
-	}
+func GetDescriptor(IDL string, root string) (ret *thrift_reflection.TypeDescriptor) {
+	onceParse.Do(func() {
+		ast, err := parser.ParseString("a.thrift", IDL)
+		if err != nil {
+			panic(err.Error())
+		}
+		_, fd := thrift_reflection.RegisterAST(ast)
+		st := fd.GetStructDescriptor(root)
+		ret = &thrift_reflection.TypeDescriptor{
+			Filepath: st.Filepath,
+			Name:     st.Name,
+			Extra:    map[string]string{thrift_reflection.GLOBAL_UUID_EXTRA_KEY: st.Extra[thrift_reflection.GLOBAL_UUID_EXTRA_KEY]},
+		}
+	})
+	return
 }
 
 func TestFieldMask_Single(t *testing.T) {
@@ -452,10 +458,98 @@ func TestMarshalJSONStable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	println(string(jo))
-	if string(jo) != (`{"path":"$","type":"Struct","children":[{"path":1,"type":"StrMap","children":[{"path":"a","type":"Struct"},{"path":"b","type":"Struct"},{"path":"c","type":"Struct"},{"path":"d","type":"Struct"}]},{"path":2,"type":"IntMap","children":[{"path":0,"type":"Struct"},{"path":1,"type":"Struct"},{"path":2,"type":"Struct"},{"path":3,"type":"Struct"},{"path":4,"type":"Struct"}]}]}`) {
+	act := new(FieldMask)
+	if err := act.UnmarshalJSON(jo); err != nil {
+		t.Fatal(err)
+	}
+	if !act.PathInMask(st, "$.F2{4,1,3,0,2}") {
+		t.Fail()
+	}
+	if !act.PathInMask(st, `$.F1{"c","d","b","a"}`) {
+		t.Fail()
+	}
+	if act.PathInMask(st, `$.F2{5,100}`) {
+		t.Fail()
+	}
+	if act.PathInMask(st, `$.F1{"5","100ab11"}`) {
+		t.Fail()
+	}
+	if string(jo) != (`{"path":"$","type":"Struct","is_black":false,"children":[{"path":1,"type":"StrMap","is_black":false,"children":[{"path":"a","type":"Struct","is_black":false},{"path":"b","type":"Struct","is_black":false},{"path":"c","type":"Struct","is_black":false},{"path":"d","type":"Struct","is_black":false}]},{"path":2,"type":"IntMap","is_black":false,"children":[{"path":0,"type":"Struct","is_black":false},{"path":1,"type":"Struct","is_black":false},{"path":2,"type":"Struct","is_black":false},{"path":3,"type":"Struct","is_black":false},{"path":4,"type":"Struct","is_black":false}]}]}`) {
 		t.Fatal(string(jo))
 	}
+}
+
+func TestGetPath(t *testing.T) {
+	type args struct {
+		opts       Options
+		IDL        string
+		rootStruct string
+		paths      []string
+		err        []error
+	}
+	type res struct {
+		path string
+		fm   *FieldMaskTransfer
+		ex   bool
+	}
+	tests := []struct {
+		name string
+		args args
+		res  []res
+	}{
+		{
+			name: "Base",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths: []string{
+					"$.LogID",
+					"$.TrafficEnv.Open",
+					"$.Extra[0]",
+					"$.Extra[1].List",
+					"$.Extra[1].Set[1].A",
+					"$.Extra[3].IntMap{1}",
+					"$.Extra[3].IntMap{3}.A",
+					"$.Extra[3].StrMap{\"x\"}",
+					"$.Extra[3].StrMap{\"y\"}.A",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
+			root, err := tt.args.opts.NewFieldMask(st, tt.args.paths...)
+			if tt.args.err != nil {
+				if err == nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, re := range tt.res {
+				got, ex := root.GetPath(st, re.path)
+				if ex != re.ex {
+					t.Fatal(ex)
+				}
+				gj, err := got.MarshalJSON()
+				if err != nil {
+					t.Fatal(err)
+				}
+				var act *FieldMaskTransfer
+				if err := json.Unmarshal(gj, &act); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(re.fm, act) {
+					t.Fatalf("exp:%#v,\ngot:%#v", re.fm, *act)
+				}
+			}
+
+		})
+	}
+
 }
 
 func TestErrors(t *testing.T) {
