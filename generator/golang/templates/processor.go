@@ -17,6 +17,7 @@ package templates
 // Processor .
 var Processor = `
 {{define "ThriftProcessor"}}
+{{- if not Features.NoProcessor}}
 {{- UseStdLibrary "thrift"}}
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
@@ -171,6 +172,7 @@ func (p *{{$ProcessName}}) Process(ctx context.Context, seqId int32, iprot, opro
 	{{- end -}}{{- /* end if not Has Streaming */ -}}
 }
 {{- end}}{{/* range .Functions */}}
+{{- end}}{{/* if not Features.NoProcessor */}}
 
 {{- range .Functions}}
 {{$ArgsType := .ArgType}}
