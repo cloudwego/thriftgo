@@ -22,7 +22,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -97,22 +96,19 @@ struct BaseResp {
 	113: map<Key, Val> F10
 }
 `
-var onceParse sync.Once
 
 func GetDescriptor(IDL string, root string) (ret *thrift_reflection.TypeDescriptor) {
-	onceParse.Do(func() {
-		ast, err := parser.ParseString("a.thrift", IDL)
-		if err != nil {
-			panic(err.Error())
-		}
-		_, fd := thrift_reflection.RegisterAST(ast)
-		st := fd.GetStructDescriptor(root)
-		ret = &thrift_reflection.TypeDescriptor{
-			Filepath: st.Filepath,
-			Name:     st.Name,
-			Extra:    map[string]string{thrift_reflection.GLOBAL_UUID_EXTRA_KEY: st.Extra[thrift_reflection.GLOBAL_UUID_EXTRA_KEY]},
-		}
-	})
+	ast, err := parser.ParseString("a.thrift", IDL)
+	if err != nil {
+		panic(err.Error())
+	}
+	_, fd := thrift_reflection.RegisterAST(ast)
+	st := fd.GetStructDescriptor(root)
+	ret = &thrift_reflection.TypeDescriptor{
+		Filepath: st.Filepath,
+		Name:     st.Name,
+		Extra:    map[string]string{thrift_reflection.GLOBAL_UUID_EXTRA_KEY: st.Extra[thrift_reflection.GLOBAL_UUID_EXTRA_KEY]},
+	}
 	return
 }
 
@@ -514,6 +510,23 @@ func TestGetPath(t *testing.T) {
 					"$.Extra[3].StrMap{\"y\"}.A",
 				},
 			},
+			res: []res{
+				{
+					path: "$.LogID",
+					fm:   &FieldMaskTransfer{"$", FtScalar, false, nil},
+					ex:   true,
+				},
+				{
+					path: "$.Addr",
+					fm:   (*FieldMaskTransfer)(nil),
+					ex:   false,
+				},
+				{
+					path: "$.TrafficEnv",
+					fm:   &FieldMaskTransfer{"$", FtStruct, false, []FieldMaskTransfer{{float64(1), FtScalar, false, nil}}},
+					ex:   true,
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -530,7 +543,7 @@ func TestGetPath(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, re := range tt.res {
-				got, ex := root.GetPath(st, re.path)
+				got, ex := root.getPath(st, re.path)
 				if ex != re.ex {
 					t.Fatal(ex)
 				}

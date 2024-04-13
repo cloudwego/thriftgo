@@ -45,6 +45,9 @@ var bytesPool = sync.Pool{
 //   - each fieldmask always starts with root path "$"
 //   - path "*" indicates all subsequent path of the fieldmask shares the same sub fieldmask
 func (fm *FieldMask) MarshalJSON() ([]byte, error) {
+	if fm == nil {
+		return []byte("null"), nil
+	}
 	buf := bytesPool.Get().(*[]byte)
 
 	err := fm.marshalBegin(buf)

@@ -313,12 +313,12 @@ ret:
 
 // PathInMask tells if a given path is already in current fieldmask
 func (fm *FieldMask) PathInMask(desc *thrift_reflection.TypeDescriptor, path string) bool {
-	_, ex := fm.GetPath(desc, path)
+	_, ex := fm.getPath(desc, path)
 	return ex
 }
 
 // getPathAncestor tells if a given path is in current fieldmask, and return the nearest settled ancestor (include itself)
-func (cur *FieldMask) GetPath(curDesc *thrift_reflection.TypeDescriptor, path string) (*FieldMask, bool) {
+func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path string) (*FieldMask, bool) {
 	it := newPathIter(path)
 	// println("[PathInMask]")
 	var last = cur
