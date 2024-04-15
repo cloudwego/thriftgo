@@ -59,7 +59,6 @@ $ | the root object,every path must start with it.
 </byte-sheet-html-origin><!--EndFragment-->
 
 #### Agreement Of Implementation
-- A field in mask means "PASS" (**will be** serialized/deserialized),  and the other field not in mask means "Filtered" ((**won't be** serialized/deserialized))
 - A empty mask means "PASS ALL" (all field is "PASS")
 - For map of neither-string-nor-integer typed key, only syntax token of all '*' (see above) is allowed in.
 - For safty, required fields which are not in mask ("Filtered") will still be written into message:
@@ -67,6 +66,10 @@ $ | the root object,every path must start with it.
   - add generate option `field_mask_zero_required`: write **zero value** of the required field
 - FieldMask settings must start from the root object.
   - Tips: If you want to set FieldMask from a non-root object and make it effective, you need to add `field_mask_halfway` option and regenerate the codes. However, there is a latent risk: if different parent objects reference the same child object, and these two parent objects set different fieldmasks, only one parent object's fieldmask relative to this child object will be effective.
+
+#### Visibility
+By default, a field in mask means "PASS" (**will be** serialized/deserialized),  and the other fields not in mask means "REJECT" ((**won't be** serialized/deserialized)) -- which is so-called **"White List"**
+However, we allow user to use fieldmask as a **"Black List"**, as long as enable option `Options.BlackList` mode. Under such mode, a field in the mask means "REJECT" (**will not be** serialized/deserialized), and the other fields means "PASE". 
 
 ### Type Descriptor
 Type descriptor is the runtime representation of a message definition, in aligned with [Protobuf Descriptor](https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto). To get a type descriptor, you must enable thrift reflection feature first, which was introduced in thriftgo [v0.3.0](https://github.com/cloudwego/thriftgo/pull/83). you can generate related codes for this feature using option `with_reflection`.
@@ -102,6 +105,13 @@ func init() {
 	fieldmaskCache.Store("Mask1ForBase", fm)
 }
 ```
+  - If you want to enable black-list mode of fieldmask, you can create fieldmask like this:
+```go
+    fm, err := fieldmask.Options{
+        BlackListMode: true,
+    }.NewFieldMask(desc, "$.Addr")
+```
+
 3. Now you can use fieldmask in either client-side or server-side
   - For server-side, you can set fieldmask with generated API `Set_FieldMask()` on your response object. Then the object itself will notice the fieldmask and using it during its serialization
   ```go
@@ -122,6 +132,7 @@ func init() {
   }
   ```
   - For client-side: related to the deserialization process of framework. For kitex, it's WIP.
+
 
 ## How to pass fieldmask between programs?
 Generally, you can add one binary field on your request definition to carry fieldmask, and explicitly serialize/deserialize the fieldmask you are using into/from this field. We provide two encapsulated API for serialization/deserialization:
