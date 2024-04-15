@@ -743,7 +743,7 @@ var FieldReadList = `
 			continue
 		} else {
 		{{- end}}
-		{{- $ctx := .ValCtx.WithTarget $val}}
+		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
 		{{- if $isStructVal}}
 		{{$val}} := &values[i]
 		{{- else}}
