@@ -520,12 +520,7 @@ func (self *FieldMask) All() bool {
 	}
 }
 
-// SetBlack sets the FieldMask to be black-list or white-list
-func (self *FieldMask) SetBlack(black bool) {
-	self.isBlack = black
-}
-
-// SetBlack tells if the FieldMask is black-list or white-list
+// IsBlack tells if the FieldMask is black-list or white-list
 func (self *FieldMask) IsBlack() bool {
 	return self.isBlack
 }
