@@ -68,6 +68,12 @@ struct MetaInfo {
 
 typedef Val Key 
 
+enum Ex {
+	A = 1,
+	B = 2,
+	C = 3
+}
+
 struct BaseResp {
 	1: required string StatusMessage = "",
 	2: required i32 StatusCode = 0,
@@ -284,13 +290,22 @@ func TestNewFieldMask(t *testing.T) {
 		want *FieldMask
 	}{
 		{
+			name: "Enum Key Map",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "BaseResp",
+				paths:      []string{"$.F7{1}"},
+				notInMasks: []string{"$.F7{2}"},
+			},
+		},
+		{
 			name: "Neither-string-nor-integer-key Map",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "BaseResp",
-				paths:      []string{"$.F10{*}.A", "$.F5{*}.A"},
+				paths:      []string{"$.F10{*}.A", "$.F5{*}.A", "$.F7{0}"},
 				inMasks:    []string{"$.F10{\"a\"}.A", "$.F5{0}.A"},
-				notInMasks: []string{`$.F10{"a"}.B`, "$.F10{*}.B", "$.F5{0}.B", "$.F5{*}.B"},
+				notInMasks: []string{`$.F10{"a"}.B`, "$.F10{*}.B", "$.F5{0}.B", "$.F5{*}.B", "$.F7{1}"},
 			},
 		},
 		{

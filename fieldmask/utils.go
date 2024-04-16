@@ -53,6 +53,9 @@ func switchFt(desc *thrift_reflection.TypeDescriptor) FieldMaskType {
 		return FtList
 	} else if desc.IsMap() {
 		ft := unwrapDesc(desc.GetKeyType())
+		if ft.IsEnum() {
+			return FtIntMap
+		}
 		switch ft.GetName() {
 		case "i8", "i16", "i32", "i64", "byte":
 			return FtIntMap
@@ -63,6 +66,8 @@ func switchFt(desc *thrift_reflection.TypeDescriptor) FieldMaskType {
 		}
 	} else if desc.IsStruct() {
 		return FtStruct
+	} else if desc.IsEnum() {
+		return FtScalar
 	} else {
 		return FtInvalid // NOTICE: mean fieldmask not exist
 	}
