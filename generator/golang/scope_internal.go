@@ -17,6 +17,7 @@ package golang
 import (
 	"fmt"
 	"log"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -440,13 +441,17 @@ func (s *Scope) resolveTypesAndValues(cu *CodeUtils) {
 
 	ensureType := func(t TypeName, e error) TypeName {
 		if e != nil {
-			panic(e)
+			println(s.ast.Filename)
+			println(e.Error())
+			os.Exit(2)
 		}
 		return t
 	}
 	ensureCode := func(c Code, e error) Code {
 		if e != nil {
-			panic(e)
+			println(s.ast.Filename)
+			println(e.Error())
+			os.Exit(2)
 		}
 		return c
 	}
