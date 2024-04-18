@@ -89,8 +89,10 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 			if len(ast.Services) == 1 {
 				trimMethods[i] = ast.Services[0].Name + "." + method
 			} else {
-				println("please specify service name!\n  -m usage: -m [service_name.method_name]")
-				os.Exit(2)
++                               trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
++                               // println("please specify service name!\n  -m usage: -m [service_name.method_name]")
++                               // os.Exit(2)
+
 			}
 		}
 		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
