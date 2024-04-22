@@ -17,6 +17,7 @@
 package fieldmask
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -59,9 +60,9 @@ const (
 	pathSepSlash      = '\\'
 )
 
-const (
-	jsonPathAny  = `*`
-	jsonPathRoot = `$`
+var (
+	jsonPathAny  = json.RawMessage(`"*"`)
+	jsonPathRoot = json.RawMessage(`"$"`)
 )
 
 type pathValue struct {
@@ -313,15 +314,15 @@ ret:
 
 // PathInMask tells if a given path is already in current fieldmask
 func (fm *FieldMask) PathInMask(desc *thrift_reflection.TypeDescriptor, path string) bool {
-	_, ex := fm.getPath(desc, path)
+	_, ex := fm.GetPath(desc, path)
 	return ex
 }
 
 // getPathAncestor tells if a given path is in current fieldmask, and return the nearest settled ancestor (include itself)
-func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path string) (*FieldMask, bool) {
+func (cur *FieldMask) GetPath(desc *thrift_reflection.TypeDescriptor, path string) (*FieldMask, bool) {
 	it := newPathIter(path)
 	// println("[PathInMask]")
-	var last = cur
+	last := cur
 	for it.HasNext() {
 		// NOTICE: desc shoudn't empty here
 		// println("desc: ", curDesc.Name)
@@ -345,7 +346,7 @@ func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path st
 			continue
 		} else if styp == pathTypeField {
 			// get struct descriptor
-			st, err := curDesc.GetStructDescriptor()
+			st, err := desc.GetStructDescriptor()
 			if err != nil {
 				return nil, false
 			}
@@ -391,8 +392,8 @@ func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path st
 			}
 
 			// deep to next desc
-			curDesc = f.GetType()
-			if curDesc == nil {
+			desc = f.GetType()
+			if desc == nil {
 				return nil, false
 			}
 
@@ -401,10 +402,10 @@ func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path st
 		} else if styp == pathTypeIndexL {
 
 			// get element desc
-			if !curDesc.IsList() {
+			if !desc.IsList() {
 				return nil, false
 			}
-			et := curDesc.GetValueType()
+			et := desc.GetValueType()
 			if et == nil {
 				return nil, false
 			}
@@ -448,18 +449,18 @@ func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path st
 			}
 
 			// next fieldmask
-			curDesc = et
+			desc = et
 			cur = next
 		} else if styp == pathTypeMapL {
 			// get element and key desc
-			if !curDesc.IsMap() {
+			if !desc.IsMap() {
 				return nil, false
 			}
-			et := curDesc.GetValueType()
+			et := desc.GetValueType()
 			if et == nil {
 				return nil, false
 			}
-			kt := curDesc.GetKeyType()
+			kt := desc.GetKeyType()
 			if kt == nil {
 				return nil, false
 			}
@@ -517,7 +518,7 @@ func (cur *FieldMask) getPath(curDesc *thrift_reflection.TypeDescriptor, path st
 			}
 
 			// next fieldmask
-			curDesc = et
+			desc = et
 			cur = next
 			// spew.Dump("next ", cur)
 		} else {

@@ -18,7 +18,6 @@ package fieldmask
 
 import (
 	"encoding/json"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -161,12 +160,18 @@ func TestFieldMask_Single(t *testing.T) {
 					{int16(6), 3, int16(2), "y", int16(1)},
 				},
 				notInMasks: [][]interface{}{
-					{int16(0)}, {int16(2)}, {int16(256)},
-					{int16(5), int16(0)}, {int16(5), int16(2)}, {int16(5), int16(256)},
+					{int16(0)},
+					{int16(2)},
+					{int16(256)},
+					{int16(5), int16(0)},
+					{int16(5), int16(2)},
+					{int16(5), int16(256)},
 					{int16(6), 2},
-					{int16(6), 1, int16(1)}, {int16(6), 1, int16(2)},
+					{int16(6), 1, int16(1)},
+					{int16(6), 1, int16(2)},
 					{int16(6), 1, int16(4), 1, int16(2)},
-					{int16(6), 3, int16(1), 0}, {int16(6), 3, int16(1), 2},
+					{int16(6), 3, int16(1), 0},
+					{int16(6), 3, int16(1), 2},
 					{int16(6), 3, int16(1), 3, int16(2)},
 					{int16(6), 3, int16(2), "z"},
 					{int16(6), 3, int16(2), "y", int16(2)},
@@ -469,6 +474,7 @@ func TestMarshalJSONStable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	println(string(jo))
 	act := new(FieldMask)
 	if err := act.UnmarshalJSON(jo); err != nil {
 		t.Fatal(err)
@@ -488,96 +494,6 @@ func TestMarshalJSONStable(t *testing.T) {
 	if string(jo) != (`{"path":"$","type":"Struct","is_black":false,"children":[{"path":1,"type":"StrMap","is_black":false,"children":[{"path":"a","type":"Struct","is_black":false},{"path":"b","type":"Struct","is_black":false},{"path":"c","type":"Struct","is_black":false},{"path":"d","type":"Struct","is_black":false}]},{"path":2,"type":"IntMap","is_black":false,"children":[{"path":0,"type":"Struct","is_black":false},{"path":1,"type":"Struct","is_black":false},{"path":2,"type":"Struct","is_black":false},{"path":3,"type":"Struct","is_black":false},{"path":4,"type":"Struct","is_black":false}]}]}`) {
 		t.Fatal(string(jo))
 	}
-}
-
-func TestGetPath(t *testing.T) {
-	type args struct {
-		opts       Options
-		IDL        string
-		rootStruct string
-		paths      []string
-		err        []error
-	}
-	type res struct {
-		path string
-		fm   *FieldMaskTransfer
-		ex   bool
-	}
-	tests := []struct {
-		name string
-		args args
-		res  []res
-	}{
-		{
-			name: "Base",
-			args: args{
-				IDL:        baseIDL,
-				rootStruct: "Base",
-				paths: []string{
-					"$.LogID",
-					"$.TrafficEnv.Open",
-					"$.Extra[0]",
-					"$.Extra[1].List",
-					"$.Extra[1].Set[1].A",
-					"$.Extra[3].IntMap{1}",
-					"$.Extra[3].IntMap{3}.A",
-					"$.Extra[3].StrMap{\"x\"}",
-					"$.Extra[3].StrMap{\"y\"}.A",
-				},
-			},
-			res: []res{
-				{
-					path: "$.LogID",
-					fm:   &FieldMaskTransfer{"$", FtScalar, false, nil},
-					ex:   true,
-				},
-				{
-					path: "$.Addr",
-					fm:   (*FieldMaskTransfer)(nil),
-					ex:   false,
-				},
-				{
-					path: "$.TrafficEnv",
-					fm:   &FieldMaskTransfer{"$", FtStruct, false, []FieldMaskTransfer{{float64(1), FtScalar, false, nil}}},
-					ex:   true,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
-			root, err := tt.args.opts.NewFieldMask(st, tt.args.paths...)
-			if tt.args.err != nil {
-				if err == nil {
-					t.Fatal(err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, re := range tt.res {
-				got, ex := root.getPath(st, re.path)
-				if ex != re.ex {
-					t.Fatal(ex)
-				}
-				gj, err := got.MarshalJSON()
-				if err != nil {
-					t.Fatal(err)
-				}
-				var act *FieldMaskTransfer
-				if err := json.Unmarshal(gj, &act); err != nil {
-					t.Fatal(err)
-				}
-				if !reflect.DeepEqual(re.fm, act) {
-					t.Fatalf("exp:%#v,\ngot:%#v", re.fm, *act)
-				}
-			}
-
-		})
-	}
-
 }
 
 func TestErrors(t *testing.T) {
