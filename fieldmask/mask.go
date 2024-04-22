@@ -524,3 +524,48 @@ func (self *FieldMask) All() bool {
 func (self *FieldMask) IsBlack() bool {
 	return self.isBlack
 }
+
+// Type tells its FieldMaskType, which is decided by the Thrift Path definition.
+func (self *FieldMask) Type() FieldMaskType {
+	return self.typ
+}
+
+// ForEachChild iterates over underlying children of a FieldMask (if any).
+// A child's key type depends on the type of the FieldMask:
+//   - FtStruct | FtList | FtIntMap: intKey
+//   - FtStrMap: strKey
+func (self *FieldMask) ForEachChild(scanner func(strKey string, intKey int, child *FieldMask) bool) {
+	if self == nil {
+		return
+	}
+	switch self.typ {
+	case FtScalar:
+		return
+	case FtStruct:
+		fm := self.fdMask
+		for k, v := range fm.tail {
+			if !scanner("", int(k), v) {
+				return
+			}
+		}
+		for k, v := range fm.head {
+			if !scanner("", int(k), v) {
+				return
+			}
+		}
+	case FtList, FtIntMap:
+		for k, v := range self.intMask {
+			if !scanner("", int(k), v) {
+				return
+			}
+		}
+	case FtStrMap:
+		for k, v := range self.strMask {
+			if !scanner(k, 0, v) {
+				return
+			}
+		}
+	default:
+		panic("unsupported FieldMask type: " + strconv.Itoa(int(self.typ)))
+	}
+}

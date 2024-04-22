@@ -236,12 +236,12 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	return nil
 }
 
-// FieldMaskTransfer is the data struct being used to transfer and construct a fieldmask
-type FieldMaskTransfer struct {
+// fieldMaskTransfer is the data struct being used to transfer and construct a fieldmask
+type fieldMaskTransfer struct {
 	Path     json.RawMessage     `json:"path"` // NOTICE: must be float64 or string
 	Type     FieldMaskType       `json:"type"`
 	IsBlack  bool                `json:"is_black"`
-	Children []FieldMaskTransfer `json:"children"`
+	Children []fieldMaskTransfer `json:"children"`
 }
 
 // UnmarshalJSON unmarshal the fieldmask from json.
@@ -251,7 +251,7 @@ func (self *FieldMask) UnmarshalJSON(in []byte) error {
 	if self == nil {
 		return errors.New("nil memory address")
 	}
-	s := new(FieldMaskTransfer)
+	s := new(fieldMaskTransfer)
 	if err := json.Unmarshal(in, &s); err != nil {
 		return err
 	}
@@ -267,14 +267,14 @@ func (self *FieldMask) UnmarshalJSON(in []byte) error {
 }
 
 // TransferTo transfer FieldMaskTransfer to a FieldMask
-func (self *FieldMaskTransfer) TransferTo() (*FieldMask, error) {
+func (self *fieldMaskTransfer) TransferTo() (*FieldMask, error) {
 	fm := new(FieldMask)
 	err := fm.TransferFrom(self)
 	return fm, err
 }
 
 // TransferFrom transfroms a FieldMaskTransfer to the FieldMask
-func (self *FieldMask) TransferFrom(s *FieldMaskTransfer) error {
+func (self *FieldMask) TransferFrom(s *fieldMaskTransfer) error {
 	if s == nil || s.Type == FtInvalid {
 		return errors.New("invalid fieldmask type")
 	}
@@ -348,7 +348,7 @@ func (self *FieldMask) TransferFrom(s *FieldMaskTransfer) error {
 	return nil
 }
 
-func (self *FieldMask) checkAll(s *FieldMaskTransfer) (bool, error) {
+func (self *FieldMask) checkAll(s *fieldMaskTransfer) (bool, error) {
 	if bytes.Equal(s.Path, jsonPathAny) {
 		self.isAll = true
 		self.all = &FieldMask{}

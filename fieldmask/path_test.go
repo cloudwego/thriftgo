@@ -23,7 +23,7 @@ import (
 )
 
 func TestGetPath(t *testing.T) {
-	v1 := &FieldMaskTransfer{jsonPathRoot, FtScalar, false, nil}
+	v1 := &fieldMaskTransfer{jsonPathRoot, FtScalar, false, nil}
 	fm1, err := v1.TransferTo()
 	if err != nil {
 		t.Fatal(err)
@@ -32,8 +32,8 @@ func TestGetPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v3 := &FieldMaskTransfer{jsonPathRoot, FtList, false, []FieldMaskTransfer{
-		{json.RawMessage("1"), FtStruct, false, []FieldMaskTransfer{
+	v3 := &fieldMaskTransfer{jsonPathRoot, FtList, false, []fieldMaskTransfer{
+		{json.RawMessage("1"), FtStruct, false, []fieldMaskTransfer{
 			{json.RawMessage("1"), FtScalar, false, nil},
 		}},
 	}}
@@ -49,9 +49,9 @@ func TestGetPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v6 := &FieldMaskTransfer{jsonPathRoot, FtIntMap, false, []FieldMaskTransfer{
+	v6 := &fieldMaskTransfer{jsonPathRoot, FtIntMap, false, []fieldMaskTransfer{
 		{json.RawMessage("1"), FtStruct, false, nil},
-		{json.RawMessage("3"), FtStruct, false, []FieldMaskTransfer{
+		{json.RawMessage("3"), FtStruct, false, []fieldMaskTransfer{
 			{json.RawMessage("1"), FtScalar, false, nil},
 		}},
 	}}
@@ -59,9 +59,9 @@ func TestGetPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v7 := &FieldMaskTransfer{jsonPathRoot, FtStrMap, false, []FieldMaskTransfer{
+	v7 := &fieldMaskTransfer{jsonPathRoot, FtStrMap, false, []fieldMaskTransfer{
 		{json.RawMessage(`"x"`), FtStruct, false, nil},
-		{json.RawMessage(`"y"`), FtStruct, false, []FieldMaskTransfer{
+		{json.RawMessage(`"y"`), FtStruct, false, []fieldMaskTransfer{
 			{json.RawMessage("1"), FtScalar, false, nil},
 		}},
 	}}
@@ -69,7 +69,7 @@ func TestGetPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v8 := &FieldMaskTransfer{jsonPathRoot, FtList, false, nil}
+	v8 := &fieldMaskTransfer{jsonPathRoot, FtList, false, nil}
 	fm8, err := v8.TransferTo()
 	if err != nil {
 		t.Fatal(err)
