@@ -178,3 +178,10 @@ func (e *external) Execute(req *Request) (res *Response) {
 	}
 	return res
 }
+
+type SDKPlugin interface {
+	Invoke(req *Request) (res *Response)
+	GetName() string
+	GetPluginParameters() []string
+	GetPwd() string
+}

@@ -16,6 +16,7 @@ package trim
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 	"os"
 	"regexp"
 	"strings"
@@ -52,7 +53,7 @@ type TrimASTArg struct {
 // TrimAST parse the cfg and trim the single AST
 func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error) {
 	var preservedStructs []string
-	if wd, err := os.Getwd(); err == nil {
+	if wd, err := dir_utils.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
 		if cfg != nil {
 			if len(arg.TrimMethods) == 0 && len(cfg.Methods) > 0 {
@@ -89,8 +90,9 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 			if len(ast.Services) == 1 {
 				trimMethods[i] = ast.Services[0].Name + "." + method
 			} else {
-				println("please specify service name!\n  -m usage: -m [service_name.method_name]")
-				os.Exit(2)
+				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
+				//println("please specify service name!\n  -m usage: -m [service_name.method_name]")
+				//os.Exit(2)
 			}
 		}
 		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)

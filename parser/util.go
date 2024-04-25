@@ -16,7 +16,7 @@ package parser
 
 import (
 	"fmt"
-	"os"
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 	"path/filepath"
 	"strings"
 )
@@ -26,7 +26,7 @@ func normalizeFilename(fn string) string {
 	if err != nil {
 		return fn
 	}
-	base, err := os.Getwd()
+	base, err := dir_utils.Getwd()
 	if err != nil {
 		return abs
 	}

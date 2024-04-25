@@ -121,6 +121,7 @@ struct ServiceDescriptor{
     4:required map<string,list<string>> annotations 
     5:required string comments  
     6:optional map<string,string> extra  // extra info
+    7:optional ServiceDescriptor parent
 }
 
 struct FileDescriptor{
