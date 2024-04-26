@@ -26,6 +26,8 @@ struct Base {
 	1: string LogID = "",
 	2: string Caller = "",
 	5: optional TrafficEnv TrafficEnv,
+	9: Ex Enum,
+	10: map<Ex, string> EnumMap,
 	255: optional ExtraInfo Extra,
 	256: MetaInfo Meta,
 }

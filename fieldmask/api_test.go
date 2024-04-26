@@ -67,6 +67,12 @@ struct MetaInfo {
 
 typedef Val Key 
 
+enum Ex {
+	A = 1,
+	B = 2,
+	C = 3
+}
+
 struct BaseResp {
 	1: required string StatusMessage = "",
 	2: required i32 StatusCode = 0,
@@ -96,22 +102,186 @@ struct BaseResp {
 }
 `
 
-func GetDescriptor(IDL string, root string) *thrift_reflection.TypeDescriptor {
+func GetDescriptor(IDL string, root string) (ret *thrift_reflection.TypeDescriptor) {
 	ast, err := parser.ParseString("a.thrift", IDL)
 	if err != nil {
 		panic(err.Error())
 	}
 	_, fd := thrift_reflection.RegisterAST(ast)
 	st := fd.GetStructDescriptor(root)
-	return &thrift_reflection.TypeDescriptor{
+	ret = &thrift_reflection.TypeDescriptor{
 		Filepath: st.Filepath,
 		Name:     st.Name,
 		Extra:    map[string]string{thrift_reflection.GLOBAL_UUID_EXTRA_KEY: st.Extra[thrift_reflection.GLOBAL_UUID_EXTRA_KEY]},
+	}
+	return
+}
+
+func TestFieldMask_Single(t *testing.T) {
+	type args struct {
+		opts       Options
+		IDL        string
+		rootStruct string
+		paths      []string
+		inMasks    [][]interface{}
+		notInMasks [][]interface{}
+		err        []error
+	}
+	tests := []struct {
+		name string
+		args args
+		want *FieldMask
+	}{
+		{
+			name: "Base",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "Base",
+				paths: []string{
+					"$.LogID",
+					"$.TrafficEnv.Open",
+					"$.Extra[0]",
+					"$.Extra[1].List",
+					"$.Extra[1].Set[1].A",
+					"$.Extra[3].IntMap{1}",
+					"$.Extra[3].IntMap{3}.A",
+					"$.Extra[3].StrMap{\"x\"}",
+					"$.Extra[3].StrMap{\"y\"}.A",
+				},
+				inMasks: [][]interface{}{
+					{int16(1)},
+					{int16(5), int16(1)},
+					{int16(6), 0},
+					{int16(6), 1, int16(3)},
+					{int16(6), 1, int16(4), 1, int16(1)},
+					{int16(6), 3, int16(1), 1},
+					{int16(6), 3, int16(1), 3, int16(1)},
+					{int16(6), 3, int16(2), "x"},
+					{int16(6), 3, int16(2), "y", int16(1)},
+				},
+				notInMasks: [][]interface{}{
+					{int16(0)},
+					{int16(2)},
+					{int16(256)},
+					{int16(5), int16(0)},
+					{int16(5), int16(2)},
+					{int16(5), int16(256)},
+					{int16(6), 2},
+					{int16(6), 1, int16(1)},
+					{int16(6), 1, int16(2)},
+					{int16(6), 1, int16(4), 1, int16(2)},
+					{int16(6), 3, int16(1), 0},
+					{int16(6), 3, int16(1), 2},
+					{int16(6), 3, int16(1), 3, int16(2)},
+					{int16(6), 3, int16(2), "z"},
+					{int16(6), 3, int16(2), "y", int16(2)},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
+			BLACK_MODE := false
+
+		retry:
+			println("Black:", BLACK_MODE)
+			opts := tt.args.opts
+			opts.BlackListMode = BLACK_MODE
+			got, err := opts.NewFieldMask(st, tt.args.paths...)
+			if tt.args.err != nil {
+				if err == nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			out, err := got.MarshalJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			// println(string(out))
+			if !json.Valid(out) {
+				t.Fatal("not invalid json")
+			}
+
+			// test unmarshal json
+			nn := &FieldMask{}
+			if err := nn.UnmarshalJSON(out); err != nil {
+				t.Fatal(err)
+			}
+
+			if BLACK_MODE {
+				tt.args.inMasks, tt.args.notInMasks = tt.args.notInMasks, tt.args.inMasks
+			}
+
+			for _, path := range tt.args.inMasks {
+				cur := got
+				ok := false
+				for _, elem := range path {
+					// cj, err := cur.MarshalJSON()
+					// if err != nil {
+					// 	t.Fatal(err)
+					// }
+					// fmt.Printf("for elem %#v, cur %v, ok %v\n", elem, string(cj), ok)
+					switch p := elem.(type) {
+					case string:
+						cur, ok = cur.Str(p)
+					case int:
+						cur, ok = cur.Int(p)
+					case int16:
+						cur, ok = cur.Field(p)
+					default:
+						panic("elem type should be int or string or int16")
+					}
+
+					if !ok {
+						t.Fatalf("path %#v not exist!", path)
+					}
+				}
+			}
+
+			for _, path := range tt.args.notInMasks {
+				cur := got
+				ok := false
+				for i, elem := range path {
+					switch p := elem.(type) {
+					case string:
+						cur, ok = cur.Str(p)
+					case int:
+						cur, ok = cur.Int(p)
+					case int16:
+						cur, ok = cur.Field(p)
+					default:
+						panic("elem type should be int or string or int16")
+					}
+					if i < len(path)-1 {
+						if !ok {
+							t.Fatalf("path %#v not exist!", path)
+						}
+					} else {
+						if ok {
+							t.Fatalf("path %#v exist!", path)
+						}
+					}
+				}
+			}
+
+			if !BLACK_MODE {
+				BLACK_MODE = true
+				goto retry
+			}
+		})
 	}
 }
 
 func TestNewFieldMask(t *testing.T) {
 	type args struct {
+		opts       Options
 		IDL        string
 		rootStruct string
 		paths      []string
@@ -125,13 +295,22 @@ func TestNewFieldMask(t *testing.T) {
 		want *FieldMask
 	}{
 		{
+			name: "Enum Key Map",
+			args: args{
+				IDL:        baseIDL,
+				rootStruct: "BaseResp",
+				paths:      []string{"$.F7{1}"},
+				notInMasks: []string{"$.F7{2}"},
+			},
+		},
+		{
 			name: "Neither-string-nor-integer-key Map",
 			args: args{
 				IDL:        baseIDL,
 				rootStruct: "BaseResp",
-				paths:      []string{"$.F10{*}.A", "$.F5{*}.A"},
+				paths:      []string{"$.F10{*}.A", "$.F5{*}.A", "$.F7{0}"},
 				inMasks:    []string{"$.F10{\"a\"}.A", "$.F5{0}.A"},
-				notInMasks: []string{`$.F10{"a"}.B`, "$.F10{*}.B", "$.F5{0}.B", "$.F5{*}.B"},
+				notInMasks: []string{`$.F10{"a"}.B`, "$.F10{*}.B", "$.F5{0}.B", "$.F5{*}.B", "$.F7{1}"},
 			},
 		},
 		{
@@ -208,7 +387,7 @@ func TestNewFieldMask(t *testing.T) {
 			// }()
 
 			st := GetDescriptor(tt.args.IDL, tt.args.rootStruct)
-			got, err := NewFieldMask(st, tt.args.paths...)
+			got, err := tt.args.opts.NewFieldMask(st, tt.args.paths...)
 			if tt.args.err != nil {
 				if err == nil {
 					t.Fatal(err)
@@ -222,9 +401,8 @@ func TestNewFieldMask(t *testing.T) {
 			retry := true
 		begin:
 
-			// println("fieldmask:")
-			// println(got.String(st))
-			// spew.Dump(got)
+			println("fieldmask:")
+			println(got.String(st))
 
 			// test marshal json
 			// println("marshal:")
@@ -297,7 +475,23 @@ func TestMarshalJSONStable(t *testing.T) {
 		t.Fatal(err)
 	}
 	println(string(jo))
-	if string(jo) != (`{"path":"$","type":"Struct","children":[{"path":1,"type":"StrMap","children":[{"path":"a","type":"Struct"},{"path":"b","type":"Struct"},{"path":"c","type":"Struct"},{"path":"d","type":"Struct"}]},{"path":2,"type":"IntMap","children":[{"path":0,"type":"Struct"},{"path":1,"type":"Struct"},{"path":2,"type":"Struct"},{"path":3,"type":"Struct"},{"path":4,"type":"Struct"}]}]}`) {
+	act := new(FieldMask)
+	if err := act.UnmarshalJSON(jo); err != nil {
+		t.Fatal(err)
+	}
+	if !act.PathInMask(st, "$.F2{4,1,3,0,2}") {
+		t.Fail()
+	}
+	if !act.PathInMask(st, `$.F1{"c","d","b","a"}`) {
+		t.Fail()
+	}
+	if act.PathInMask(st, `$.F2{5,100}`) {
+		t.Fail()
+	}
+	if act.PathInMask(st, `$.F1{"5","100ab11"}`) {
+		t.Fail()
+	}
+	if string(jo) != (`{"path":"$","type":"Struct","is_black":false,"children":[{"path":1,"type":"StrMap","is_black":false,"children":[{"path":"a","type":"Struct","is_black":false},{"path":"b","type":"Struct","is_black":false},{"path":"c","type":"Struct","is_black":false},{"path":"d","type":"Struct","is_black":false}]},{"path":2,"type":"IntMap","is_black":false,"children":[{"path":0,"type":"Struct","is_black":false},{"path":1,"type":"Struct","is_black":false},{"path":2,"type":"Struct","is_black":false},{"path":3,"type":"Struct","is_black":false},{"path":4,"type":"Struct","is_black":false}]}]}`) {
 		t.Fatal(string(jo))
 	}
 }
