@@ -119,8 +119,9 @@ struct ServiceDescriptor{
     2:required string name 
     3:required list<MethodDescriptor> methods  
     4:required map<string,list<string>> annotations 
-    5:required string comments  
+    5:required string comments
     6:optional map<string,string> extra  // extra info
+    7:optional string base = ""
 }
 
 struct FileDescriptor{

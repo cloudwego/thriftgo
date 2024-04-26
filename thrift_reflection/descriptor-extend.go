@@ -41,6 +41,9 @@ func (f *FileDescriptor) getDescriptor(name string, lookupFunc func(fd *FileDesc
 	if f == nil {
 		return nil
 	}
+	if name == "" {
+		return nil
+	}
 	prefix, name := utils.ParseAlias(name)
 	if prefix == "" {
 		return lookupFunc(f, name)
@@ -144,13 +147,16 @@ func (f *FileDescriptor) GetUnionDescriptor(name string) *StructDescriptor {
 }
 
 func (f *FileDescriptor) GetServiceDescriptor(name string) *ServiceDescriptor {
-	if f == nil {
-		return nil
-	}
-	for _, s := range f.Services {
-		if s.Name == name {
-			return s
+	des := f.getDescriptor(name, func(fd *FileDescriptor, name string) interface{} {
+		for _, s := range fd.Services {
+			if s.Name == name {
+				return s
+			}
 		}
+		return nil
+	})
+	if des != nil {
+		return des.(*ServiceDescriptor)
 	}
 	return nil
 }
@@ -241,6 +247,32 @@ func (p *FieldDescriptor) SetInstanceValue(instance thriftReflectStruct, value i
 
 func (sd *ServiceDescriptor) GetMethodByName(name string) *MethodDescriptor {
 	for _, m := range sd.GetMethods() {
+		if m.GetName() == name {
+			return m
+		}
+	}
+	return nil
+}
+
+func (s *ServiceDescriptor) GetParent() *ServiceDescriptor {
+	return GetGlobalDescriptor(s).LookupFD(s.Filepath).GetServiceDescriptor(s.Base)
+}
+
+func (s *ServiceDescriptor) GetAllMethods() []*MethodDescriptor {
+
+	allMethods := []*MethodDescriptor{}
+
+	svc := s
+	for svc != nil {
+		allMethods = append(allMethods, svc.GetMethods()...)
+		svc = svc.GetParent()
+	}
+	return allMethods
+}
+
+func (s *ServiceDescriptor) GetMethodByNameFromAll(name string) *MethodDescriptor {
+
+	for _, m := range s.GetAllMethods() {
 		if m.GetName() == name {
 			return m
 		}
