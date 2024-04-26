@@ -114,6 +114,13 @@ func TestLookup(t *testing.T) {
 	assert(t, md == gd.LookupMethod(md.GetName(), "", md.GetFilepath()))
 	assert(t, md == gd.LookupMethod(md.GetName(), svc.GetName(), ""))
 	assert(t, md == gd.LookupMethod(md.GetName(), svc.GetName(), md.GetFilepath()))
+
+	// lookup extends servicec and methods
+	m11 := fd.GetMethodDescriptor("MyParentService", "M11")
+	assert(t, m11 == svc.GetMethodByNameFromAll("M11"))
+
+	m33 := svc.GetParent().GetParent().GetMethodByName("M33")
+	assert(t, m33 == svc.GetMethodByNameFromAll("M33"))
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {

@@ -156,6 +156,15 @@ func TestDescriptor(t *testing.T) {
 	assert(t, serviceDesc.GetName() == "MyService")
 	assert(t, serviceDesc.GetMethods()[0].GetName() == "M1")
 	assert(t, serviceDesc.GetMethods()[1].GetName() == "M2")
+	assert(t, serviceDesc.GetMethods()[2].GetName() == "M3")
+	parentSvc := serviceDesc.GetParent()
+	assert(t, parentSvc.GetName() == "MyParentService")
+	assert(t, parentSvc.GetParent().GetName() == "MyAnotherService")
+	assert(t, len(serviceDesc.GetAllMethods()) == 7)
+	assert(t, serviceDesc.GetAllMethods()[3].GetName() == "M11")
+	assert(t, serviceDesc.GetAllMethods()[4].GetName() == "M22")
+	assert(t, serviceDesc.GetAllMethods()[5].GetName() == "M33")
+	assert(t, serviceDesc.GetAllMethods()[6].GetName() == "M44")
 
 	// check struct default value
 	fieldDefaultValue := pd.GetFieldByName("defaultValue")

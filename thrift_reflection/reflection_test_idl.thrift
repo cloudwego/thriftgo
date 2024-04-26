@@ -14,6 +14,8 @@
 
 namespace go thrift_reflection_test
 
+include "reflection_test_idl_2.thrift"
+
 struct IDCard{
     1:required string number
     2:required i8 age
@@ -70,10 +72,15 @@ typedef string SpecialString
 
 typedef Person SpecialPerson
 
-service MyService{
+service MyService extends MyParentService{
     string M1(1:required Person p),
     string M2(1:required Person p2),
     A1 M3(1:required A0 a0,2:required A3 a3)
+}
+
+service MyParentService extends reflection_test_idl_2.MyAnotherService{
+    string M11(),
+    string M22(),
 }
 
 struct A0{

@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-go run . -g go:gen_type_meta -o . descriptor.thrift
+go run . -g go:gen_type_meta,no_processor -o . descriptor.thrift
