@@ -31,6 +31,18 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 	t.markKeptPart(ast, ast.Filename)
 }
 
+func toGoName(input string) string {
+	words := strings.Split(input, "_")
+	var result strings.Builder
+	for _, word := range words {
+		if word != "" {
+			upperWord := strings.ToUpper(string(word[0])) + word[1:]
+			result.WriteString(upperWord)
+		}
+	}
+	return result.String()
+}
+
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {
 	if t.marks[filename][svc] {
 		return
@@ -44,6 +56,9 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		if len(t.trimMethods) != 0 {
 			funcName := svc.Name + "." + function.Name
 			for i, method := range t.trimMethods {
+				if t.matchGoName {
+					funcName = svc.Name + "." + toGoName(function.Name)
+				}
 				if ok, _ := method.MatchString(funcName); ok {
 					if funcName == method.String() || !strings.HasPrefix(funcName, method.String()) {
 						t.marks[filename][svc] = true
