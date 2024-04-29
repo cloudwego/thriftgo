@@ -120,6 +120,8 @@ func (p *{{$ClientName}}) {{- template "FunctionSignature" . -}} {
 }
 {{- end}}{{/* range .Functions */}}
 {{- end}}{{/* if not Features.NoProcessor */}}
+
+{{- range .Functions}}
 {{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 {{- $arg := index .Arguments 0}}
 type {{.Service.GoName}}_{{.Name}}Server interface {
@@ -136,5 +138,6 @@ type {{.Service.GoName}}_{{.Name}}Server interface {
 	{{end}}
 }
 {{- end}}{{/* Streaming */}}
+{{- end}}{{/* range .Functions */}}
 {{- end}}{{/* define "ThriftClient" */}}
 `
