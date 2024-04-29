@@ -28,6 +28,7 @@ type YamlArguments struct {
 	Methods          []string `yaml:"methods,omitempty"`
 	Preserve         *bool    `yaml:"preserve,omitempty"`
 	PreservedStructs []string `yaml:"preserved_structs,omitempty"`
+	MatchGoName      *bool    `yaml:"match_go_name,omitempty"`
 }
 
 func ParseYamlConfig(path string) *YamlArguments {
@@ -45,6 +46,10 @@ func ParseYamlConfig(path string) *YamlArguments {
 	if cfg.Preserve == nil {
 		t := true
 		cfg.Preserve = &t
+	}
+	if cfg.MatchGoName == nil {
+		t := false
+		cfg.MatchGoName = &t
 	}
 	return &cfg
 }
