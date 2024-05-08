@@ -183,5 +183,4 @@ type SDKPlugin interface {
 	Invoke(req *Request) (res *Response)
 	GetName() string
 	GetPluginParameters() []string
-	GetPwd() string
 }

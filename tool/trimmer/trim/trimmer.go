@@ -42,6 +42,7 @@ type Trimmer struct {
 	preservedStructs []string
 	structsTrimmed   int
 	fieldsTrimmed    int
+	extServices      []*parser.Service
 }
 
 type TrimASTArg struct {

@@ -27,7 +27,7 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 	for _, service := range ast.Services {
 		t.markService(service, ast, ast.Filename)
 	}
-
+	t.cleanServiceExtends()
 	t.markKeptPart(ast, ast.Filename)
 }
 
@@ -183,6 +183,21 @@ func (t *Trimmer) markInclude(include *parser.Include, filename string) {
 	// t.markKeptPart(include.Reference, filename)
 }
 
+func (t *Trimmer) markServiceExtends(svc *parser.Service) {
+	if t.extServices == nil {
+		t.extServices = []*parser.Service{svc}
+	} else {
+		t.extServices = append(t.extServices, svc)
+	}
+}
+
+func (t *Trimmer) cleanServiceExtends() {
+	for _, svc := range t.extServices {
+		svc.Reference = nil
+		svc.Extends = ""
+	}
+}
+
 func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
 	ret := false
 	for _, constant := range ast.Constants {
@@ -255,8 +270,7 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 		}
 		back := t.traceExtendMethod(father, nextSvc, nextAst, filename)
 		if !back {
-			svc.Reference = nil
-			svc.Extends = ""
+			t.markServiceExtends(svc)
 		}
 		ret = back || ret
 	}
