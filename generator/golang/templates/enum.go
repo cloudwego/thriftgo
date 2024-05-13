@@ -94,7 +94,7 @@ func (p *{{$EnumType}}) Value() (driver.Value, error) {
 var annotations_{{$EnumType}} = map[{{$EnumType}}]map[string][]string{
     {{- range .Values}}
     {{.GoName}}: map[string][]string{
-        {{GenAnnotations .}}
+        {{genAnnotations .}}
     },
     {{- end}}
 }
@@ -106,7 +106,7 @@ func (p {{$EnumType}}) GetAnnotation(key string) []string {
         return annotations_{{$EnumType}}[{{.GoName}}][key]
     {{- end}}
     }
-    return []string{}
+    return nil
 }
 {{- end}}{{/* if Features.GenGetEnumAnnotation */}}
 {{end}}
