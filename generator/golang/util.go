@@ -491,10 +491,10 @@ func genAnnotations(t interface{ GetAnnotations() parser.Annotations }) string {
 		vals := anno.Values
 		quoteVals := make([]string, len(vals))
 		for i, val := range vals {
-			quoteVals[i] = "\"" + val + "\""
+			quoteVals[i] = BackQuoted(val)
 		}
 		valStr := strings.Join(quoteVals, ",")
-		res.WriteString(fmt.Sprintf("\"%s\": []string{%s},\n", anno.Key, valStr))
+		res.WriteString(fmt.Sprintf("`%s`: []string{%s},\n", anno.Key, valStr))
 	}
 	return res.String()
 }

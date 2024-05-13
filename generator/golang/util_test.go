@@ -59,10 +59,12 @@ func TestLowerCamelCase(t *testing.T) {
 
 func TestGenAnnotations(t *testing.T) {
 	cases := []struct {
+		desc     string
 		getter   func() interface{ GetAnnotations() parser.Annotations }
 		expected string
 	}{
 		{
+			desc: "normal case",
 			getter: func() interface{ GetAnnotations() parser.Annotations } {
 				annos := parser.Annotations{
 					{
@@ -74,10 +76,10 @@ func TestGenAnnotations(t *testing.T) {
 					Annotations: annos,
 				}
 			},
-			expected: `"key": []string{"val"},
-`,
+			expected: "`key`: []string{`val`},\n",
 		},
 		{
+			desc: "single value seperated by comma",
 			getter: func() interface{ GetAnnotations() parser.Annotations } {
 				annos := parser.Annotations{
 					{
@@ -89,10 +91,10 @@ func TestGenAnnotations(t *testing.T) {
 					Annotations: annos,
 				}
 			},
-			expected: `"key": []string{"val1,val2"},
-`,
+			expected: "`key`: []string{`val1,val2`},\n",
 		},
 		{
+			desc: "single empty value",
 			getter: func() interface{ GetAnnotations() parser.Annotations } {
 				annos := parser.Annotations{
 					{
@@ -104,10 +106,10 @@ func TestGenAnnotations(t *testing.T) {
 					Annotations: annos,
 				}
 			},
-			expected: `"key": []string{""},
-`,
+			expected: "`key`: []string{``},\n",
 		},
 		{
+			desc: "multiple keys",
 			getter: func() interface{ GetAnnotations() parser.Annotations } {
 				annos := parser.Annotations{
 					{
@@ -123,11 +125,10 @@ func TestGenAnnotations(t *testing.T) {
 					Annotations: annos,
 				}
 			},
-			expected: `"key1": []string{"val1,val2"},
-"key2": []string{"val3,val4"},
-`,
+			expected: "`key1`: []string{`val1,val2`},\n`key2`: []string{`val3,val4`},\n",
 		},
 		{
+			desc: "single key, multiple values",
 			getter: func() interface{ GetAnnotations() parser.Annotations } {
 				annos := parser.Annotations{
 					{
@@ -139,10 +140,70 @@ func TestGenAnnotations(t *testing.T) {
 					Annotations: annos,
 				}
 			},
-			expected: `"key": []string{"val1","val2"},
-`,
+			expected: "`key`: []string{`val1`,`val2`},\n",
 		},
 		{
+			desc: "double quotes are not escaped",
+			getter: func() interface{ GetAnnotations() parser.Annotations } {
+				annos := parser.Annotations{
+					{
+						Key:    "key",
+						Values: []string{`\"val\"`},
+					},
+				}
+				return &parser.EnumValue{
+					Annotations: annos,
+				}
+			},
+			expected: "`key`: []string{`\\\"val\\\"`},\n",
+		},
+		{
+			desc: "double quotes are escaped",
+			getter: func() interface{ GetAnnotations() parser.Annotations } {
+				annos := parser.Annotations{
+					{
+						Key:    "key",
+						Values: []string{"\"val\""},
+					},
+				}
+				return &parser.EnumValue{
+					Annotations: annos,
+				}
+			},
+			expected: "`key`: []string{`\"val\"`},\n",
+		},
+		{
+			desc: "single quotes are not escaped",
+			getter: func() interface{ GetAnnotations() parser.Annotations } {
+				annos := parser.Annotations{
+					{
+						Key:    "key",
+						Values: []string{`\'val\'`},
+					},
+				}
+				return &parser.EnumValue{
+					Annotations: annos,
+				}
+			},
+			expected: "`key`: []string{`\\'val\\'`},\n",
+		},
+		{
+			desc: "single quotes are escaped",
+			getter: func() interface{ GetAnnotations() parser.Annotations } {
+				annos := parser.Annotations{
+					{
+						Key:    "key",
+						Values: []string{"'val'"},
+					},
+				}
+				return &parser.EnumValue{
+					Annotations: annos,
+				}
+			},
+			expected: "`key`: []string{`'val'`},\n",
+		},
+		{
+			desc: "nil Annotations",
 			getter: func() interface{ GetAnnotations() parser.Annotations } {
 				return &parser.EnumValue{}
 			},
@@ -151,11 +212,13 @@ func TestGenAnnotations(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		arg := c.getter()
-		res := genAnnotations(arg)
-		if res != c.expected {
-			t.Logf("genAnnotations(%+v) => %q. Expected: %q", arg, res, c.expected)
-			t.Fail()
-		}
+		t.Run(c.desc, func(t *testing.T) {
+			arg := c.getter()
+			res := genAnnotations(arg)
+			if res != c.expected {
+				t.Logf("genAnnotations(%+v) => %q. Expected: %q", arg, res, c.expected)
+				t.Fail()
+			}
+		})
 	}
 }
