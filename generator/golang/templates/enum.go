@@ -90,7 +90,7 @@ func (p *{{$EnumType}}) Value() (driver.Value, error) {
 }
 {{- end}}{{/* if .Features.ScanValueForEnum */}}
 
-{{- if Features.GenGetEnumAnnotation}}
+{{- if Features.GetEnumAnnotation}}
 var annotations_{{$EnumType}} = map[{{$EnumType}}]map[string][]string{
     {{- range .Values}}
     {{.GoName}}: map[string][]string{

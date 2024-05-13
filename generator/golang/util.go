@@ -314,24 +314,6 @@ func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []
 	return str, nil
 }
 
-//func (cu *CodeUtils) GenAnnotations(t interface{ GetAnnotations() (v parser.Annotations) }) string {
-//	annos := t.GetAnnotations()
-//	if len(annos) <= 0 {
-//		return ""
-//	}
-//	var res strings.Builder
-//	for _, anno := range annos {
-//		vals := anno.Values
-//		quoteVals := make([]string, len(vals))
-//		for i, val := range vals {
-//			quoteVals[i] = "\"" + val + "\""
-//		}
-//		valStr := strings.Join(quoteVals, ",")
-//		res.WriteString(fmt.Sprintf("\"%s\": []string{%s},\n", anno.Key, valStr))
-//	}
-//	return res.String()
-//}
-
 // GetKeyType returns the key type of the given type. T must be a map type.
 func (cu *CodeUtils) GetKeyType(s *Scope, t *parser.Type) (*Scope, *parser.Type, error) {
 	if t.Category != parser.Category_Map {
