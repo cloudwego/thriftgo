@@ -17,12 +17,13 @@ package generator
 import (
 	"errors"
 	"fmt"
-	"github.com/cloudwego/thriftgo/generator/backend"
-	"github.com/cloudwego/thriftgo/plugin"
-	"github.com/cloudwego/thriftgo/utils/dir_utils"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/cloudwego/thriftgo/generator/backend"
+	"github.com/cloudwego/thriftgo/plugin"
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 )
 
 // LangSpec is the parameter to specify which language to generate codes for and
@@ -105,12 +106,6 @@ func (g *Generator) preparePlugins(be backend.Backend, pds []*plugin.Desc) error
 
 // Generate generates codes for the target language and executes plugins specified.
 func (g *Generator) Generate(args *Arguments) (res *plugin.Response) {
-
-	//startTime := time.Now()
-	//defer func() {
-	//	fmt.Printf("Generate Cost: %s\n", time.Since(startTime))
-	//}()
-
 	out, req, log := args.Out, args.Req, args.Log
 
 	log.Info(fmt.Sprintf(`Generating: "%s"`, out.Language))
@@ -147,10 +142,6 @@ func (g *Generator) Generate(args *Arguments) (res *plugin.Response) {
 	}
 
 	if len(out.SDKPlugins) > 0 {
-		//startTime := time.Now()
-		//defer func() {
-		//	fmt.Printf("SDK Plugin Cost: %s\n", time.Since(startTime))
-		//}()
 		for _, sdk := range out.SDKPlugins {
 			req.PluginParameters = sdk.GetPluginParameters()
 			extra := sdk.Invoke(req)
@@ -161,26 +152,23 @@ func (g *Generator) Generate(args *Arguments) (res *plugin.Response) {
 				return plugin.BuildErrorResponse(err.Error())
 			}
 		}
-	} else {
-		//startTime := time.Now()
-		//defer func() {
-		//	fmt.Printf("Sub-process Plugin Cost: %s\n", time.Since(startTime))
-		//}()
-		for i, p := range g.plugins {
-			log.Info(fmt.Sprintf(`Run plugin "%s"`, p.Name()))
+	}
 
-			req.PluginParameters = plugin.Pack(out.UsedPlugins[i].Options)
-			extra := p.Execute(req)
-			log.MultiWarn(extra.Warnings)
+	for i, p := range g.plugins {
+		log.Info(fmt.Sprintf(`Run plugin "%s"`, p.Name()))
 
-			if err := extra.GetError(); err != "" {
-				return plugin.BuildErrorResponse(err)
-			}
-			if err := g.files.Feed(p.Name(), extra.Contents); err != nil {
-				return plugin.BuildErrorResponse(err.Error())
-			}
+		req.PluginParameters = plugin.Pack(out.UsedPlugins[i].Options)
+		extra := p.Execute(req)
+		log.MultiWarn(extra.Warnings)
+
+		if err := extra.GetError(); err != "" {
+			return plugin.BuildErrorResponse(err)
+		}
+		if err := g.files.Feed(p.Name(), extra.Contents); err != nil {
+			return plugin.BuildErrorResponse(err.Error())
 		}
 	}
+
 	res = g.files.BuildResponse()
 	return res
 }

@@ -16,6 +16,12 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"runtime/debug"
+	"runtime/pprof"
+
+	"time"
+
 	"github.com/cloudwego/thriftgo/args"
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"
@@ -23,8 +29,6 @@ import (
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
 	"github.com/cloudwego/thriftgo/version"
-	"os"
-	"runtime/debug"
 )
 
 var (
@@ -37,7 +41,7 @@ var debugMode bool
 func init() {
 	_ = g.RegisterBackend(new(golang.GoBackend))
 	// export THRIFTGO_DEBUG=1
-	debugMode = true //os.Getenv("THRIFTGO_DEBUG") == "1"
+	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
 }
 
 func check(err error) {
@@ -48,17 +52,17 @@ func check(err error) {
 }
 
 func main() {
-	//if debugMode {
-	//	f, _ := os.Create("thriftgo-cpu.pprof")
-	//	defer f.Close()
-	//	_ = pprof.StartCPUProfile(f)
-	//	defer pprof.StopCPUProfile()
-	//
-	//	startTime := time.Now()
-	//	defer func() {
-	//		fmt.Printf("Cost: %s\n", time.Since(startTime))
-	//	}()
-	//}
+	if debugMode {
+		f, _ := os.Create("thriftgo-cpu.pprof")
+		defer f.Close()
+		_ = pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		startTime := time.Now()
+		defer func() {
+			fmt.Printf("Cost: %s\n", time.Since(startTime))
+		}()
+	}
 
 	defer handlePanic()
 	check(a.Parse(os.Args))
