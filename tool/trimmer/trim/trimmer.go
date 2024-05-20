@@ -36,6 +36,7 @@ type Trimmer struct {
 	outDir string
 	// use -m
 	trimMethods      []*regexp2.Regexp
+	matchGoName      bool
 	trimMethodValid  []bool
 	preserveRegex    *regexp.Regexp
 	forceTrimming    bool
@@ -49,6 +50,7 @@ type TrimASTArg struct {
 	Ast         *parser.Thrift
 	TrimMethods []string
 	Preserve    *bool
+	MatchGoName *bool
 }
 
 // TrimAST parse the cfg and trim the single AST
@@ -64,6 +66,9 @@ func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error
 				preserve := false
 				arg.Preserve = &preserve
 			}
+			if arg.MatchGoName == nil && cfg.MatchGoName != nil {
+				arg.MatchGoName = cfg.MatchGoName
+			}
 			preservedStructs = cfg.PreservedStructs
 		}
 	}
@@ -71,11 +76,15 @@ func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error
 	if arg.Preserve != nil {
 		forceTrim = !*arg.Preserve
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, preservedStructs)
+	matchGoName := false
+	if arg.MatchGoName != nil {
+		matchGoName = *arg.MatchGoName
+	}
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs)
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, preservedStructs []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, matchGoName bool, preservedStructs []string) (
 	structureTrimmed int, fieldTrimmed int, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -85,6 +94,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	trimmer.forceTrimming = forceTrimming
+	trimmer.matchGoName = matchGoName
 	for i, method := range trimMethods {
 		parts := strings.Split(method, ".")
 		if len(parts) < 2 {
@@ -92,8 +102,9 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, pre
 				trimMethods[i] = ast.Services[0].Name + "." + method
 			} else {
 				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
-				//println("please specify service name!\n  -m usage: -m [service_name.method_name]")
-				//os.Exit(2)
+				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
+				// os.Exit(2)
+        
 			}
 		}
 		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)

@@ -89,5 +89,25 @@ func (p *{{$EnumType}}) Value() (driver.Value, error) {
 	return int{{if Features.EnumAsINT32}}32{{else}}64{{end}}(*p), nil
 }
 {{- end}}{{/* if .Features.ScanValueForEnum */}}
+
+{{- if Features.GetEnumAnnotation}}
+var annotations_{{$EnumType}} = map[{{$EnumType}}]map[string][]string{
+    {{- range .Values}}
+    {{.GoName}}: map[string][]string{
+        {{genAnnotations .}}
+    },
+    {{- end}}
+}
+
+func (p {{$EnumType}}) GetAnnotation(key string) []string {
+    switch p {
+    {{- range .Values}}
+    case {{.GoName}}:
+        return annotations_{{$EnumType}}[{{.GoName}}][key]
+    {{- end}}
+    }
+    return nil
+}
+{{- end}}{{/* if Features.GenGetEnumAnnotation */}}
 {{end}}
 `

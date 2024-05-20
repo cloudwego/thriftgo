@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+namespace go thrift_reflection_test
 
-const ThriftgoVersion = "0.3.12"
+service MyAnotherService{
+    string M33(),
+    string M44(),
+}

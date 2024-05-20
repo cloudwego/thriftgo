@@ -15,9 +15,9 @@
 package fieldmask
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -45,6 +45,9 @@ var bytesPool = sync.Pool{
 //   - each fieldmask always starts with root path "$"
 //   - path "*" indicates all subsequent path of the fieldmask shares the same sub fieldmask
 func (fm *FieldMask) MarshalJSON() ([]byte, error) {
+	if fm == nil {
+		return []byte("null"), nil
+	}
 	buf := bytesPool.Get().(*[]byte)
 
 	err := fm.marshalBegin(buf)
@@ -73,7 +76,8 @@ func (self *FieldMask) marshalBegin(buf *[]byte) error {
 	write(buf, `{"path":"$","type":"`)
 	out, _ := self.typ.MarshalText()
 	*buf = append(*buf, out...)
-	write(buf, `"`)
+	write(buf, `","is_black":`)
+	write(buf, strconv.FormatBool(self.isBlack))
 	return self.marshalRec(buf)
 }
 
@@ -122,29 +126,27 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	}
 
 	var start bool
-	var writer = func(path interface{}, f *FieldMask) (bool, error) {
+	writer := func(path json.RawMessage, f *FieldMask) (bool, error) {
 		if !f.Exist() {
 			return true, nil
 		}
 		if start {
-			write(buf, ",")
+			write(buf, `,`)
 		}
 
 		// write path
 		write(buf, `{"path":`)
-		switch v := path.(type) {
-		case int:
-			*buf = strconv.AppendInt(*buf, int64(v), 10)
-		case string:
-			*buf = strconv.AppendQuote(*buf, v)
-		}
-		write(buf, ",")
+		write(buf, string(path))
+		write(buf, `,`)
 
 		// write type
 		write(buf, `"type":"`)
 		typ, _ := f.typ.MarshalText()
 		*buf = append(*buf, typ...)
-		write(buf, `"`)
+
+		// write is_black
+		write(buf, `","is_black":`)
+		write(buf, strconv.FormatBool(f.isBlack))
 
 		if err := f.marshalRec(buf); err != nil {
 			return false, err
@@ -179,7 +181,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		}
 		sort.Stable(fds)
 		for _, v := range fds {
-			cont, err := writer(v.id, v.fm)
+			cont, err := writer(json.RawMessage(strconv.Itoa(v.id)), v.fm)
 			if err != nil {
 				return err
 			}
@@ -198,7 +200,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		}
 		sort.Stable(fds)
 		for _, v := range fds {
-			cont, err := writer(v.id, v.fm)
+			cont, err := writer(json.RawMessage(strconv.Itoa(v.id)), v.fm)
 			if err != nil {
 				return err
 			}
@@ -217,7 +219,7 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 		}
 		sort.Stable(fds)
 		for _, v := range fds {
-			cont, err := writer(v.id, v.fm)
+			cont, err := writer(json.RawMessage(strconv.Quote(v.id)), v.fm)
 			if err != nil {
 				return err
 			}
@@ -234,10 +236,12 @@ func (self *FieldMask) marshalRec(buf *[]byte) error {
 	return nil
 }
 
-type shadowFieldMask struct {
-	Path     interface{}       `json:"path"`
-	Type     FieldMaskType     `json:"type"`
-	Children []shadowFieldMask `json:"children"`
+// fieldMaskTransfer is the data struct being used to transfer and construct a fieldmask
+type fieldMaskTransfer struct {
+	Path     json.RawMessage     `json:"path"` // NOTICE: must be float64 or string
+	Type     FieldMaskType       `json:"type"`
+	IsBlack  bool                `json:"is_black"`
+	Children []fieldMaskTransfer `json:"children"`
 }
 
 // UnmarshalJSON unmarshal the fieldmask from json.
@@ -247,22 +251,35 @@ func (self *FieldMask) UnmarshalJSON(in []byte) error {
 	if self == nil {
 		return errors.New("nil memory address")
 	}
-	var s = new(shadowFieldMask)
+	s := new(fieldMaskTransfer)
 	if err := json.Unmarshal(in, &s); err != nil {
 		return err
 	}
+	if s == nil {
+		self = nil
+		return nil
+	}
 	// spew.Dump(s)
-	if s.Path != jsonPathRoot {
+	if !bytes.Equal(s.Path, jsonPathRoot) {
 		return errors.New("fieldmask must begin with root path '$'")
 	}
-	return self.fromShadow(s)
+	return self.TransferFrom(s)
 }
 
-func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
+// TransferTo transfer FieldMaskTransfer to a FieldMask
+func (self *fieldMaskTransfer) TransferTo() (*FieldMask, error) {
+	fm := new(FieldMask)
+	err := fm.TransferFrom(self)
+	return fm, err
+}
+
+// TransferFrom transfroms a FieldMaskTransfer to the FieldMask
+func (self *FieldMask) TransferFrom(s *fieldMaskTransfer) error {
 	if s == nil || s.Type == FtInvalid {
 		return errors.New("invalid fieldmask type")
 	}
 	self.typ = s.Type
+	self.isBlack = s.IsBlack
 
 	if len(s.Children) == 0 {
 		self.isAll = true
@@ -285,16 +302,15 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			} else if is {
 				return nil
 			}
-			id, ok := n.Path.(float64)
-			if !ok {
-				return fmt.Errorf("expect number but got %#v", n.Path)
+			var id fieldID
+			if err := json.Unmarshal(n.Path, &id); err != nil {
+				return err
 			}
-			next := self.setFieldID(fieldID(id), n.Type)
-			if err := next.fromShadow(&n); err != nil {
+			next := self.setFieldID(id, n.Type)
+			if err := next.TransferFrom(&n); err != nil {
 				return err
 			}
 		}
-
 	} else if s.Type == FtList || s.Type == FtIntMap {
 		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
@@ -302,16 +318,15 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			} else if is {
 				return nil
 			}
-			id, ok := n.Path.(float64)
-			if !ok {
-				return fmt.Errorf("expect number but got %#v", n.Path)
+			var id int
+			if err := json.Unmarshal(n.Path, &id); err != nil {
+				return err
 			}
 			next := self.setInt(int(id), n.Type, len(s.Children))
-			if err := next.fromShadow(&n); err != nil {
+			if err := next.TransferFrom(&n); err != nil {
 				return err
 			}
 		}
-
 	} else if s.Type == FtStrMap {
 		for _, n := range s.Children {
 			if is, err := self.checkAll(&n); err != nil {
@@ -319,12 +334,12 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 			} else if is {
 				return nil
 			}
-			id, ok := n.Path.(string)
-			if !ok {
-				return fmt.Errorf("expect string but got %#v", n.Path)
+			var id string
+			if err := json.Unmarshal(n.Path, &id); err != nil {
+				return err
 			}
 			next := self.setStr(id, n.Type, len(s.Children))
-			if err := next.fromShadow(&n); err != nil {
+			if err := next.TransferFrom(&n); err != nil {
 				return err
 			}
 		}
@@ -333,11 +348,11 @@ func (self *FieldMask) fromShadow(s *shadowFieldMask) error {
 	return nil
 }
 
-func (self *FieldMask) checkAll(s *shadowFieldMask) (bool, error) {
-	if s.Path == "*" {
+func (self *FieldMask) checkAll(s *fieldMaskTransfer) (bool, error) {
+	if bytes.Equal(s.Path, jsonPathAny) {
 		self.isAll = true
 		self.all = &FieldMask{}
-		return true, self.all.fromShadow(s)
+		return true, self.all.TransferFrom(s)
 	}
 	return false, nil
 }
@@ -375,7 +390,7 @@ func Unmarshal(data []byte) (*FieldMask, error) {
 		return fm.(*FieldMask), nil
 	}
 	// slow-path: unmarshal from json
-	var fm = new(FieldMask)
+	fm := new(FieldMask)
 	err := fm.UnmarshalJSON(data)
 	if err != nil {
 		return nil, err

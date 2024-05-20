@@ -51,11 +51,11 @@ func (fm *fieldMap) Reset() {
 // 	self.tail = self.tail[:0]
 // }
 
-func (self *fieldMap) SetIfNotExist(f fieldID, ft FieldMaskType) (s *FieldMask) {
+func (self *fieldMap) SetIfNotExist(f fieldID, ft FieldMaskType, black bool) (s *FieldMask) {
 	if f <= _MaxFieldIDHead {
 		s = self.head[f]
 		if s == nil {
-			fm := newFieldMask(ft)
+			fm := newFieldMask(ft, black)
 			self.head[f] = &fm
 			return &fm
 		}
@@ -63,13 +63,13 @@ func (self *fieldMap) SetIfNotExist(f fieldID, ft FieldMaskType) (s *FieldMask) 
 	} else {
 		s = self.tail[f]
 		if s == nil {
-			fm := newFieldMask(ft)
+			fm := newFieldMask(ft, black)
 			self.tail[f] = &fm
 			return &fm
 		}
 	}
 	if s.typ == 0 {
-		s.assign(ft)
+		s.assign(ft, black)
 	}
 	return s
 }
@@ -93,7 +93,7 @@ func (self *FieldMask) setFieldID(f fieldID, ft FieldMaskType) *FieldMask {
 		m := makeFieldMaskMap()
 		self.fdMask = &m
 	}
-	return self.fdMask.SetIfNotExist(fieldID(f), ft)
+	return self.fdMask.SetIfNotExist(fieldID(f), ft, self.isBlack)
 }
 
 // type fieldMaskBitmap []byte
@@ -129,7 +129,7 @@ func (self *FieldMask) setInt(v int, ft FieldMaskType, cap int) *FieldMask {
 		// println("new intMask")
 		self.intMask = make(intMap, cap)
 	}
-	return self.intMask.SetIfNotExist(v, ft)
+	return self.intMask.SetIfNotExist(v, ft, self.isBlack)
 }
 
 type intMap map[int]*FieldMask
@@ -148,15 +148,15 @@ func (im intMap) Get(i int) (ret *FieldMask) {
 	return nil
 }
 
-func (im intMap) SetIfNotExist(i int, ft FieldMaskType) *FieldMask {
+func (im intMap) SetIfNotExist(i int, ft FieldMaskType, black bool) *FieldMask {
 	s := im[i]
 	if s == nil {
-		fm := newFieldMask(ft)
+		fm := newFieldMask(ft, black)
 		im[i] = &fm
 		return &fm
 	}
 	if s.typ == 0 {
-		s.assign(ft)
+		s.assign(ft, black)
 	}
 	return s
 }
@@ -170,7 +170,7 @@ func (self *FieldMask) setStr(v string, ft FieldMaskType, cap int) *FieldMask {
 		// println("new setStr")
 		self.strMask = make(strMap, cap)
 	}
-	return self.strMask.SetIfNotExist(v, ft)
+	return self.strMask.SetIfNotExist(v, ft, self.isBlack)
 }
 
 type strMap map[string]*FieldMask
@@ -189,15 +189,15 @@ func (im strMap) Get(i string) (ret *FieldMask) {
 	return nil
 }
 
-func (im strMap) SetIfNotExist(i string, ft FieldMaskType) *FieldMask {
+func (im strMap) SetIfNotExist(i string, ft FieldMaskType, black bool) *FieldMask {
 	s := im[i]
 	if s == nil {
-		fm := newFieldMask(ft)
+		fm := newFieldMask(ft, black)
 		im[i] = &fm
 		return &fm
 	}
 	if s.typ == 0 {
-		s.assign(ft)
+		s.assign(ft, black)
 	}
 	return s
 }
@@ -206,24 +206,26 @@ func (im strMap) Unset(i string) {
 	delete(im, i)
 }
 
-func (self *FieldMask) getAll(ft FieldMaskType) *FieldMask {
+func (self *FieldMask) setAll(ft FieldMaskType) *FieldMask {
 	if self.all == nil {
-		fm := newFieldMask(ft)
+		fm := newFieldMask(ft, self.isBlack)
 		self.all = &fm
 	} else if self.all.typ == 0 {
-		self.all.assign(ft)
+		self.all.assign(ft, self.isBlack)
 	}
 	return self.all
 }
 
-func newFieldMask(ft FieldMaskType) FieldMask {
+func newFieldMask(ft FieldMaskType, black bool) FieldMask {
 	return FieldMask{
-		typ:   ft,
-		isAll: false,
+		typ:     ft,
+		isAll:   false,
+		isBlack: black,
 	}
 }
 
-func (self *FieldMask) assign(ft FieldMaskType) {
+func (self *FieldMask) assign(ft FieldMaskType, black bool) {
 	self.typ = ft
 	self.isAll = false
+	self.isBlack = black
 }
