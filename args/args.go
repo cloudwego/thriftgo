@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package args
 
 import (
 	"flag"
@@ -246,14 +246,14 @@ Options:
   --check-keywords    Check if any identifier using a keyword in common languages. 
   --plugin-time-limit Set the execution time limit for plugins. Naturally 0 means no limit.
 
-Available generators (and options):
+Available generators (and options): go
 `)
-	// print backend options
-	for _, b := range g.AllBackend() {
-		name, lang := b.Name(), b.Lang()
-		println(fmt.Sprintf("  %s (%s):", name, lang))
-		println(align(b.Options()))
-	}
+	//// print backend options
+	//for _, b := range g.AllBackend() {
+	//	name, lang := b.Name(), b.Lang()
+	//	println(fmt.Sprintf("  %s (%s):", name, lang))
+	//	println(align(b.Options()))
+	//}
 	println()
 	os.Exit(2)
 }

@@ -1,4 +1,4 @@
-// Copyright 2021 CloudWeGo Authors
+// Copyright 2024 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,86 +12,60 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package sdk
 
 import (
 	"fmt"
 	"os"
-	"runtime/debug"
-	"runtime/pprof"
-
-	"time"
 
 	"github.com/cloudwego/thriftgo/args"
 	"github.com/cloudwego/thriftgo/generator"
+	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/semantic"
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 	"github.com/cloudwego/thriftgo/version"
 )
+
+func init() {
+	_ = g.RegisterBackend(new(golang.GoBackend))
+}
 
 var (
 	a args.Arguments
 	g generator.Generator
 )
 
-var debugMode bool
+func RunThriftgoAsSDK(wd string, plugins []plugin.SDKPlugin, args ...string) error {
 
-func init() {
-	_ = g.RegisterBackend(new(golang.GoBackend))
-	// export THRIFTGO_DEBUG=1
-	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
-}
+	dir_utils.SetGlobalwd(wd)
 
-func check(err error) {
+	err := a.Parse(append([]string{"thriftgo"}, args...))
 	if err != nil {
-		println(err.Error())
-		os.Exit(2)
+		return err
 	}
-}
-
-func main() {
-	if debugMode {
-		f, _ := os.Create("thriftgo-cpu.pprof")
-		defer f.Close()
-		_ = pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-
-		startTime := time.Now()
-		defer func() {
-			fmt.Printf("Cost: %s\n", time.Since(startTime))
-		}()
-	}
-
-	defer handlePanic()
-	check(a.Parse(os.Args))
-	if a.AskVersion {
-		println("thriftgo", version.ThriftgoVersion)
-		os.Exit(0)
-	}
-
-	log := a.MakeLogFunc()
 
 	ast, err := parser.ParseFile(a.IDL, a.Includes, true)
-	check(err)
-
-	if path := parser.CircleDetect(ast); len(path) > 0 {
-		check(fmt.Errorf("found include circle:\n\t%s", path))
+	if err != nil {
+		return err
 	}
 
-	if a.CheckKeyword {
-		if warns := parser.DetectKeyword(ast); len(warns) > 0 {
-			log.MultiWarn(warns)
-		}
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		return fmt.Errorf("found include circle:\n\t%s", path)
 	}
 
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
-	warns, err := checker.CheckAll(ast)
-	log.MultiWarn(warns)
-	check(err)
+	_, err = checker.CheckAll(ast)
+	if err != nil {
+		return err
+	}
 
-	check(semantic.ResolveSymbols(ast))
+	err = semantic.ResolveSymbols(ast)
+	if err != nil {
+		return err
+	}
 
 	req := &plugin.Request{
 		Version:    version.ThriftgoVersion,
@@ -100,36 +74,29 @@ func main() {
 		AST:        ast,
 	}
 
-	plugin.MaxExecutionTime = a.PluginTimeLimit
-	plugins, err := a.UsedPlugins()
-	check(err)
-
 	langs, err := a.Targets()
-	check(err)
+	if err != nil {
+		return err
+	}
 
 	if len(langs) == 0 {
 		println("No output language(s) specified")
 		os.Exit(2)
 	}
 
+	log := backend.DummyLogFunc()
 	for _, out := range langs {
-		out.UsedPlugins = plugins
+		out.SDKPlugins = plugins
 		req.Language = out.Language
 		req.OutputPath = a.Output(out.Language)
 
 		arg := &generator.Arguments{Out: out, Req: req, Log: log}
 		res := g.Generate(arg)
-		log.MultiWarn(res.Warnings)
 
 		err = g.Persist(res)
-		check(err)
+		if err != nil {
+			return err
+		}
 	}
-}
-
-func handlePanic() {
-	if r := recover(); r != nil {
-		fmt.Println("Recovered from panic:")
-		fmt.Println(r)
-		debug.PrintStack()
-	}
+	return nil
 }

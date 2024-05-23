@@ -20,6 +20,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
+
 	"github.com/dlclark/regexp2"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -55,7 +57,7 @@ type TrimASTArg struct {
 // TrimAST parse the cfg and trim the single AST
 func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error) {
 	var preservedStructs []string
-	if wd, err := os.Getwd(); err == nil {
+	if wd, err := dir_utils.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
 		if cfg != nil {
 			if len(arg.TrimMethods) == 0 && len(cfg.Methods) > 0 {
