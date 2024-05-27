@@ -1,4 +1,4 @@
-// Copyright 2023 CloudWeGo Authors
+// Copyright 2024 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trim
+namespace go tests.extend.common
 
-import "github.com/cloudwego/thriftgo/parser"
+struct Common3Struct1 {
+    1: required string stringField
+}
 
-func (t *Trimmer) preProcess(ast *parser.Thrift) bool {
-	if _, ok := t.marks[ast.Filename]; !ok {
-		t.marks[ast.Filename] = make(map[string]bool)
-	}
-	ret := t.markKeptPart(ast)
-	for i, include := range ast.Includes {
-		marked := t.preProcess(include.Reference)
-		if marked {
-			t.marks[ast.Filename][includePrefix+ast.Includes[i].Path] = true
-			ret = true
-		}
-	}
-	return ret
+struct Commmon3Struct2 {
+    1: required string stringField
+}
+
+service Common3 {
+    string ProcessCommon3(1: Common3Struct1 req)
+    string Echo(1: Commmon3Struct2 req)
 }
