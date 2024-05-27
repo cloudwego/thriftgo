@@ -18,6 +18,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/cloudwego/thriftgo/parser"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 )
@@ -102,11 +103,46 @@ func (a *ComposeArguments) run() error {
 		// todo: more detailed information
 		return errors.New("failed to parse idl_compose config")
 	}
+	ancestor, err := createAncestor(cfg)
+	if err != nil {
+		return err
+	}
+	// todo: deal with ancestor
+	ancestor.String()
 	return nil
 }
 
-//
-//func createFakeFather() *parser.Thrift {
-//	father := &parser.Thrift{}
-//	parser.ParseFile()
-//}
+const (
+	ancestorFmt = `namespace go test.all
+
+%s
+
+%s
+`
+)
+
+func createAncestor(cfg *IDLComposeArguments) (*parser.Thrift, error) {
+	var svcs []string
+	for path := range cfg.IDLs {
+		// todo: deal with includes
+		child, err := parser.ParseFile(path, nil, true)
+		if err != nil {
+			// todo: deal with error
+			return nil, err
+		}
+		child.ForEachService(func(v *parser.Service) bool {
+			svcs = append(svcs, v.Name)
+			return true
+		})
+	}
+	ancestorStr := fmt.Sprintf(ancestorFmt, getImports(), getFakeServices())
+	return parser.ParseString("./all.thrift", ancestorStr)
+}
+
+func getImports() string {
+	return ""
+}
+
+func getFakeServices() string {
+	return ""
+}
