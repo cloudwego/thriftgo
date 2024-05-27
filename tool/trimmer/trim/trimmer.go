@@ -91,7 +91,9 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 	if err != nil {
 		return 0, 0, err
 	}
+	// 使用 filename 来组织 ast
 	trimmer.asts[ast.Filename] = ast
+	// trim method 相关
 	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	trimmer.forceTrimming = forceTrimming
@@ -99,9 +101,11 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 	for i, method := range trimMethods {
 		parts := strings.Split(method, ".")
 		if len(parts) < 2 {
+			// 针对单 service 不需要指定 service name
 			if len(ast.Services) == 1 {
 				trimMethods[i] = ast.Services[0].Name + "." + method
 			} else {
+				// 否则默认使用最后一个 service
 				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
 				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
 				// os.Exit(2)
@@ -160,6 +164,7 @@ func Trim(files, includeDir []string, outDir string) error {
 }
 
 func (t *Trimmer) countStructs(ast *parser.Thrift) {
+	// structs, unions, exceptions 可以理解，includes 和 services 的道理应该是它们也是产物的一部份
 	t.structsTrimmed += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
 	for _, v := range ast.Structs {
 		t.fieldsTrimmed += len(v.Fields)
