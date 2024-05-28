@@ -16,6 +16,7 @@ package semantic
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/cloudwego/thriftgo/parser"
 )
@@ -111,6 +112,11 @@ func (c *checker) CheckEnums(t *parser.Thrift) (warns []string, err error) {
 			}
 			v2n[v.Value] = v.Name
 			if err != nil {
+				return
+			}
+			// check if enum value can be safely converted to int 32
+			if v.Value < math.MinInt32 || v.Value > math.MaxInt32 {
+				err = fmt.Errorf("the value of enum %s is %d, which exceeds the range of int32", v.Name, v.Value)
 				return
 			}
 		}
