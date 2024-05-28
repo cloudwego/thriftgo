@@ -15,13 +15,51 @@
 package trim
 
 import (
+	"github.com/dlclark/regexp2"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/parser"
 )
 
+// refresh initialize the trimMethods, preservedStructs and trimmed statistical data.
+// this function must be called before markAST
+func (t *Trimmer) refresh(ast *parser.Thrift, arg *TrimmerYamlArguments) {
+	if arg == nil {
+		return
+	}
+	var err error
+	// deal with trimMethods
+	t.trimMethods = make([]*regexp2.Regexp, len(arg.Methods))
+	t.trimMethodValid = make([]bool, len(arg.Methods))
+	t.matchGoName = *arg.MatchGoName
+	for i, method := range arg.Methods {
+		parts := strings.Split(method, ".")
+		if len(parts) < 2 {
+			if len(ast.Services) == 1 {
+				arg.Methods[i] = ast.Services[0].Name + "." + method
+			} else {
+				arg.Methods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
+				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
+				// os.Exit(2)
+			}
+		}
+		t.trimMethods[i], err = regexp2.Compile(arg.Methods[i], 0)
+		check(err)
+	}
+	// deal with preservedStructs
+	t.preservedStructs = arg.PreservedStructs
+	if len(t.preservedStructs) <= 0 {
+		t.forceTrimming = true
+	}
+	// deal with trimmed statistical data
+	t.fieldsTrimmed = 0
+	t.structsTrimmed = 0
+	t.countStructs(ast)
+}
+
 // mark the used part of ast
-func (t *Trimmer) markAST(ast *parser.Thrift) {
+func (t *Trimmer) markAST(ast *parser.Thrift, arg *TrimmerYamlArguments) {
+	t.refresh(ast, arg)
 	t.preProcess(ast)
 	for _, service := range ast.Services {
 		t.markService(service, ast)
@@ -63,18 +101,18 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift) {
 				if ok, _ := method.MatchString(funcName); ok {
 					if funcName == method.String() || !strings.HasPrefix(funcName, method.String()) {
 						t.marks[filename][svc.Name] = true
-						t.markFunction(function, ast)
+						t.markFunction(function, ast, svc.Name)
 						t.trimMethodValid[i] = true
 					}
 				}
 			}
 			continue
 		}
-		t.markFunction(function, ast)
+		t.markFunction(function, ast, svc.Name)
 	}
 
 	if len(t.trimMethods) != 0 && (svc.Extends != "" || svc.Reference != nil) {
-		t.traceExtendMethod(svc, svc, ast, filename)
+		t.traceExtendMethod(svc, svc, ast)
 	}
 
 	if svc.Extends != "" && t.marks[filename][svc.Name] {
@@ -92,8 +130,8 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift) {
 	}
 }
 
-func (t *Trimmer) markFunction(function *parser.Function, ast *parser.Thrift) {
-	t.marks[ast.Filename][function.Name] = true
+func (t *Trimmer) markFunction(function *parser.Function, ast *parser.Thrift, serviceName string) {
+	t.marks[ast.Filename][serviceName+"."+function.Name] = true
 	for _, arg := range function.Arguments {
 		t.markType(arg.Type, ast)
 	}
@@ -129,7 +167,7 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift) {
 	}
 
 	if theType.IsTypedef != nil {
-		t.markTypeDef(theType, baseAST, filename)
+		t.markTypeDef(theType, baseAST)
 		return
 	}
 
@@ -165,11 +203,10 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift) {
 }
 
 func (t *Trimmer) markStructLike(str *parser.StructLike, ast *parser.Thrift) {
-	filename := ast.Filename
-	if t.marks[filename][str.Name] {
+	if t.marks[ast.Filename][str.Name] {
 		return
 	}
-	t.marks[filename][str.Name] = true
+	t.marks[ast.Filename][str.Name] = true
 	for _, field := range str.Fields {
 		t.markType(field.Type, ast)
 	}
@@ -179,16 +216,15 @@ func (t *Trimmer) markEnum(enum *parser.Enum, filename string) {
 	t.marks[filename][enum.Name] = true
 }
 
-func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename string) {
+func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift) {
 	if theType.IsTypedef == nil {
 		return
 	}
 
 	for i, typedef := range ast.Typedefs {
 		if typedef.Alias == theType.Name {
-			// todo: deal with typedef alias
-			if !t.marks[filename][ast.Typedefs[i].Alias] {
-				t.marks[filename][ast.Typedefs[i].Alias] = true
+			if !t.marks[ast.Filename][ast.Typedefs[i].Alias] {
+				t.marks[ast.Filename][ast.Typedefs[i].Alias] = true
 				t.markType(typedef.Type, ast)
 			}
 			return
@@ -198,7 +234,6 @@ func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename
 
 func (t *Trimmer) markInclude(include *parser.Include, filename string) {
 	include.Reference.Name2Category = nil
-	// todo: deal with include
 	if t.marks[filename][includePrefix+include.Path] {
 		return
 	}
@@ -234,7 +269,6 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift) bool {
 		ret = true
 	}
 
-	// todo: using filename to organize this configuration
 	if !t.forceTrimming {
 		for _, str := range ast.Structs {
 			if !t.marks[filename][str.Name] && t.checkPreserve(str) {
@@ -262,13 +296,14 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift) bool {
 
 // todo: figure out this
 // for -m, trace the extends and find specified method to base on
-func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
+func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thrift) (ret bool) {
+	filename := ast.Filename
 	for _, function := range svc.Functions {
 		funcName := father.Name + "." + function.Name
 		for i, method := range t.trimMethods {
 			if ok, _ := method.MatchString(funcName); ok {
 				t.marks[filename][svc.Name] = true
-				t.markFunction(function, ast)
+				t.markFunction(function, ast, svc.Name)
 				t.trimMethodValid[i] = true
 				ret = true
 			}
@@ -294,8 +329,7 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 				}
 			}
 		}
-		// todo: figure this out
-		back := t.traceExtendMethod(father, nextSvc, nextAst, filename)
+		back := t.traceExtendMethod(father, nextSvc, nextAst)
 		if !back {
 			t.markServiceExtends(svc)
 		}
@@ -324,5 +358,6 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 }
 
 const (
-	includePrefix = "includeXXX_prefix"
+	includePrefix  = "includeXXX_prefix"
+	functionPrefix = "functionXXX_prefix"
 )

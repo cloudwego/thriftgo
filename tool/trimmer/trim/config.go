@@ -22,15 +22,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var DefaultYamlFileName = "trim_config.yaml"
-var DefaultIDLComposeFileName = "idl_compose.yaml"
+var (
+	DefaultYamlFileName       = "trim_config.yaml"
+	DefaultIDLComposeFileName = "idl_compose.yaml"
+)
 
-type IDLComposeArguments struct {
-	IDLs map[string]*IDLArguments `yaml:"idls,omitempty"`
+// TrimmerYamlArguments is the alias to YamlArguments
+type TrimmerYamlArguments YamlArguments
+
+// IDLArguments contains all arguments about the IDL.
+// For now, it only contains TrimmerYamlArguments.
+type IDLArguments struct {
+	Trimmer *TrimmerYamlArguments `yaml:"trimmer,omitempty"`
 }
 
-type IDLArguments struct {
-	Trimmer *YamlArguments `yaml:"trimmer,omitempty"`
+// IDLComposeArguments contains all IDLs and their arguments.
+type IDLComposeArguments struct {
+	// path is the path of IDL based on working directory
+	// e.g. "idl/sample.thrift"
+	IDLs map[string]*IDLArguments `yaml:"idls,omitempty"`
 }
 
 type YamlArguments struct {
@@ -38,6 +48,18 @@ type YamlArguments struct {
 	Preserve         *bool    `yaml:"preserve,omitempty"`
 	PreservedStructs []string `yaml:"preserved_structs,omitempty"`
 	MatchGoName      *bool    `yaml:"match_go_name,omitempty"`
+}
+
+// todo: deal with this function with TrimmerYamlArguments
+func (arg *YamlArguments) setDefault() {
+	if arg.Preserve == nil {
+		t := true
+		arg.Preserve = &t
+	}
+	if arg.MatchGoName == nil {
+		t := false
+		arg.MatchGoName = &t
+	}
 }
 
 func ParseYamlConfig(path string) *YamlArguments {
@@ -52,18 +74,22 @@ func ParseYamlConfig(path string) *YamlArguments {
 		fmt.Println("unmarshal yaml config fail:", err)
 		return nil
 	}
-	if cfg.Preserve == nil {
-		t := true
-		cfg.Preserve = &t
-	}
-	if cfg.MatchGoName == nil {
-		t := false
-		cfg.MatchGoName = &t
-	}
+	cfg.setDefault()
 	return &cfg
 }
 
-func ParseComposeConfig(path string) *IDLComposeArguments {
+func (arg *TrimmerYamlArguments) setDefault() {
+	if arg.Preserve == nil {
+		t := true
+		arg.Preserve = &t
+	}
+	if arg.MatchGoName == nil {
+		t := false
+		arg.MatchGoName = &t
+	}
+}
+
+func ParseIDLComposeConfig(path string) *IDLComposeArguments {
 	cfg := IDLComposeArguments{}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -78,16 +104,9 @@ func ParseComposeConfig(path string) *IDLComposeArguments {
 	// set default value
 	for _, idl := range cfg.IDLs {
 		if idl.Trimmer == nil {
-			idl.Trimmer = &YamlArguments{}
+			idl.Trimmer = &TrimmerYamlArguments{}
 		}
-		if idl.Trimmer.Preserve == nil {
-			t := true
-			idl.Trimmer.Preserve = &t
-		}
-		if idl.Trimmer.MatchGoName == nil {
-			t := false
-			idl.Trimmer.MatchGoName = &t
-		}
+		idl.Trimmer.setDefault()
 	}
 
 	return &cfg

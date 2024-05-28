@@ -26,7 +26,7 @@ import (
 
 // test single file ast trimming
 func TestSingleFile(t *testing.T) {
-	trimmer, err := newTrimmer(nil, "", nil)
+	trimmer, err := newTrimmer(nil, "")
 	test.Assert(t, err == nil, err)
 	filename := filepath.Join("..", "test_cases", "sample1.thrift")
 	ast, err := parser.ParseFile(filename, []string{"test_cases"}, true)
@@ -39,7 +39,7 @@ func TestSingleFile(t *testing.T) {
 	check(err)
 	check(semantic.ResolveSymbols(ast))
 	trimmer.asts[filename] = ast
-	trimmer.markAST(ast)
+	trimmer.markAST(ast, nil)
 	trimmer.traversal(ast)
 
 	test.Assert(t, len(ast.Structs) == 7)
@@ -53,7 +53,7 @@ func TestSingleFile(t *testing.T) {
 }
 
 func TestInclude(t *testing.T) {
-	trimmer, err := newTrimmer(nil, "", nil)
+	trimmer, err := newTrimmer(nil, "")
 	test.Assert(t, err == nil, err)
 	filename := filepath.Join("..", "test_cases/test_include", "example.thrift")
 	ast, err := parser.ParseFile(filename, []string{"test_cases/test_include"}, true)
@@ -66,7 +66,7 @@ func TestInclude(t *testing.T) {
 	check(err)
 	check(semantic.ResolveSymbols(ast))
 	trimmer.asts[filename] = ast
-	trimmer.markAST(ast)
+	trimmer.markAST(ast, nil)
 	trimmer.traversal(ast)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
@@ -126,4 +126,33 @@ func TestPreserve(t *testing.T) {
 	})
 	check(err)
 	test.Assert(t, len(ast.Structs) == 0)
+}
+
+func TestTrimASTWithCompose(t *testing.T) {
+	filename := filepath.Join("..", "idl", "sample.thrift")
+	ast := parseAndCheckAST(filename)
+	preserve := false
+	matchGoName := false
+	st, ft, err := TrimASTWithCompose(&TrimASTWithComposeArg{
+		Cfg: &IDLComposeArguments{
+			IDLs: map[string]*IDLArguments{
+				"../idl/sample.thrift": {
+					Trimmer: &TrimmerYamlArguments{
+						Preserve:    &preserve,
+						MatchGoName: &matchGoName,
+					},
+				},
+				"../idl/ref_idl/sample_another.thrift": {
+					Trimmer: &TrimmerYamlArguments{
+						Preserve:    &preserve,
+						MatchGoName: &matchGoName,
+					},
+				},
+			},
+		},
+		TargetAST: ast,
+	})
+	t.Log(st)
+	t.Log(ft)
+	t.Log(err)
 }

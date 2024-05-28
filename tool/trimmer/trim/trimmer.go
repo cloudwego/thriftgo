@@ -16,11 +16,9 @@ package trim
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 	"os"
 	"regexp"
-	"strings"
-
-	"github.com/cloudwego/thriftgo/utils/dir_utils"
 
 	"github.com/dlclark/regexp2"
 
@@ -83,68 +81,75 @@ func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error
 	if arg.Preserve != nil {
 		forceTrim = !*arg.Preserve
 	}
+	preserve := !forceTrim
 	matchGoName := false
 	if arg.MatchGoName != nil {
 		matchGoName = *arg.MatchGoName
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs, nil)
+	return doTrimAST(arg.Ast, &TrimmerYamlArguments{
+		Methods:          arg.TrimMethods,
+		Preserve:         &preserve,
+		PreservedStructs: preservedStructs,
+		MatchGoName:      &matchGoName,
+	})
 }
 
-func TrimASTWithCompose(arg *TrimASTWithComposeArg) error {
+func TrimASTWithCompose(arg *TrimASTWithComposeArg) (structureTrimmed int, fieldTrimmed int, err error) {
 	// todo: 读取本地配置文件
 	cfg := arg.Cfg
-	commonMarks := make(map[string]map[string]bool)
+	//if wd, err := dir_utils.Getwd(); err == nil {
+	//	localCfg := ParseIDLComposeConfig(wd)
+	//	if localCfg != nil {
+	//		if len(arg.TrimMethods) == 0 && len(cfg.Methods) > 0 {
+	//			arg.TrimMethods = cfg.Methods
+	//		}
+	//		if arg.Preserve == nil && !(*cfg.Preserve) {
+	//			preserve := false
+	//			arg.Preserve = &preserve
+	//		}
+	//		if arg.MatchGoName == nil && cfg.MatchGoName != nil {
+	//			arg.MatchGoName = cfg.MatchGoName
+	//		}
+	//		preservedStructs = cfg.PreservedStructs
+	//	}
+	//}
+	trimmer, err := newTrimmer(nil, "")
+	if err != nil {
+		return structureTrimmed, fieldTrimmed, err
+	}
 	for path, idlArg := range cfg.IDLs {
 		trimArg := idlArg.Trimmer
 		var ast *parser.Thrift
 		if arg.TargetAST.Filename == path {
 			ast = arg.TargetAST
 		} else {
-			// create Ast
 			ast = parseAndCheckAST(path)
 		}
-		forceTrimming := len(trimArg.Methods) <= 0
-		// todo: deal with args
-		st, ft, err := doTrimAST(ast, trimArg.Methods, forceTrimming, *trimArg.MatchGoName, trimArg.PreservedStructs, commonMarks)
-		if err != nil {
-			return err
-		}
-		println(st)
-		println(ft)
+		// todo: deal with trimArg
+		trimmer.markAST(ast, trimArg)
 	}
-	return nil
+	// trimmer.marks now have the complete context, we can traverse the target AST
+	trimmer.traversal(arg.TargetAST)
+	if path := parser.CircleDetect(arg.TargetAST); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
+	}
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(arg.TargetAST)
+	check(err)
+	check(semantic.ResolveSymbols(arg.TargetAST))
+
+	return trimmer.structsTrimmed, trimmer.fieldsTrimmed, nil
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, matchGoName bool, preservedStructs []string, commonMarks map[string]map[string]bool) (
+func doTrimAST(ast *parser.Thrift, arg *TrimmerYamlArguments) (
 	structureTrimmed int, fieldTrimmed int, err error) {
-	trimmer, err := newTrimmer(nil, "", commonMarks)
+	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
 		return 0, 0, err
 	}
 	trimmer.asts[ast.Filename] = ast
-	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
-	trimmer.trimMethodValid = make([]bool, len(trimMethods))
-	trimmer.forceTrimming = forceTrimming
-	trimmer.matchGoName = matchGoName
-	for i, method := range trimMethods {
-		parts := strings.Split(method, ".")
-		if len(parts) < 2 {
-			if len(ast.Services) == 1 {
-				trimMethods[i] = ast.Services[0].Name + "." + method
-			} else {
-				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
-				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
-				// os.Exit(2)
-
-			}
-		}
-		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
-		check(err)
-	}
-	trimmer.preservedStructs = preservedStructs
-	trimmer.countStructs(ast)
-	trimmer.markAST(ast)
+	trimmer.markAST(ast, arg)
 	trimmer.traversal(ast)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
@@ -154,19 +159,20 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 	check(err)
 	check(semantic.ResolveSymbols(ast))
 
-	for i, method := range trimMethods {
-		if !trimmer.trimMethodValid[i] {
-			println("err: method", method, "not found!")
-			os.Exit(2)
-		}
-	}
+	// todo: deal with this
+	//for i, method := range trimMethods {
+	//	if !trimmer.trimMethodValid[i] {
+	//		println("err: method", method, "not found!")
+	//		os.Exit(2)
+	//	}
+	//}
 
 	return trimmer.structsTrimmed, trimmer.fieldsTrimmed, nil
 }
 
 // Trim to trim thrift files to remove unused fields
 func Trim(files, includeDir []string, outDir string) error {
-	trimmer, err := newTrimmer(files, outDir, nil)
+	trimmer, err := newTrimmer(files, outDir)
 	if err != nil {
 		return err
 	}
@@ -183,7 +189,7 @@ func Trim(files, includeDir []string, outDir string) error {
 		check(err)
 		check(semantic.ResolveSymbols(ast))
 		trimmer.asts[filename] = ast
-		trimmer.markAST(ast)
+		trimmer.markAST(ast, nil)
 		// TODO: handle multi files and dump to 'xxx.thrift'
 	}
 
@@ -210,22 +216,19 @@ func (t *Trimmer) countStructs(ast *parser.Thrift) {
 }
 
 // make and init a trimmer with related parameters
-func newTrimmer(files []string, outDir string, commonMarks map[string]map[string]bool) (*Trimmer, error) {
+func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	trimmer := &Trimmer{
 		files:  files,
 		outDir: outDir,
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
-	if commonMarks == nil {
-		trimmer.marks = make(map[string]map[string]bool)
-	} else {
-		trimmer.marks = commonMarks
-	}
+	trimmer.marks = make(map[string]map[string]bool)
 	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
 	return trimmer, nil
 }
 
+// todo: remove this function
 func check(err error) {
 	if err != nil {
 		println(err.Error())
