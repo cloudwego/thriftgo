@@ -33,7 +33,8 @@ type Trimmer struct {
 	// ast of the file
 	asts map[string]*parser.Thrift
 	// mark the parts of the file's ast that is used
-	marks  map[string]map[interface{}]bool
+	// key is IDL filename
+	marks  map[string]map[string]bool
 	outDir string
 	// use -m
 	trimMethods      []*regexp2.Regexp
@@ -52,6 +53,11 @@ type TrimASTArg struct {
 	TrimMethods []string
 	Preserve    *bool
 	MatchGoName *bool
+}
+
+type TrimASTWithComposeArg struct {
+	Cfg       *IDLComposeArguments
+	TargetAST *parser.Thrift
 }
 
 // TrimAST parse the cfg and trim the single AST
@@ -81,19 +87,42 @@ func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error
 	if arg.MatchGoName != nil {
 		matchGoName = *arg.MatchGoName
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs)
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs, nil)
+}
+
+func TrimASTWithCompose(arg *TrimASTWithComposeArg) error {
+	// todo: 读取本地配置文件
+	cfg := arg.Cfg
+	commonMarks := make(map[string]map[string]bool)
+	for path, idlArg := range cfg.IDLs {
+		trimArg := idlArg.Trimmer
+		var ast *parser.Thrift
+		if arg.TargetAST.Filename == path {
+			ast = arg.TargetAST
+		} else {
+			// create Ast
+			ast = parseAndCheckAST(path)
+		}
+		forceTrimming := len(trimArg.Methods) <= 0
+		// todo: deal with args
+		st, ft, err := doTrimAST(ast, trimArg.Methods, forceTrimming, *trimArg.MatchGoName, trimArg.PreservedStructs, commonMarks)
+		if err != nil {
+			return err
+		}
+		println(st)
+		println(ft)
+	}
+	return nil
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, matchGoName bool, preservedStructs []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, matchGoName bool, preservedStructs []string, commonMarks map[string]map[string]bool) (
 	structureTrimmed int, fieldTrimmed int, err error) {
-	trimmer, err := newTrimmer(nil, "")
+	trimmer, err := newTrimmer(nil, "", commonMarks)
 	if err != nil {
 		return 0, 0, err
 	}
-	// 使用 filename 来组织 ast
 	trimmer.asts[ast.Filename] = ast
-	// trim method 相关
 	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	trimmer.forceTrimming = forceTrimming
@@ -101,11 +130,9 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 	for i, method := range trimMethods {
 		parts := strings.Split(method, ".")
 		if len(parts) < 2 {
-			// 针对单 service 不需要指定 service name
 			if len(ast.Services) == 1 {
 				trimMethods[i] = ast.Services[0].Name + "." + method
 			} else {
-				// 否则默认使用最后一个 service
 				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
 				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
 				// os.Exit(2)
@@ -118,7 +145,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 	trimmer.preservedStructs = preservedStructs
 	trimmer.countStructs(ast)
 	trimmer.markAST(ast)
-	trimmer.traversal(ast, ast.Filename)
+	trimmer.traversal(ast)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
 	}
@@ -139,7 +166,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 
 // Trim to trim thrift files to remove unused fields
 func Trim(files, includeDir []string, outDir string) error {
-	trimmer, err := newTrimmer(files, outDir)
+	trimmer, err := newTrimmer(files, outDir, nil)
 	if err != nil {
 		return err
 	}
@@ -164,7 +191,6 @@ func Trim(files, includeDir []string, outDir string) error {
 }
 
 func (t *Trimmer) countStructs(ast *parser.Thrift) {
-	// structs, unions, exceptions 可以理解，includes 和 services 的道理应该是它们也是产物的一部份
 	t.structsTrimmed += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
 	for _, v := range ast.Structs {
 		t.fieldsTrimmed += len(v.Fields)
@@ -184,13 +210,17 @@ func (t *Trimmer) countStructs(ast *parser.Thrift) {
 }
 
 // make and init a trimmer with related parameters
-func newTrimmer(files []string, outDir string) (*Trimmer, error) {
+func newTrimmer(files []string, outDir string, commonMarks map[string]map[string]bool) (*Trimmer, error) {
 	trimmer := &Trimmer{
 		files:  files,
 		outDir: outDir,
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
-	trimmer.marks = make(map[string]map[interface{}]bool)
+	if commonMarks == nil {
+		trimmer.marks = make(map[string]map[string]bool)
+	} else {
+		trimmer.marks = commonMarks
+	}
 	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
 	return trimmer, nil

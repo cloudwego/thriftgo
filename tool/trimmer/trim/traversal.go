@@ -19,12 +19,13 @@ import (
 )
 
 // traverse and remove the unmarked part of ast
-func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
+func (t *Trimmer) traversal(ast *parser.Thrift) {
+	filename := ast.Filename
 	var listInclude []*parser.Include
 	for i := range ast.Includes {
-		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+
+		if t.marks[filename][includePrefix+ast.Includes[i].Path] || len(ast.Includes[i].Reference.Constants)+
 			len(ast.Includes[i].Reference.Enums)+len(ast.Includes[i].Reference.Typedefs) > 0 {
-			t.traversal(ast.Includes[i].Reference, filename)
+			t.traversal(ast.Includes[i].Reference)
 			listInclude = append(listInclude, ast.Includes[i])
 		}
 	}
@@ -32,7 +33,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listStruct []*parser.StructLike
 	for i := range ast.Structs {
-		if t.marks[filename][ast.Structs[i]] || t.checkPreserve(ast.Structs[i]) {
+		if t.marks[filename][ast.Structs[i].Name] || t.checkPreserve(ast.Structs[i]) {
 			listStruct = append(listStruct, ast.Structs[i])
 			t.fieldsTrimmed -= len(ast.Structs[i].Fields)
 		}
@@ -41,7 +42,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listUnion []*parser.StructLike
 	for i := range ast.Unions {
-		if t.marks[filename][ast.Unions[i]] || t.checkPreserve(ast.Unions[i]) {
+		if t.marks[filename][ast.Unions[i].Name] || t.checkPreserve(ast.Unions[i]) {
 			listUnion = append(listUnion, ast.Unions[i])
 			t.fieldsTrimmed -= len(ast.Unions[i].Fields)
 		}
@@ -50,7 +51,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listException []*parser.StructLike
 	for i := range ast.Exceptions {
-		if t.marks[filename][ast.Exceptions[i]] || t.checkPreserve(ast.Exceptions[i]) {
+		if t.marks[filename][ast.Exceptions[i].Name] || t.checkPreserve(ast.Exceptions[i]) {
 			listException = append(listException, ast.Exceptions[i])
 			t.fieldsTrimmed -= len(ast.Exceptions[i].Fields)
 		}
@@ -59,11 +60,11 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 
 	var listService []*parser.Service
 	for i := range ast.Services {
-		if t.marks[filename][ast.Services[i]] {
+		if t.marks[filename][ast.Services[i].Name] {
 			if len(t.trimMethods) != 0 {
 				var trimmedMethods []*parser.Function
 				for j := range ast.Services[i].Functions {
-					if t.marks[filename][ast.Services[i].Functions[j]] {
+					if t.marks[filename][ast.Services[i].Functions[j].Name] {
 						trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
 					}
 				}

@@ -1,4 +1,4 @@
-// Copyright 2023 CloudWeGo Authors
+// Copyright 2024 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,21 @@
 
 package trim
 
-import "github.com/cloudwego/thriftgo/parser"
+import (
+	"fmt"
+	"github.com/cloudwego/thriftgo/parser"
+	"github.com/cloudwego/thriftgo/semantic"
+)
 
-func (t *Trimmer) preProcess(ast *parser.Thrift) bool {
-	if _, ok := t.marks[ast.Filename]; !ok {
-		t.marks[ast.Filename] = make(map[string]bool)
+func parseAndCheckAST(path string) *parser.Thrift {
+	ast, err := parser.ParseFile(path, nil, true)
+	check(err)
+	if path := parser.CircleDetect(ast); len(path) > 0 {
+		check(fmt.Errorf("found include circle:\n\t%s", path))
 	}
-	ret := t.markKeptPart(ast)
-	for i, include := range ast.Includes {
-		marked := t.preProcess(include.Reference)
-		if marked {
-			t.marks[ast.Filename][includePrefix+ast.Includes[i].Path] = true
-			ret = true
-		}
-	}
-	return ret
+	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
+	_, err = checker.CheckAll(ast)
+	check(err)
+	check(semantic.ResolveSymbols(ast))
+	return ast
 }

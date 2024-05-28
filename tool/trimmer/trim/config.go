@@ -23,6 +23,15 @@ import (
 )
 
 var DefaultYamlFileName = "trim_config.yaml"
+var DefaultIDLComposeFileName = "idl_compose.yaml"
+
+type IDLComposeArguments struct {
+	IDLs map[string]*IDLArguments `yaml:"idls,omitempty"`
+}
+
+type IDLArguments struct {
+	Trimmer *YamlArguments `yaml:"trimmer,omitempty"`
+}
 
 type YamlArguments struct {
 	Methods          []string `yaml:"methods,omitempty"`
@@ -51,5 +60,35 @@ func ParseYamlConfig(path string) *YamlArguments {
 		t := false
 		cfg.MatchGoName = &t
 	}
+	return &cfg
+}
+
+func ParseComposeConfig(path string) *IDLComposeArguments {
+	cfg := IDLComposeArguments{}
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	fmt.Println("using idl_compose config:", path)
+	err = yaml.Unmarshal(data, &cfg)
+	if err != nil {
+		fmt.Println("unmarshal idl_compose config fail:", err)
+		return nil
+	}
+	// set default value
+	for _, idl := range cfg.IDLs {
+		if idl.Trimmer == nil {
+			idl.Trimmer = &YamlArguments{}
+		}
+		if idl.Trimmer.Preserve == nil {
+			t := true
+			idl.Trimmer.Preserve = &t
+		}
+		if idl.Trimmer.MatchGoName == nil {
+			t := false
+			idl.Trimmer.MatchGoName = &t
+		}
+	}
+
 	return &cfg
 }
