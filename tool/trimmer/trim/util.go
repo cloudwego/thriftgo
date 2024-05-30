@@ -20,15 +20,19 @@ import (
 	"github.com/cloudwego/thriftgo/semantic"
 )
 
-func parseAndCheckAST(path string) *parser.Thrift {
-	ast, err := parser.ParseFile(path, nil, true)
+func parseAndCheckAST(path string, includeDirs []string, recursive bool) *parser.Thrift {
+	ast, err := parser.ParseFile(path, includeDirs, recursive)
 	check(err)
+	checkAST(ast)
+	return ast
+}
+
+func checkAST(ast *parser.Thrift) {
 	if path := parser.CircleDetect(ast); len(path) > 0 {
 		check(fmt.Errorf("found include circle:\n\t%s", path))
 	}
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
-	_, err = checker.CheckAll(ast)
+	_, err := checker.CheckAll(ast)
 	check(err)
 	check(semantic.ResolveSymbols(ast))
-	return ast
 }

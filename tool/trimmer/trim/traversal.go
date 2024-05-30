@@ -20,12 +20,18 @@ import (
 
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift) {
+	t.countStructs(ast)
+	t.doTraversal(ast)
+}
+
+func (t *Trimmer) doTraversal(ast *parser.Thrift) {
+	// deal with trimmed statistical data
 	filename := ast.Filename
 	var listInclude []*parser.Include
 	for i := range ast.Includes {
 		if t.marks[filename][includePrefix+ast.Includes[i].Path] || len(ast.Includes[i].Reference.Constants)+
 			len(ast.Includes[i].Reference.Enums)+len(ast.Includes[i].Reference.Typedefs) > 0 {
-			t.traversal(ast.Includes[i].Reference)
+			t.doTraversal(ast.Includes[i].Reference)
 			listInclude = append(listInclude, ast.Includes[i])
 		}
 	}
@@ -61,15 +67,13 @@ func (t *Trimmer) traversal(ast *parser.Thrift) {
 	var listService []*parser.Service
 	for i := range ast.Services {
 		if t.marks[filename][ast.Services[i].Name] {
-			if len(t.trimMethods) != 0 {
-				var trimmedMethods []*parser.Function
-				for j := range ast.Services[i].Functions {
-					if t.marks[filename][ast.Services[i].Functions[j].Name] {
-						trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
-					}
+			var trimmedMethods []*parser.Function
+			for j := range ast.Services[i].Functions {
+				if t.marks[filename][ast.Services[i].Name+"."+ast.Services[i].Functions[j].Name] {
+					trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
 				}
-				ast.Services[i].Functions = trimmedMethods
 			}
+			ast.Services[i].Functions = trimmedMethods
 			listService = append(listService, ast.Services[i])
 			t.fieldsTrimmed -= len(ast.Services[i].Functions)
 		}

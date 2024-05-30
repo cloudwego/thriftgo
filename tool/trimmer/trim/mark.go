@@ -21,9 +21,13 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 )
 
+const (
+	includePrefix = "trimmer_include_prefix_"
+)
+
 // refresh initialize the trimMethods, preservedStructs and trimmed statistical data.
 // this function must be called before markAST
-func (t *Trimmer) refresh(ast *parser.Thrift, arg *TrimmerYamlArguments) {
+func (t *Trimmer) refresh(ast *parser.Thrift, arg *YamlArguments) {
 	if arg == nil {
 		return
 	}
@@ -51,14 +55,10 @@ func (t *Trimmer) refresh(ast *parser.Thrift, arg *TrimmerYamlArguments) {
 	if len(t.preservedStructs) <= 0 {
 		t.forceTrimming = true
 	}
-	// deal with trimmed statistical data
-	t.fieldsTrimmed = 0
-	t.structsTrimmed = 0
-	t.countStructs(ast)
 }
 
 // mark the used part of ast
-func (t *Trimmer) markAST(ast *parser.Thrift, arg *TrimmerYamlArguments) {
+func (t *Trimmer) markAST(ast *parser.Thrift, arg *YamlArguments) {
 	t.refresh(ast, arg)
 	t.preProcess(ast)
 	for _, service := range ast.Services {
@@ -195,7 +195,7 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift) {
 	} else if theType.Category.IsEnum() {
 		for _, enum := range baseAST.Enums {
 			if enum.Name == theType.Name || (theType.Reference != nil && enum.Name == theType.Reference.Name) {
-				t.markEnum(enum, filename)
+				t.markEnum(enum, baseAST)
 				break
 			}
 		}
@@ -212,8 +212,8 @@ func (t *Trimmer) markStructLike(str *parser.StructLike, ast *parser.Thrift) {
 	}
 }
 
-func (t *Trimmer) markEnum(enum *parser.Enum, filename string) {
-	t.marks[filename][enum.Name] = true
+func (t *Trimmer) markEnum(enum *parser.Enum, ast *parser.Thrift) {
+	t.marks[ast.Filename][enum.Name] = true
 }
 
 func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift) {
@@ -294,7 +294,6 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift) bool {
 	return ret
 }
 
-// todo: figure out this
 // for -m, trace the extends and find specified method to base on
 func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thrift) (ret bool) {
 	filename := ast.Filename
@@ -356,8 +355,3 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	}
 	return t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments))
 }
-
-const (
-	includePrefix  = "includeXXX_prefix"
-	functionPrefix = "functionXXX_prefix"
-)
