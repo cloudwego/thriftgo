@@ -255,7 +255,6 @@ Available generators (and options): go
 	//	println(align(b.Options()))
 	//}
 	println()
-	os.Exit(2)
 }
 
 // align the help strings for plugin options.

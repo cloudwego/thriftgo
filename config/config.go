@@ -19,7 +19,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 
 	"gopkg.in/yaml.v3"
 )
@@ -78,25 +81,45 @@ func (r *RefConfig) IsAllFieldsEmpty() bool {
 }
 
 var globalConfig *Config
+var useAbs bool = true
 
 func GetRef(name string) *RefConfig {
 	if globalConfig == nil {
 		return nil
 	}
-	return globalConfig.Ref[name]
+	if useAbs {
+		name, _ = filepath.Abs(name)
+	}
+	refConfig, ok := globalConfig.Ref[name]
+	if globalConfig.Debug {
+		if ok {
+			fmt.Printf("[idl-ref-get]Successfully Get: %s\n", name)
+		} else {
+			fmt.Printf("[idl-ref-get]Not IDL Ref: %s\n", name)
+		}
+	}
+	return refConfig
 }
 
-func init() {
+func LoadConfig() error {
 	config, err := initConfig()
 	if err != nil {
-		panic(errors.New("failed to parse idl ref config: " + err.Error()))
+		return errors.New("failed to parse idl ref config: " + err.Error())
 	}
 	globalConfig = config
+	return nil
 }
 
 func initConfig() (*Config, error) {
 	configPaths := []string{"idl-ref.yml", "idl-ref.yaml"}
 	for _, path := range configPaths {
+		if dir_utils.HasGlobalWd() {
+			dirpath, err := dir_utils.Getwd()
+			if err != nil {
+				return nil, err
+			}
+			path = filepath.Join(dirpath, path)
+		}
 		_, err := os.Stat(path)
 		if err == nil {
 			return loadConfig(path)
@@ -124,7 +147,17 @@ func loadConfig(filename string) (*Config, error) {
 	config.Ref = map[string]*RefConfig{}
 	for k, v := range rawConfig.Ref {
 		var rc RefConfig
-
+		// if use absolute path to match idl-ref path and current file path
+		// convert the idl path to absoulute path
+		if useAbs {
+			k, err = dir_utils.ToAbsolute(k)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if config.Debug {
+			fmt.Printf("[idl-ref-register]Path: %s\n", k)
+		}
 		switch val := v.(type) {
 		case map[string]interface{}:
 			err = mapToStruct(val, &rc)

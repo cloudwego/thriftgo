@@ -17,6 +17,7 @@ package dir_utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var globalwd string
@@ -39,4 +40,20 @@ func Getwd() (string, error) {
 	}
 	wantedwd := globalwd
 	return filepath.Rel(currentwd, wantedwd)
+}
+
+func ToAbsolute(k string) (string, error) {
+	if !strings.HasSuffix(k, "/") {
+		wd, err := Getwd()
+		if err != nil {
+			return "", err
+		}
+		k = filepath.Join(wd, k)
+		absK, err := filepath.Abs(k)
+		if err != nil {
+			return "", err
+		}
+		k = absK
+	}
+	return k, nil
 }
