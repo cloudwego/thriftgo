@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	includePrefix = "trimmer_include_prefix_"
+	includePrefix  = "trimmer_include_prefix_"
+	functionPrefix = "trimmer_function_prefix_"
 )
 
 // refresh initialize the trimMethods, preservedStructs and trimmed statistical data.
@@ -131,7 +132,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift) {
 }
 
 func (t *Trimmer) markFunction(function *parser.Function, ast *parser.Thrift, serviceName string) {
-	t.marks[ast.Filename][serviceName+"."+function.Name] = true
+	t.marks[ast.Filename][functionIdentifier(serviceName, function.Name)] = true
 	for _, arg := range function.Arguments {
 		t.markType(arg.Type, ast)
 	}
@@ -354,4 +355,8 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 		}
 	}
 	return t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments))
+}
+
+func functionIdentifier(svcName, funcName string) string {
+	return functionPrefix + svcName + "." + funcName
 }

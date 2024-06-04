@@ -69,7 +69,7 @@ func (t *Trimmer) doTraversal(ast *parser.Thrift) {
 		if t.marks[filename][ast.Services[i].Name] {
 			var trimmedMethods []*parser.Function
 			for j := range ast.Services[i].Functions {
-				if t.marks[filename][ast.Services[i].Name+"."+ast.Services[i].Functions[j].Name] {
+				if t.marks[filename][functionIdentifier(ast.Services[i].Name, ast.Services[i].Functions[j].Name)] {
 					trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
 				}
 			}
