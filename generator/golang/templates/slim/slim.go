@@ -80,13 +80,13 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
-{{if Features.FrugalTag}}
 func (p *{{$TypeName}}) InitDefault() {
-	*p = {{$TypeName}}{
-		{{template "StructLikeDefault" .}}
-	}
+{{- range .Fields}}
+	{{- if .IsSetDefault}}
+	p.{{.GoName}} = {{.DefaultValue}}
+	{{- end}}
+{{- end}}
 }
-{{end}}{{/* if Features.FrugalTag */}}
 
 {{template "FieldGetOrSet" .}}
 
