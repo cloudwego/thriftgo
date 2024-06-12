@@ -1,4 +1,4 @@
-// Copyright 2023 CloudWeGo Authors
+// Copyright 2024 CloudWeGo Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trim
+namespace go tests.multiple.common
 
-import "github.com/cloudwego/thriftgo/parser"
+enum Common1Enum1 {
+    ONE
+    TWO
+    THREE
+}
 
-func (t *Trimmer) preProcess(ast *parser.Thrift) bool {
-	if _, ok := t.marks[ast.Filename]; !ok {
-		t.marks[ast.Filename] = make(map[string]bool)
-	}
-	ret := t.markKeptPart(ast)
-	for i, include := range ast.Includes {
-		marked := t.preProcess(include.Reference)
-		if marked {
-			t.marks[ast.Filename][includePrefix+ast.Includes[i].Path] = true
-			ret = true
-		}
-	}
-	return ret
+enum Common1Enum2 {
+    ONE
+    TWO
+    THERR
+}
+
+struct Common1Struct1 {
+    1: required string field
+}
+
+struct Common1Struct2 {
+    1: required string field
 }
