@@ -58,6 +58,41 @@ func search(file, dir string, includeDirs []string) (string, error) {
 	return file, &os.PathError{Op: "search", Path: file, Err: os.ErrNotExist}
 }
 
+// ParseBatchString parses a group of string content and returns an AST.
+// IDLContent is a map, which's key is IDLPath and value is IDL content.
+func ParseBatchString(mainIDLFilePath string, IDLFileContentMap map[string]string, includeDirs []string) (*Thrift, error) {
+	thriftMap := make(map[string]*Thrift)
+	return parseBatchStringRecursively(mainIDLFilePath, includeDirs, thriftMap, IDLFileContentMap)
+}
+
+// doParseBatchString
+func parseBatchStringRecursively(path string, includeDirs []string, thriftMap map[string]*Thrift, IDLFileContentMap map[string]string) (*Thrift, error) {
+
+	bs, ok := IDLFileContentMap[path]
+	if !ok {
+		return nil, fmt.Errorf("no idl found for: %s\n", path)
+	}
+	if t, ok := thriftMap[path]; ok {
+		return t, nil
+	}
+
+	t, err := parseString(path, bs, includeDirs)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s err: %w\n", path, err)
+	}
+	thriftMap[path] = t
+	dir := filepath.Dir(path)
+	for _, inc := range t.Includes {
+		incPath := filepath.Join(dir, inc.Path)
+		t, err := parseBatchStringRecursively(incPath, includeDirs, thriftMap, IDLFileContentMap)
+		if err != nil {
+			return nil, err
+		}
+		inc.Reference = t
+	}
+	return t, nil
+}
+
 // ParseFile parses a thrift file and returns an AST.
 // If recursive is true, then the include IDLs are parsed recursively as well.
 func ParseFile(path string, includeDirs []string, recursive bool) (*Thrift, error) {
