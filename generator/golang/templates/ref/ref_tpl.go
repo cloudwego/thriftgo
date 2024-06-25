@@ -43,10 +43,6 @@ import (
 ` + structRef + `
 {{- end}}
 
-{{- range .Services}}
-` + processorRef + `
-{{- end}}
-
 {{- InsertionPoint "eof"}}
 `
 
