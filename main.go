@@ -46,7 +46,9 @@ func init() {
 
 func check(err error) {
 	if err != nil {
-		println(err.Error())
+		if err.Error() != "flag: help requested" {
+			println(err.Error())
+		}
 		os.Exit(2)
 	}
 }
