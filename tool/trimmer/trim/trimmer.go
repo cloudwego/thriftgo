@@ -109,24 +109,30 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 			}
 		}
 		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
-		check(err)
+		if err != nil {
+			return 0, 0, err
+		}
 	}
 	trimmer.preservedStructs = preservedStructs
 	trimmer.countStructs(ast)
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
-		check(fmt.Errorf("found include circle:\n\t%s", path))
+		return 0, 0, fmt.Errorf("found include circle:\n\t%s", path)
 	}
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
 	_, err = checker.CheckAll(ast)
-	check(err)
-	check(semantic.ResolveSymbols(ast))
+	if err != nil {
+		return 0, 0, err
+	}
+	err = semantic.ResolveSymbols(ast)
+	if err != nil {
+		return 0, 0, err
+	}
 
 	for i, method := range trimMethods {
 		if !trimmer.trimMethodValid[i] {
-			println("err: method", method, "not found!")
-			os.Exit(2)
+			return 0, 0, fmt.Errorf("err: method %s not found!\n", method)
 		}
 	}
 
