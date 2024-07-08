@@ -18,7 +18,11 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+	"runtime/pprof"
 
+	"time"
+
+	"github.com/cloudwego/thriftgo/args"
 	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/golang"
 	"github.com/cloudwego/thriftgo/parser"
@@ -28,22 +32,40 @@ import (
 )
 
 var (
-	a Arguments
+	a args.Arguments
 	g generator.Generator
 )
 
+var debugMode bool
+
 func init() {
 	_ = g.RegisterBackend(new(golang.GoBackend))
+	// export THRIFTGO_DEBUG=1
+	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
 }
 
 func check(err error) {
 	if err != nil {
-		println(err.Error())
+		if err.Error() != "flag: help requested" {
+			println(err.Error())
+		}
 		os.Exit(2)
 	}
 }
 
 func main() {
+	if debugMode {
+		f, _ := os.Create("thriftgo-cpu.pprof")
+		defer f.Close()
+		_ = pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		startTime := time.Now()
+		defer func() {
+			fmt.Printf("Cost: %s\n", time.Since(startTime))
+		}()
+	}
+
 	defer handlePanic()
 	check(a.Parse(os.Args))
 	if a.AskVersion {

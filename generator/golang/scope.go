@@ -565,9 +565,10 @@ func (f *Field) IsNested() bool {
 // StructLike is a wrapper for the parser.StructLike.
 type StructLike struct {
 	*parser.StructLike
-	scope  namespace.Namespace
-	name   Name
-	fields []*Field
+	scope   namespace.Namespace
+	name    Name
+	fields  []*Field
+	isAlias bool
 }
 
 // GoName returns the name in go code of the struct-like.
@@ -594,6 +595,11 @@ func (s *StructLike) Fields() []*Field {
 // Namespace returns the namescope of the struct-like.
 func (s *StructLike) Namespace() namespace.Namespace {
 	return s.scope
+}
+
+// IsAlias returns whether this type is alias of existing type
+func (s *StructLike) IsAlias() bool {
+	return s.isAlias
 }
 
 // Service is a wrapper for the parser.Service.
@@ -719,4 +725,41 @@ func buildSynthesized(v *parser.Function) (argType, resType *parser.StructLike) 
 		resType.Fields = append(resType.Fields, v.Throws...)
 	}
 	return
+}
+
+func (s *Scope) GetOption(filepath string) []string {
+	ods := []string{}
+	for _, st := range s.ast.Structs {
+		if st.Name == "_StructOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("STRUCT_OPTION_%s = thrift_option.NewStructOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_EnumOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("ENUM_OPTION_%s = thrift_option.NewEnumOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_FieldOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("FIELD_OPTION_%s = thrift_option.NewFieldOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_MethodOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("METHOD_OPTION_%s = thrift_option.NewMethodOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_ServiceOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("SERVICE_OPTION_%s = thrift_option.NewServiceOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+		if st.Name == "_EnumValueOptions" {
+			for _, f := range st.Fields {
+				ods = append(ods, fmt.Sprintf("ENUM_VALUE_OPTION_%s = thrift_option.NewEnumValueOption(\"%s\",\"%s\")", strings.ToUpper(f.GetName()), filepath, f.GetName()))
+			}
+		}
+	}
+	return ods
 }

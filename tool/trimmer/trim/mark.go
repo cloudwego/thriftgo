@@ -27,8 +27,21 @@ func (t *Trimmer) markAST(ast *parser.Thrift) {
 	for _, service := range ast.Services {
 		t.markService(service, ast, ast.Filename)
 	}
+	t.cleanServiceExtends()
 
 	t.markKeptPart(ast, ast.Filename)
+}
+
+func toGoName(input string) string {
+	words := strings.Split(input, "_")
+	var result strings.Builder
+	for _, word := range words {
+		if word != "" {
+			upperWord := strings.ToUpper(string(word[0])) + word[1:]
+			result.WriteString(upperWord)
+		}
+	}
+	return result.String()
 }
 
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {
@@ -44,10 +57,15 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		if len(t.trimMethods) != 0 {
 			funcName := svc.Name + "." + function.Name
 			for i, method := range t.trimMethods {
+				if t.matchGoName {
+					funcName = svc.Name + "." + toGoName(function.Name)
+				}
 				if ok, _ := method.MatchString(funcName); ok {
-					t.marks[filename][svc] = true
-					t.markFunction(function, ast, filename)
-					t.trimMethodValid[i] = true
+					if funcName == method.String() || !strings.HasPrefix(funcName, method.String()) {
+						t.marks[filename][svc] = true
+						t.markFunction(function, ast, filename)
+						t.trimMethodValid[i] = true
+					}
 				}
 			}
 			continue
@@ -181,34 +199,56 @@ func (t *Trimmer) markInclude(include *parser.Include, filename string) {
 	// t.markKeptPart(include.Reference, filename)
 }
 
-func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) {
+func (t *Trimmer) markServiceExtends(svc *parser.Service) {
+	if t.extServices == nil {
+		t.extServices = []*parser.Service{svc}
+	} else {
+		t.extServices = append(t.extServices, svc)
+	}
+}
+
+func (t *Trimmer) cleanServiceExtends() {
+	for _, svc := range t.extServices {
+		svc.Reference = nil
+		svc.Extends = ""
+	}
+}
+
+func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
+	ret := false
 	for _, constant := range ast.Constants {
 		t.markType(constant.Type, ast, filename)
+		ret = true
 	}
 
 	for _, typedef := range ast.Typedefs {
 		t.markType(typedef.Type, ast, filename)
+		ret = true
 	}
 
 	if !t.forceTrimming {
 		for _, str := range ast.Structs {
 			if !t.marks[filename][str] && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
+				ret = true
 			}
 		}
 
 		for _, str := range ast.Unions {
 			if !t.marks[filename][str] && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
+				ret = true
 			}
 		}
 
 		for _, str := range ast.Exceptions {
 			if !t.marks[filename][str] && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
+				ret = true
 			}
 		}
 	}
+	return ret
 }
 
 // for -m, trace the extends and find specified method to base on
@@ -245,6 +285,9 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 			}
 		}
 		back := t.traceExtendMethod(father, nextSvc, nextAst, filename)
+		if !back {
+			t.markServiceExtends(svc)
+		}
 		ret = back || ret
 	}
 	if ret {

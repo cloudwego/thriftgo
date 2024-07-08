@@ -16,9 +16,14 @@ package trim
 
 import "github.com/cloudwego/thriftgo/parser"
 
-func (t *Trimmer) preProcess(ast *parser.Thrift, filename string) {
-	t.markKeptPart(ast, filename)
-	for _, include := range ast.Includes {
-		t.preProcess(include.Reference, filename)
+func (t *Trimmer) preProcess(ast *parser.Thrift, filename string) bool {
+	ret := t.markKeptPart(ast, filename)
+	for i, include := range ast.Includes {
+		marked := t.preProcess(include.Reference, filename)
+		if marked {
+			t.marks[filename][ast.Includes[i]] = true
+			ret = true
+		}
 	}
+	return ret
 }

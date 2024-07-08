@@ -222,10 +222,32 @@ func ToReflectionRefFilename(keepName bool, filename string) string {
 	return strings.TrimSuffix(filename, ".go") + "-reflection-ref.go"
 }
 
+func (s *Scope) IsEmpty() bool {
+	if len(s.constants) == 0 &&
+		len(s.typedefs) == 0 &&
+		len(s.enums) == 0 &&
+		len(s.structs) == 0 &&
+		len(s.unions) == 0 &&
+		len(s.exceptions) == 0 &&
+		len(s.services) == 0 &&
+		len(s.synthesized) == 0 {
+		return true
+	}
+	return false
+}
+
 func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template, filename string) error {
+
 	if scope == nil {
 		return nil
 	}
+	// if scope has no content, just skip and don't generate this file
+	if g.utils.Features().SkipEmpty {
+		if scope.IsEmpty() {
+			return nil
+		}
+	}
+
 	var buf strings.Builder
 	g.utils.SetRootScope(scope)
 	err := executeTpl.ExecuteTemplate(&buf, executeTpl.Name(), scope)
@@ -263,6 +285,9 @@ func (g *GoBackend) buildResponse() *plugin.Response {
 // PostProcess implements the backend.PostProcessor interface to do
 // source formatting before writing files out.
 func (g *GoBackend) PostProcess(path string, content []byte) ([]byte, error) {
+	if g.utils.Features().NoFmt {
+		return content, nil
+	}
 	switch filepath.Ext(path) {
 	case ".go":
 		if formated, err := format.Source(content); err != nil {

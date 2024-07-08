@@ -23,6 +23,7 @@ import (
 
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/plugin"
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
 )
 
 // LangSpec is the parameter to specify which language to generate codes for and
@@ -31,6 +32,7 @@ type LangSpec struct {
 	Language    string
 	Options     []plugin.Option
 	UsedPlugins []*plugin.Desc
+	SDKPlugins  []plugin.SDKPlugin
 }
 
 // Arguments contains arguments for generator's Generate method.
@@ -139,6 +141,19 @@ func (g *Generator) Generate(args *Arguments) (res *plugin.Response) {
 		return plugin.BuildErrorResponse(err.Error())
 	}
 
+	if len(out.SDKPlugins) > 0 {
+		for _, sdk := range out.SDKPlugins {
+			req.PluginParameters = sdk.GetPluginParameters()
+			extra := sdk.Invoke(req)
+			if err := extra.GetError(); err != "" {
+				return plugin.BuildErrorResponse(err)
+			}
+			if err := g.files.Feed(sdk.GetName(), extra.Contents); err != nil {
+				return plugin.BuildErrorResponse(err.Error())
+			}
+		}
+	}
+
 	for i, p := range g.plugins {
 		log.Info(fmt.Sprintf(`Run plugin "%s"`, p.Name()))
 
@@ -168,6 +183,13 @@ func (g *Generator) Persist(res *plugin.Response) error {
 		full := c.GetName()
 		if full == "" {
 			return fmt.Errorf("file name not found for the %dth generated item", i)
+		}
+		if !filepath.IsAbs(full) && dir_utils.HasGlobalWd() {
+			wd, err := dir_utils.Getwd()
+			if err != nil {
+				return err
+			}
+			full = filepath.Join(wd, full)
 		}
 
 		content := []byte(c.Content)

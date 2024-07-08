@@ -201,6 +201,7 @@ func getServiceDescriptor(ast *parser.Thrift, path string, service *parser.Servi
 		Annotations: utils.GetAnnotationsAsMap(service.GetAnnotations()),
 		Comments:    service.GetReservedComments(),
 		Extra:       nil,
+		Base:        service.GetExtends(),
 	}
 }
 

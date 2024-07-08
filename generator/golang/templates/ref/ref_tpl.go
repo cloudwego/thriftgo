@@ -63,21 +63,6 @@ var processorRef = `
 
 type {{$ServiceName}} = {{$RefPackage}}.{{$ServiceName}}
 
-
-{{- $ClientName := printf "%s%s" $ServiceName "Client"}}
-type {{$ClientName}} = {{$RefPackage}}.{{$ClientName}}
-
-var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}Factory
-
-var New{{$ClientName}}Protocol = {{$RefPackage}}.New{{$ClientName}}Protocol
-
-var New{{$ClientName}} = {{$RefPackage}}.New{{$ClientName}}
-
-{{- $ProcessorName := printf "%s%s" $ServiceName "Processor"}}
-type {{$ProcessorName}} = {{$RefPackage}}.{{$ProcessorName}}
-
-var New{{$ProcessorName}} = {{$RefPackage}}.New{{$ProcessorName}}
-
 {{- range .Functions}}
 {{$ArgsType := .ArgType.GoName}}
 type {{$ArgsType}} = {{$RefPackage}}.{{$ArgsType}}

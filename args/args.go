@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package args
 
 import (
 	"flag"
@@ -122,18 +122,18 @@ func (a *Arguments) checkOptions(opts []plugin.Option) ([]plugin.Option, error) 
 	cu.HandleOptions(params)
 	if cu.Features().EnableNestedStruct {
 		// In nested mode, if template is not 'slim', it is automatically converted to slim
-		if cu.Template() != "slim" {
+		if cu.Template() != "slim" || cu.Template() != "raw_struct" {
 			found := false
 			for _, opt := range opts {
 				if opt.Name == "template" {
-					log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+					log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" and \"raw_struct\" template, so adapt the template to \"slim\"")
 					opt.Desc = "slim"
 					found = true
 					break
 				}
 			}
 			if !found {
-				log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" template, so adapt the template to \"slim\"")
+				log.Printf("[WARN] EnableNestedStruct is only available under the \"slim\" and \"raw_struct\"  template, so adapt the template to \"slim\"")
 				opts = append(opts, plugin.Option{Name: "template", Desc: "slim"})
 			}
 
@@ -246,16 +246,14 @@ Options:
   --check-keywords    Check if any identifier using a keyword in common languages. 
   --plugin-time-limit Set the execution time limit for plugins. Naturally 0 means no limit.
 
-Available generators (and options):
+Available generators (and options): go
 `)
 	// print backend options
-	for _, b := range g.AllBackend() {
-		name, lang := b.Name(), b.Lang()
-		println(fmt.Sprintf("  %s (%s):", name, lang))
-		println(align(b.Options()))
-	}
-	println()
-	os.Exit(2)
+	b := new(golang.GoBackend)
+	name, lang := b.Name(), b.Lang()
+	println(fmt.Sprintf("  %s (%s):", name, lang))
+	println(align(b.Options()))
+
 }
 
 // align the help strings for plugin options.

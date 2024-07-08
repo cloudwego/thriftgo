@@ -29,8 +29,13 @@ func TestDumpSingle(t *testing.T) {
 	filename := filepath.Join("..", "test_cases", "sample1.thrift")
 	ast, err := parser.ParseFile(filename, []string{"test_cases"}, true)
 	test.Assert(t, err == nil, err)
-	_, err = DumpIDL(ast)
+	out, err := DumpIDL(ast)
 	test.Assert(t, err == nil, err)
+
+	// tests for function annotations
+	test.Assert(t, strings.Contains(out, "api.get"), "output should contains function annotations")
+	test.Assert(t, strings.Contains(out, "api.post"), "output should contains function annotations")
+	test.Assert(t, strings.Contains(out, "api.put"), "output should contains function annotations")
 }
 
 func TestDumpMany(t *testing.T) {

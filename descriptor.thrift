@@ -51,6 +51,7 @@ struct ConstValueDescriptor{
     6:optional list<ConstValueDescriptor> value_list // for list set
     7:optional map<ConstValueDescriptor,ConstValueDescriptor> value_map // for map
     8:required string value_identifier // for identifier, such as another constant's name
+    9:optional map<string,string> extra  // extra info
 }
 
 struct TypedefDescriptor{
@@ -118,8 +119,9 @@ struct ServiceDescriptor{
     2:required string name 
     3:required list<MethodDescriptor> methods  
     4:required map<string,list<string>> annotations 
-    5:required string comments  
+    5:required string comments
     6:optional map<string,string> extra  // extra info
+    7:optional string base = ""
 }
 
 struct FileDescriptor{

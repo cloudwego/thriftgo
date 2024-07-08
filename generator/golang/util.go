@@ -44,7 +44,7 @@ const (
 	DefaultMetaLib      = "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
 	ThriftReflectionLib = "github.com/cloudwego/thriftgo/thrift_reflection"
 	ThriftFieldMaskLib  = "github.com/cloudwego/thriftgo/fieldmask"
-	ThriftOptionLib     = "github.com/cloudwego/thriftgo/option"
+	ThriftOptionLib     = "github.com/cloudwego/thriftgo/extension/thrift_option"
 	defaultTemplate     = "default"
 	ThriftJSONUtilLib   = "github.com/cloudwego/thriftgo/utils/json_utils"
 	KitexStreamingLib   = "github.com/cloudwego/kitex/pkg/streaming"
@@ -440,7 +440,8 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 			})
 			return ret
 		},
-		"backquoted": BackQuoted,
+		"backquoted":     BackQuoted,
+		"genAnnotations": genAnnotations,
 	}
 	return m
 }
@@ -478,4 +479,22 @@ func JoinPath(elem ...string) string {
 
 func BackQuoted(s string) string {
 	return "`" + s + "`"
+}
+
+func genAnnotations(t interface{ GetAnnotations() parser.Annotations }) string {
+	annos := t.GetAnnotations()
+	if len(annos) <= 0 {
+		return ""
+	}
+	var res strings.Builder
+	for _, anno := range annos {
+		vals := anno.Values
+		quoteVals := make([]string, len(vals))
+		for i, val := range vals {
+			quoteVals[i] = BackQuoted(val)
+		}
+		valStr := strings.Join(quoteVals, ",")
+		res.WriteString(fmt.Sprintf("`%s`: []string{%s},\n", anno.Key, valStr))
+	}
+	return res.String()
 }

@@ -41,4 +41,13 @@ package fieldmask
 // 	if err := g.Persist(r); err != nil {
 // 		panic(err)
 // 	}
+// 	g, r = test_util.GenerateGolang("b.thrift", "gen-zero/", []plugin.Option{
+// 		{"with_field_mask", ""},
+// 		{"field_mask_halfway", ""},
+// 		{"with_reflection", ""},
+// 		{"field_mask_zero_required", ""},
+// 	}, nil)
+// 	if err := g.Persist(r); err != nil {
+// 		panic(err)
+// 	}
 // }

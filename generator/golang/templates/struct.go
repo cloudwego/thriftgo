@@ -51,13 +51,13 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
-{{if Features.FrugalTag}}
 func (p *{{$TypeName}}) InitDefault() {
-	*p = {{$TypeName}}{
-		{{template "StructLikeDefault" .}}
-	}
+{{- range .Fields}}
+	{{- if .IsSetDefault}}
+	p.{{.GoName}} = {{.DefaultValue}}
+	{{- end}}
+{{- end}}
 }
-{{end}}{{/* if Features.FrugalTag */}}
 
 {{template "FieldGetOrSet" .}}
 
@@ -292,7 +292,11 @@ func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
 	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex {
 	{{- end}}
 	{{$ctx := (MkRWCtx .).WithFieldMask "fm"}}
+	{{- $target := print $ctx.Target }}
+	{{- $ctx = $ctx.WithDecl.WithTarget "_field"}}
 	{{- template "FieldRead" $ctx}}
+	{{/* line break */}}
+	{{- $target}} = _field
 	{{- if Features.WithFieldMask}}
 	} else if err := iprot.Skip(thrift.{{.Type | GetTypeIDConstant}}); err != nil {
 		return err
@@ -539,7 +543,9 @@ var FieldRead = `
 // FieldReadStructLike .
 var FieldReadStructLike = `
 {{define "FieldReadStructLike"}}
-	{{- .Target}} {{if .NeedDecl}}:{{end}}= {{.TypeName.Deref.NewFunc}}()
+	{{- if .NeedDecl}}
+	{{- .Target}} := {{.TypeName.Deref.NewFunc}}()
+	{{- end}}
 	{{- if and (Features.WithFieldMask) .NeedFieldMask}}
 	{{- if Features.FieldMaskHalfway}}
 	{{.Target}}.Pass_FieldMask({{.FieldMask}})
@@ -601,11 +607,15 @@ var FieldReadMap = `
 {{- $isStrKey := .KeyCtx.Type | IsStrType -}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
 {{- $curFieldMask := .FieldMask -}}
+{{- $isStructVal := .ValCtx.Type.Category.IsStructLike -}}
 	_, _, size, err := iprot.ReadMapBegin()
 	if err != nil {
 		return err
 	}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, size)
+	{{- if $isStructVal}}
+	values := make([]{{.ValCtx.TypeName.Deref}}, size)
+	{{- end}}
 	for i := 0; i < size; i++ {
 		{{- $key := .GenID "_key"}}
 		{{- $ctx := .KeyCtx.WithDecl.WithTarget $key}}
@@ -637,7 +647,13 @@ var FieldReadMap = `
 		{{- end}}{{/* end WithFieldMask */}}
 		{{/* line break */}}
 		{{- $val := .GenID "_val"}}
-		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{- if $isStructVal}}
+		{{$val}} := &values[i]
+		{{$val}}.InitDefault()
+		{{- else}}
+		{{- $ctx = $ctx.WithDecl}}
+		{{- end}}
 		{{- template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
@@ -660,11 +676,15 @@ var FieldReadSet = `
 {{define "FieldReadSet"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
 {{- $curFieldMask := .FieldMask -}}
+{{- $isStructVal := .ValCtx.Type.Category.IsStructLike -}}
 	_, size, err := iprot.ReadSetBegin()
 	if err != nil {
 		return err
 	}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
+	{{- if $isStructVal}}
+	values := make([]{{.ValCtx.TypeName.Deref}}, size)
+	{{- end}}
 	for i := 0; i < size; i++ {
 		{{- $val := .GenID "_elem"}}
 		{{- if Features.WithFieldMask}}
@@ -676,7 +696,13 @@ var FieldReadSet = `
 			continue
 		} else {
 		{{- end}}
-		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{- if $isStructVal}}
+		{{$val}} := &values[i]
+		{{$val}}.InitDefault()
+		{{- else}}
+		{{- $ctx = $ctx.WithDecl}}
+		{{- end}}
 		{{template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
@@ -699,11 +725,15 @@ var FieldReadList = `
 {{define "FieldReadList"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
 {{- $curFieldMask := .FieldMask -}}
+{{- $isStructVal := .ValCtx.Type.Category.IsStructLike -}}
 	_, size, err := iprot.ReadListBegin()
 	if err != nil {
 		return err
 	}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
+	{{- if $isStructVal}}
+	values := make([]{{.ValCtx.TypeName.Deref}}, size)
+	{{- end}}
 	for i := 0; i < size; i++ {
 		{{- $val := .GenID "_elem"}}
 		{{- if Features.WithFieldMask}}
@@ -715,7 +745,13 @@ var FieldReadList = `
 			continue
 		} else {
 		{{- end}}
-		{{- $ctx := (.ValCtx.WithDecl.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
+		{{- if $isStructVal}}
+		{{$val}} := &values[i]
+		{{$val}}.InitDefault()
+		{{- else}}
+		{{- $ctx = $ctx.WithDecl}}
+		{{- end}}
 		{{template "FieldRead" $ctx}}
 
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
