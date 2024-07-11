@@ -52,7 +52,8 @@ type Features struct {
 	EnumAsINT32                 bool `enum_as_int_32:"Generate enum type as int32"`
 	CodeRefSlim                 bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                     bool `code_ref:"Generate code ref by given idl-ref.yaml"`
-	KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
+	ExpCodeRef             bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but remind some struct as local.( this is a exp feature )"`
+  KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
 	TrimIDL                     bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim and raw_struct template'"`
 	JSONStringer                bool `json_stringer:"Generate the JSON marshal method in String() method."`
