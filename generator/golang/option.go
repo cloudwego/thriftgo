@@ -48,12 +48,12 @@ type Features struct {
 	AlwaysGenerateJSONTag       bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
 	SnakeTyleJSONTag            bool `snake_style_json_tag:"Generate snake style json tag"`
 	LowerCamelCaseJSONTag       bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
-	GenerateReflectionInfo      bool `generate_reflection_info:"This option is no longer used. Please use with_reflection instead."`
 	WithReflection              bool `with_reflection:"Generate reflection info"`
 	EnumAsINT32                 bool `enum_as_int_32:"Generate enum type as int32"`
 	CodeRefSlim                 bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                     bool `code_ref:"Generate code ref by given idl-ref.yaml"`
-	KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
+	ExpCodeRef             bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but remind some struct as local.( this is a exp feature )"`
+  KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
 	TrimIDL                     bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim and raw_struct template'"`
 	JSONStringer                bool `json_stringer:"Generate the JSON marshal method in String() method."`
@@ -97,7 +97,6 @@ var defaultFeatures = Features{
 	AlwaysGenerateJSONTag:       false,
 	SnakeTyleJSONTag:            false,
 	LowerCamelCaseJSONTag:       false,
-	GenerateReflectionInfo:      false,
 	ThriftStreaming:             false,
 	EnumAsINT32:                 false,
 	TrimIDL:                     false,
