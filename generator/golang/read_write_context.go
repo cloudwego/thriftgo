@@ -39,6 +39,8 @@ type ReadWriteContext struct {
 	ids map[string]int // Prefix => local variable index
 
 	FieldMask string
+
+	IsGenMap bool // whether set field would be generated as map
 }
 
 // GenID returns a local variable with the given name as prefix.
@@ -129,6 +131,14 @@ func mkRWCtx(r *Resolver, s *Scope, t *parser.Type, top *ReadWriteContext) (*Rea
 		}
 		if ctx.ValCtx, err = mkRWCtx(r, ss, tt, ctx); err != nil {
 			return nil, err
+		}
+	}
+
+	if r.util.Features().GenMapForIDLSet && t.Category == parser.Category_Set {
+		ctx.IsGenMap = true
+		// since we can not use []byte as the key of map, convert it to string
+		if ctx.ValCtx.TypeID == typeids.Binary {
+			ctx.ValCtx.TypeName = "string"
 		}
 	}
 
