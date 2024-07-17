@@ -49,7 +49,7 @@ func (s *Scope) GetFirstDescriptor() string {
 
 func BuildRefScope(cu *CodeUtils, ast *parser.Thrift) (*Scope, *Scope, error) {
 	thriftRef := config.GetRef(ast.Filename)
-	enableCodeRef := cu.Features().CodeRef || cu.Features().CodeRefSlim
+	enableCodeRef := cu.Features().CodeRef || cu.Features().CodeRefSlim || cu.Features().ExpCodeRef
 	scope, err := BuildScope(cu, ast)
 	if err != nil {
 		return nil, nil, err

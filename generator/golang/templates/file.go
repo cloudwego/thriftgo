@@ -22,7 +22,6 @@ package {{.FilePackage}}
 
 import (
 	{{InsertionPoint "imports"}}
-	{{- if Features.GenerateReflectionInfo}}thriftreflection "github.com/cloudwego/kitex/pkg/reflection/thrift"{{end}}
 )
 
 {{template "Constant" .}}
@@ -68,11 +67,5 @@ var (
 {{- end}}
 {{- end}}
 
-{{- if Features.GenerateReflectionInfo}}
-	var file_{{.IDLName}}_rawDesc = {{.IDLMeta}}
-	func init(){
-		thriftreflection.RegisterIDL(file_{{.IDLName}}_rawDesc)
-	}
-{{end}}
 {{- InsertionPoint "eof"}}
 `

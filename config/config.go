@@ -27,6 +27,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func init() {
+	err := LoadConfig()
+	if err != nil {
+		panic(err)
+	}
+}
+
 type RawConfig struct {
 	Ref   map[string]interface{} `yaml:"ref"`
 	Debug bool                   `yaml:"debug"`
@@ -101,6 +108,8 @@ func GetRef(name string) *RefConfig {
 	return refConfig
 }
 
+// LoadConfig by default, config will load only once when the program is invoked, also the same for each plugin
+// but for sdk mode, config should be reloaded each time when the sdk is called. so we provide this api and manually call this in sdk mode.
 func LoadConfig() error {
 	config, err := initConfig()
 	if err != nil {

@@ -51,13 +51,13 @@ func New{{$TypeName}}() *{{$TypeName}} {
 	}
 }
 
-{{if Features.FrugalTag}}
 func (p *{{$TypeName}}) InitDefault() {
-	*p = {{$TypeName}}{
-		{{template "StructLikeDefault" .}}
-	}
+{{- range .Fields}}
+	{{- if .IsSetDefault}}
+	p.{{.GoName}} = {{.DefaultValue}}
+	{{- end}}
+{{- end}}
 }
-{{end}}{{/* if Features.FrugalTag */}}
 
 {{template "FieldGetOrSet" .}}
 
@@ -650,6 +650,7 @@ var FieldReadMap = `
 		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
 		{{- if $isStructVal}}
 		{{$val}} := &values[i]
+		{{$val}}.InitDefault()
 		{{- else}}
 		{{- $ctx = $ctx.WithDecl}}
 		{{- end}}
@@ -698,6 +699,7 @@ var FieldReadSet = `
 		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
 		{{- if $isStructVal}}
 		{{$val}} := &values[i]
+		{{$val}}.InitDefault()
 		{{- else}}
 		{{- $ctx = $ctx.WithDecl}}
 		{{- end}}
@@ -746,6 +748,7 @@ var FieldReadList = `
 		{{- $ctx := (.ValCtx.WithTarget $val).WithFieldMask $curFieldMask}}
 		{{- if $isStructVal}}
 		{{$val}} := &values[i]
+		{{$val}}.InitDefault()
 		{{- else}}
 		{{- $ctx = $ctx.WithDecl}}
 		{{- end}}

@@ -20,8 +20,6 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 
-	"github.com/cloudwego/thriftgo/config"
-
 	"time"
 
 	"github.com/cloudwego/thriftgo/args"
@@ -41,10 +39,6 @@ var (
 var debugMode bool
 
 func init() {
-	err := config.LoadConfig()
-	if err != nil {
-		panic(err)
-	}
 	_ = g.RegisterBackend(new(golang.GoBackend))
 	// export THRIFTGO_DEBUG=1
 	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
@@ -52,7 +46,9 @@ func init() {
 
 func check(err error) {
 	if err != nil {
-		println(err.Error())
+		if err.Error() != "flag: help requested" {
+			println(err.Error())
+		}
 		os.Exit(2)
 	}
 }

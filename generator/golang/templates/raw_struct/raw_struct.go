@@ -58,7 +58,6 @@ package {{.FilePackage}}
 
 import (
 	{{InsertionPoint "imports"}}
-	{{- if Features.GenerateReflectionInfo}}thriftreflection "github.com/cloudwego/kitex/pkg/reflection/thrift"{{end}}
 )
 
 {{template "Constant" .}}

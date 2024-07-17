@@ -248,13 +248,12 @@ Options:
 
 Available generators (and options): go
 `)
-	//// print backend options
-	//for _, b := range g.AllBackend() {
-	//	name, lang := b.Name(), b.Lang()
-	//	println(fmt.Sprintf("  %s (%s):", name, lang))
-	//	println(align(b.Options()))
-	//}
-	println()
+	// print backend options
+	b := new(golang.GoBackend)
+	name, lang := b.Name(), b.Lang()
+	println(fmt.Sprintf("  %s (%s):", name, lang))
+	println(align(b.Options()))
+
 }
 
 // align the help strings for plugin options.
