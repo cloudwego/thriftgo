@@ -1,6 +1,6 @@
 # Thriftgo
 
-English | [中文](README_cn.md)
+English | [中文](README_cn.md) | [日本語](README_ja.md)
 
 **Thriftgo** is an implementation of [thrift](https://thrift.apache.org/docs/idl) compiler in go language. It has a command line interface similar to the apache/thrift compiler and is enhanced with a plugin mechanism which makes it more powerful.
 
