@@ -1,6 +1,6 @@
 # Thriftgo
 
-[English](README.md) | 中文
+[English](README.md) | 中文 | [日本語](README_ja.md)
 
 **Thriftgo** 是 go 语言实现的 thrift 编译器。它具有与 apache/thrift 编译器类似的命令行界面，并通过插件机制增强了功能，使其更加强大。
 
