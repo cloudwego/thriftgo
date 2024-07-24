@@ -54,8 +54,31 @@ type TrimASTArg struct {
 	MatchGoName *bool
 }
 
+type TrimResultInfo struct {
+	StructsTrimmed int
+	FieldsTrimmed  int
+	StructsTotal   int
+	FieldsTotal    int
+}
+
+func (t *TrimResultInfo) StructsLeft() int {
+	return t.StructsTotal - t.StructsTrimmed
+}
+
+func (t *TrimResultInfo) FieldsLeft() int {
+	return t.FieldsTotal - t.FieldsTrimmed
+}
+
+func (t *TrimResultInfo) StructTrimmedPercentage() float64 {
+	return float64(t.StructsTrimmed) / float64(t.StructsTotal) * 100
+}
+
+func (t *TrimResultInfo) FieldTrimmedPercentage() float64 {
+	return float64(t.FieldsTrimmed) / float64(t.FieldsTotal) * 100
+}
+
 // TrimAST parse the cfg and trim the single AST
-func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error) {
+func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 	var preservedStructs []string
 	if wd, err := dir_utils.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
@@ -86,10 +109,10 @@ func TrimAST(arg *TrimASTArg) (structureTrimmed int, fieldTrimmed int, err error
 
 // doTrimAST trim the single AST, pass method names if -m specified
 func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, matchGoName bool, preservedStructs []string) (
-	structureTrimmed int, fieldTrimmed int, err error) {
+	trimResultInfo *TrimResultInfo, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	trimmer.asts[ast.Filename] = ast
 	trimmer.trimMethods = make([]*regexp2.Regexp, len(trimMethods))
@@ -110,33 +133,40 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 		}
 		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
 		if err != nil {
-			return 0, 0, err
+			return nil, err
 		}
 	}
 	trimmer.preservedStructs = preservedStructs
 	trimmer.countStructs(ast)
+	originStructsNum := trimmer.structsTrimmed
+	originFieldNum := trimmer.fieldsTrimmed
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
-		return 0, 0, fmt.Errorf("found include circle:\n\t%s", path)
+		return nil, fmt.Errorf("found include circle:\n\t%s", path)
 	}
 	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
 	_, err = checker.CheckAll(ast)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	err = semantic.ResolveSymbols(ast)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 
 	for i, method := range trimMethods {
 		if !trimmer.trimMethodValid[i] {
-			return 0, 0, fmt.Errorf("err: method %s not found!\n", method)
+			return nil, fmt.Errorf("err: method %s not found!\n", method)
 		}
 	}
 
-	return trimmer.structsTrimmed, trimmer.fieldsTrimmed, nil
+	return &TrimResultInfo{
+		StructsTrimmed: trimmer.structsTrimmed,
+		FieldsTrimmed:  trimmer.fieldsTrimmed,
+		StructsTotal:   originStructsNum,
+		FieldsTotal:    originFieldNum,
+	}, nil
 }
 
 // Trim to trim thrift files to remove unused fields
