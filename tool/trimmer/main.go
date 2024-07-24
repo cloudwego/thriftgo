@@ -76,7 +76,7 @@ func main() {
 	structs, fields := countStructs(ast)
 
 	// trim ast
-	_, _, err = trim.TrimAST(&trim.TrimASTArg{
+	_, err = trim.TrimAST(&trim.TrimASTArg{
 		Ast: ast, TrimMethods: a.Methods, Preserve: preserveInput,
 	})
 	check(err)

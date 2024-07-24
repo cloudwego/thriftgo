@@ -52,7 +52,7 @@ func TrimBatchContentWithConfig(mainIDLFilePath string, IDLFileContentMap map[st
 	}
 
 	trimArgs.Ast = ast
-	_, _, err = TrimAST(&trimArgs)
+	_, err = TrimAST(&trimArgs)
 	if err != nil {
 		return nil, err
 	}
