@@ -38,7 +38,12 @@ func DumpIDL(ast *parser.Thrift) (string, error) {
 		return "", err
 	}
 	// deal with \\
-	escapedString := strings.Replace(buf.String(), "&#34;", "\\\"", -1)
+	escapedString := buf.String()
+	// 把 " 替换为 \"
+	escapedString = strings.Replace(escapedString, "&#34;", `\"`, -1)
+	// 如果本身就有 \"，上面的情况就会变成 \\"，给转回 \"
+	escapedString = strings.Replace(escapedString, `\\"`, `\"`, -1)
+	// tag 的前后符号统一采用 "
 	outString := strings.Replace(escapedString, "#OUTQUOTES", "\"", -1)
 	return html.UnescapeString(outString), nil
 }
