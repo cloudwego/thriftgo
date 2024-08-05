@@ -39,7 +39,7 @@ func InvokeThriftgo(SDKPlugins []plugin.SDKPlugin, args ...string) (err error) {
 
 	var a targs.Arguments
 
-	err = a.Parse(append([]string{"thriftgo"}, args...))
+	err = a.Parse(args)
 	if err != nil {
 		if err.Error() == "flag: help requested" {
 			return nil

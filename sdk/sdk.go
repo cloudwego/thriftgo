@@ -33,5 +33,5 @@ func RunThriftgoAsSDK(wd string, SDKPlugins []plugin.SDKPlugin, args ...string) 
 		return err
 	}
 
-	return InvokeThriftgo(SDKPlugins, args...)
+	return InvokeThriftgo(SDKPlugins, append([]string{"thriftgo"}, args...)...)
 }
