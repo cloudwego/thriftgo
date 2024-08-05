@@ -16,30 +16,17 @@ package main
 
 import (
 	"fmt"
+	"github.com/cloudwego/thriftgo/sdk"
 	"os"
 	"runtime/debug"
 	"runtime/pprof"
 
 	"time"
-
-	"github.com/cloudwego/thriftgo/args"
-	"github.com/cloudwego/thriftgo/generator"
-	"github.com/cloudwego/thriftgo/generator/golang"
-	"github.com/cloudwego/thriftgo/parser"
-	"github.com/cloudwego/thriftgo/plugin"
-	"github.com/cloudwego/thriftgo/semantic"
-	"github.com/cloudwego/thriftgo/version"
-)
-
-var (
-	a args.Arguments
-	g generator.Generator
 )
 
 var debugMode bool
 
 func init() {
-	_ = g.RegisterBackend(new(golang.GoBackend))
 	// export THRIFTGO_DEBUG=1
 	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
 }
@@ -67,65 +54,8 @@ func main() {
 	}
 
 	defer handlePanic()
-	check(a.Parse(os.Args))
-	if a.AskVersion {
-		println("thriftgo", version.ThriftgoVersion)
-		os.Exit(0)
-	}
 
-	log := a.MakeLogFunc()
-
-	ast, err := parser.ParseFile(a.IDL, a.Includes, true)
-	check(err)
-
-	if path := parser.CircleDetect(ast); len(path) > 0 {
-		check(fmt.Errorf("found include circle:\n\t%s", path))
-	}
-
-	if a.CheckKeyword {
-		if warns := parser.DetectKeyword(ast); len(warns) > 0 {
-			log.MultiWarn(warns)
-		}
-	}
-
-	checker := semantic.NewChecker(semantic.Options{FixWarnings: true})
-	warns, err := checker.CheckAll(ast)
-	log.MultiWarn(warns)
-	check(err)
-
-	check(semantic.ResolveSymbols(ast))
-
-	req := &plugin.Request{
-		Version:    version.ThriftgoVersion,
-		OutputPath: a.OutputPath,
-		Recursive:  a.Recursive,
-		AST:        ast,
-	}
-
-	plugin.MaxExecutionTime = a.PluginTimeLimit
-	plugins, err := a.UsedPlugins()
-	check(err)
-
-	langs, err := a.Targets()
-	check(err)
-
-	if len(langs) == 0 {
-		println("No output language(s) specified")
-		os.Exit(2)
-	}
-
-	for _, out := range langs {
-		out.UsedPlugins = plugins
-		req.Language = out.Language
-		req.OutputPath = a.Output(out.Language)
-
-		arg := &generator.Arguments{Out: out, Req: req, Log: log}
-		res := g.Generate(arg)
-		log.MultiWarn(res.Warnings)
-
-		err = g.Persist(res)
-		check(err)
-	}
+	check(sdk.InvokeThriftgo(nil, os.Args...))
 }
 
 func handlePanic() {
