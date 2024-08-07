@@ -17,31 +17,30 @@
 package utils
 
 import (
-	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/thriftgo/parser"
 )
 
 // reuse builtin types
-var builtinTypes = map[string]thrift.TType{
-	"void":   thrift.VOID,
-	"bool":   thrift.BOOL,
-	"byte":   thrift.BYTE,
-	"i8":     thrift.I08,
-	"i16":    thrift.I16,
-	"i32":    thrift.I32,
-	"i64":    thrift.I64,
-	"double": thrift.DOUBLE,
-	"string": thrift.STRING,
-	"binary": thrift.STRING,
-	"list":   thrift.LIST,
-	"map":    thrift.MAP,
-	"set":    thrift.SET,
+var builtinTypes = map[string]bool{
+	"void":   true,
+	"bool":   true,
+	"byte":   true,
+	"i8":     true,
+	"i16":    true,
+	"i32":    true,
+	"i64":    true,
+	"double": true,
+	"string": true,
+	"binary": true,
+	"list":   true,
+	"map":    true,
+	"set":    true,
 }
 
 // TypeToStructLike try to find the defined parser.StructLike of a parser.Type in ast
 func GetStructLike(name string, ast *parser.Thrift) *parser.StructLike {
 	tname := name
-	if _, ok := builtinTypes[tname]; ok {
+	if builtinTypes[tname] {
 		return nil
 	}
 	typePkg, typeName := SplitSubfix(name)
