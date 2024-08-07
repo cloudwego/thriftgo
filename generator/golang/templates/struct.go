@@ -675,13 +675,18 @@ var FieldReadMap = `
 var FieldReadSet = `
 {{define "FieldReadSet"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
+{{- $isGenMap := .IsGenMap -}}
 {{- $curFieldMask := .FieldMask -}}
 {{- $isStructVal := .ValCtx.Type.Category.IsStructLike -}}
 	_, size, err := iprot.ReadSetBegin()
 	if err != nil {
 		return err
 	}
+    {{- if $isGenMap}}
+    {{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, size)
+    {{- else}}
 	{{.Target}} {{if .NeedDecl}}:{{end}}= make({{.TypeName}}, 0, size)
+    {{- end}}
 	{{- if $isStructVal}}
 	values := make([]{{.ValCtx.TypeName.Deref}}, size)
 	{{- end}}
@@ -708,8 +713,12 @@ var FieldReadSet = `
 		{{if and .ValCtx.Type.Category.IsStructLike Features.ValueTypeForSIC}}
 			{{$val = printf "*%s" $val}}
 		{{end}}
-
+        
+        {{- if $isGenMap}}
+        {{.Target}}[{{$val}}] = struct{}{}
+		{{- else}}
 		{{.Target}} = append({{.Target}}, {{$val}})
+		{{- end}}
 		{{- if Features.WithFieldMask}}
 		}
 		{{- end}}
@@ -904,6 +913,7 @@ var FieldWriteSet = `
 {{define "FieldWriteSet"}}
 {{- $isBaseVal := .ValCtx.Type | IsBaseType -}}
 {{- $curFieldMask := .FieldMask -}}
+{{- $isGenMap := .IsGenMap -}}
 		{{- if Features.WithFieldMask}}
 		if !{{.FieldMask}}.All() {
 			l := len({{.Target}})
@@ -931,7 +941,7 @@ var FieldWriteSet = `
 			return err
 		}
 		{{- end}}
-		{{- if Features.ValidateSet}}
+		{{- if and Features.ValidateSet (not $isGenMap)}}
 		{{- $ctx := (.ValCtx.WithTarget "tgt").WithSource "src"}}
 		for i := 0; i < len({{.Target}}); i++ {
 			for j := i + 1; j < len({{.Target}}); j++ {
@@ -950,7 +960,7 @@ var FieldWriteSet = `
 			}
 		}
 		{{- end}}
-		for {{if Features.WithFieldMask}}i{{else}}_{{end}}, v := range {{.Target}} {
+		for {{if not $isGenMap}}{{if Features.WithFieldMask }}i{{else}}_{{end}}, {{end}}v := range {{.Target}} {
 			{{- if Features.WithFieldMask}}
 			{{- $curFieldMask = "nfm"}}
 			if {{if $isBaseVal}}_{{else}}{{$curFieldMask}}{{end}}, ex := {{.FieldMask}}.Int(i); !ex {

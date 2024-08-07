@@ -52,8 +52,8 @@ type Features struct {
 	EnumAsINT32                 bool `enum_as_int_32:"Generate enum type as int32"`
 	CodeRefSlim                 bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                     bool `code_ref:"Generate code ref by given idl-ref.yaml"`
-	ExpCodeRef             bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but remind some struct as local.( this is a exp feature )"`
-  KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
+	ExpCodeRef                  bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but remind some struct as local.( this is a exp feature )"`
+	KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
 	TrimIDL                     bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim and raw_struct template'"`
 	JSONStringer                bool `json_stringer:"Generate the JSON marshal method in String() method."`
@@ -70,6 +70,7 @@ type Features struct {
 	SkipEmpty         bool `skip_empty:"If there's not content in file, just skip it. Later this feature will be a default feature."`
 	NoProcessor       bool `no_processor:" Do not generate default thrift processor and client. Later this feature will be a default feature."`
 	GetEnumAnnotation bool `get_enum_annotation:"Generate GetAnnotation method for enum types."`
+	GenMapForIDLSet   bool `gen_map_for_idl_set:"Generate map[type]struct{} instead of []type for IDL set."`
 }
 
 var defaultFeatures = Features{
@@ -108,6 +109,7 @@ var defaultFeatures = Features{
 	NoAliasTypeReflectionMethod: false,
 	EnableRefInterface:          false,
 	GetEnumAnnotation:           false,
+	GenMapForIDLSet:             false,
 }
 
 type param struct {
