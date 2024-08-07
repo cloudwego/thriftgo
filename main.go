@@ -16,17 +16,28 @@ package main
 
 import (
 	"fmt"
-	"github.com/cloudwego/thriftgo/sdk"
 	"os"
 	"runtime/debug"
 	"runtime/pprof"
-
 	"time"
+
+	"github.com/cloudwego/thriftgo/args"
+	"github.com/cloudwego/thriftgo/generator"
+	"github.com/cloudwego/thriftgo/generator/fastgo"
+	"github.com/cloudwego/thriftgo/generator/golang"
+	"github.com/cloudwego/thriftgo/sdk"
+)
+
+var (
+	a args.Arguments
+	g generator.Generator
 )
 
 var debugMode bool
 
 func init() {
+	_ = g.RegisterBackend(new(golang.GoBackend))
+	_ = g.RegisterBackend(new(fastgo.FastGoBackend))
 	// export THRIFTGO_DEBUG=1
 	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
 }

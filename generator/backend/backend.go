@@ -20,7 +20,9 @@ import "github.com/cloudwego/thriftgo/plugin"
 // LogFunc defines a set of log functions.
 type LogFunc struct {
 	Info      func(v ...interface{})
+	Infof     func(fmt string, v ...interface{})
 	Warn      func(v ...interface{})
+	Warnf     func(fmt string, v ...interface{})
 	MultiWarn func(warns []string)
 }
 
@@ -28,7 +30,9 @@ type LogFunc struct {
 func DummyLogFunc() LogFunc {
 	return LogFunc{
 		Info:      func(v ...interface{}) {},
+		Infof:     func(fmt string, v ...interface{}) {},
 		Warn:      func(v ...interface{}) {},
+		Warnf:     func(fmt string, v ...interface{}) {},
 		MultiWarn: func(warns []string) {},
 	}
 }

@@ -149,15 +149,13 @@ func (a *Arguments) MakeLogFunc() backend.LogFunc {
 	if !a.Quiet {
 		if a.Verbose {
 			logger := log.New(os.Stderr, "[INFO] ", 0)
-			logs.Info = func(v ...interface{}) {
-				logger.Println(v...)
-			}
+			logs.Info = logger.Println
+			logs.Infof = logger.Printf
 		}
 
 		logger := log.New(os.Stderr, "[WARN] ", 0)
-		logs.Warn = func(v ...interface{}) {
-			logger.Println(v...)
-		}
+		logs.Warn = logger.Println
+		logs.Warnf = logger.Printf
 		logs.MultiWarn = func(ws []string) {
 			for _, w := range ws {
 				logger.Println(w)
