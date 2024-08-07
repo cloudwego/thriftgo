@@ -43,11 +43,8 @@ func Unmarshal(bytes []byte) (*FileDescriptor, error) {
 }
 
 func MustUnmarshal(bytes []byte) *FileDescriptor {
-	bytes, err := doUnzip(bytes)
+	fd, err := Unmarshal(bytes)
 	if err != nil {
-	}
-	fd := NewFileDescriptor()
-	if err = meta.Unmarshal(bytes, fd); err != nil {
 		panic(err)
 	}
 	return fd

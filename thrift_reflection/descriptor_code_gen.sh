@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2023 CloudWeGo Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,4 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-go run . -g go:gen_type_meta,no_processor -o . descriptor.thrift
+go run .. -g go:gen_type_meta,no_processor,no_default_serdes -o .. descriptor.thrift

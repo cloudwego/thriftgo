@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2024 CloudWeGo Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,4 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-go run ../../../. -g go:with_reflection,use_option,no_processor -o . -r ../option_idl/test.thrift
+go run ../../../. -g go:with_reflection,use_option,no_processor,no_default_serdes -o . -r ../option_idl/test.thrift
