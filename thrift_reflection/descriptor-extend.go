@@ -259,7 +259,6 @@ func (s *ServiceDescriptor) GetParent() *ServiceDescriptor {
 }
 
 func (s *ServiceDescriptor) GetAllMethods() []*MethodDescriptor {
-
 	allMethods := []*MethodDescriptor{}
 
 	svc := s
@@ -271,7 +270,6 @@ func (s *ServiceDescriptor) GetAllMethods() []*MethodDescriptor {
 }
 
 func (s *ServiceDescriptor) GetMethodByNameFromAll(name string) *MethodDescriptor {
-
 	for _, m := range s.GetAllMethods() {
 		if m.GetName() == name {
 			return m
@@ -338,67 +336,27 @@ func (td *TypeDescriptor) GetStructDescriptor() (*StructDescriptor, error) {
 }
 
 func (td *TypeDescriptor) IsException() bool {
-	if td.Extra == nil {
-		td.Extra = map[string]string{}
-	}
-	cacheType, ok := td.Extra["type"]
-	if ok {
-		return cacheType == "exception"
-	}
 	sd, err := td.GetExceptionDescriptor()
-	isStruct := err == nil && sd != nil
-	if isStruct {
-		td.Extra["type"] = "exception"
-	}
-	return isStruct
+	isException := err == nil && sd != nil
+	return isException
 }
 
 func (td *TypeDescriptor) IsUnion() bool {
-	if td.Extra == nil {
-		td.Extra = map[string]string{}
-	}
-	cacheType, ok := td.Extra["type"]
-	if ok {
-		return cacheType == "union"
-	}
 	sd, err := td.GetUnionDescriptor()
-	isStruct := err == nil && sd != nil
-	if isStruct {
-		td.Extra["type"] = "union"
-	}
-	return isStruct
+	isUnion := err == nil && sd != nil
+	return isUnion
 }
 
 func (td *TypeDescriptor) IsStruct() bool {
-	if td.Extra == nil {
-		td.Extra = map[string]string{}
-	}
-	cacheType, ok := td.Extra["type"]
-	if ok {
-		return cacheType == "struct"
-	}
 	sd, err := td.GetStructDescriptor()
 	isStruct := err == nil && sd != nil
-	if isStruct {
-		td.Extra["type"] = "struct"
-	}
 	return isStruct
 }
 
 func (td *TypeDescriptor) IsEnum() bool {
-	if td.Extra == nil {
-		td.Extra = map[string]string{}
-	}
-	cacheType, ok := td.Extra["type"]
-	if ok {
-		return cacheType == "enum"
-	}
 	sd, err := td.GetEnumDescriptor()
-	isStruct := err == nil && sd != nil
-	if isStruct {
-		td.Extra["type"] = "enum"
-	}
-	return isStruct
+	isEnum := err == nil && sd != nil
+	return isEnum
 }
 
 func (td *TypeDescriptor) GetEnumDescriptor() (*EnumDescriptor, error) {
@@ -417,19 +375,9 @@ func (td *TypeDescriptor) GetEnumDescriptor() (*EnumDescriptor, error) {
 }
 
 func (td *TypeDescriptor) IsTypedef() bool {
-	if td.Extra == nil {
-		td.Extra = map[string]string{}
-	}
-	cacheType, ok := td.Extra["type"]
-	if ok {
-		return cacheType == "typedef"
-	}
 	sd, err := td.GetTypedefDescriptor()
-	isStruct := err == nil && sd != nil
-	if isStruct {
-		td.Extra["type"] = "typedef"
-	}
-	return isStruct
+	isTypedef := err == nil && sd != nil
+	return isTypedef
 }
 
 func (td *TypeDescriptor) GetTypedefDescriptor() (*TypedefDescriptor, error) {
