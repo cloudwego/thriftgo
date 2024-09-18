@@ -129,7 +129,7 @@ func registerGlobalUUID(fd *FileDescriptor, uuid string) {
 	structs = append(structs, fd.Structs...)
 	structs = append(structs, fd.Unions...)
 	structs = append(structs, fd.Exceptions...)
-	for _, strct := range fd.Structs {
+	for _, strct := range structs {
 		addExtraToDescriptor(uuid, strct)
 		for _, f := range strct.Fields {
 			addExtraToDescriptor(uuid, f)
