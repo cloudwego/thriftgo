@@ -123,16 +123,23 @@ func (r *Resolver) getTypeName(g *Scope, t *parser.Type) (name string, err error
 }
 
 func (r *Resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, err error) {
-	if t.Name == "map" {
+	// when isGenMapForIDLSet is true, the generated code for set would be map[type]struct{}
+	isGenMapForIDLSet := r.util.Features().GenMapForIDLSet && t.Name == "set"
+	if t.Name == "map" || isGenMapForIDLSet {
 		var k string
-		if t.KeyType.Category == parser.Category_Binary {
+		keyType := t.KeyType
+		if t.Name == "set" {
+			keyType = t.ValueType
+		}
+
+		if keyType.Category == parser.Category_Binary {
 			k = "string" // 'binary => string' for key type in map
 		} else {
-			k, err = r.getTypeName(g, t.KeyType)
+			k, err = r.getTypeName(g, keyType)
 			if err != nil {
 				return "", fmt.Errorf("resolve key type of '%s' failed: %w", t, err)
 			}
-			if t.KeyType.Category.IsStructLike() && !checkRefInterfaceType(r.util, g, t.KeyType) {
+			if keyType.Category.IsStructLike() && !checkRefInterfaceType(r.util, g, keyType) {
 				// when a struct-like is used as key of a map, it must
 				// generte a pointer type instead of the struct itself
 				k = "*" + k
@@ -143,14 +150,19 @@ func (r *Resolver) getContainerTypeName(g *Scope, t *parser.Type) (name string, 
 		name = "[]" // sets and lists compile into slices
 	}
 
-	v, err := r.getTypeName(g, t.ValueType)
-	if err != nil {
-		return "", fmt.Errorf("resolve value type of '%s' failed: %w", t, err)
+	var v string
+	if isGenMapForIDLSet {
+		v = "struct{}"
+	} else {
+		v, err = r.getTypeName(g, t.ValueType)
+		if err != nil {
+			return "", fmt.Errorf("resolve value type of '%s' failed: %w", t, err)
+		}
+		if t.ValueType.Category.IsStructLike() && !r.util.Features().ValueTypeForSIC && !checkRefInterfaceType(r.util, g, t.ValueType) {
+			v = "*" + v // generate pointer type for struct-like by default
+		}
 	}
 
-	if t.ValueType.Category.IsStructLike() && !r.util.Features().ValueTypeForSIC && !checkRefInterfaceType(r.util, g, t.ValueType) {
-		v = "*" + v // generate pointer type for struct-like by default
-	}
 	return name + v, nil // map[k]v or []v
 }
 
@@ -348,7 +360,11 @@ func (r *Resolver) onSetOrList(g *Scope, name string, t *parser.Type, v *parser.
 			if err != nil {
 				return "", err
 			}
-			ss = append(ss, str+",")
+			if !r.util.Features().GenMapForIDLSet {
+				ss = append(ss, str+",")
+			} else {
+				ss = append(ss, fmt.Sprintf("%s: struct{}{},", str))
+			}
 		}
 		if len(ss) == 0 {
 			return goType + "{}", nil

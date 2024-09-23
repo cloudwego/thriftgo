@@ -97,7 +97,7 @@ func (cu *CodeUtils) Features() Features {
 	return cu.features
 }
 
-// GetPackagePrefix sets the package prefix in generated codes.
+// GetPackagePrefix gets the package prefix in generated codes.
 func (cu *CodeUtils) GetPackagePrefix() (pp string) {
 	return cu.packagePrefix
 }
