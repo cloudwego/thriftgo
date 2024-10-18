@@ -48,6 +48,7 @@ const (
 	defaultTemplate     = "default"
 	ThriftJSONUtilLib   = "github.com/cloudwego/thriftgo/utils/json_utils"
 	KitexStreamingLib   = "github.com/cloudwego/kitex/pkg/streaming"
+	ApacheWarningLib    = "github.com/cloudwego/thriftgo/utils"
 )
 
 var escape = regexp.MustCompile(`\\.`)
