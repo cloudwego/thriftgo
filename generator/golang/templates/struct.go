@@ -168,6 +168,10 @@ var StructLikeRead = `
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
+	{{if Features.ApacheWarning}}
+	{{- UseStdLibrary  "apache_warning"}}
+	apache_warning.WarningApache("{{$TypeName}}")
+	{{end}}
 	{{if Features.KeepUnknownFields}}var name string{{end}}
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -314,6 +318,10 @@ var StructLikeWrite = `
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
+	{{if Features.ApacheWarning}}
+	{{- UseStdLibrary  "apache_warning"}}
+	apache_warning.WarningApache("{{$TypeName}}")
+	{{end}}
 	{{- if gt (len .Fields) 0 }}
 	var fieldId int16
 	{{- end}}

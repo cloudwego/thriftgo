@@ -91,6 +91,7 @@ func (im *importManager) init(cu *CodeUtils, ast *parser.Thrift) {
 		"fieldmask":         ThriftFieldMaskLib,
 		"streaming":         KitexStreamingLib,
 		"thrift_option":     ThriftOptionLib,
+		"apache_warning":    ApacheWarningLib,
 	}
 	for pkg, path := range std {
 		ns.Add(pkg, path)
