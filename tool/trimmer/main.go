@@ -53,6 +53,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	// trimmer compose
+
 	var preserveInput *bool
 	if a.Preserve != "" {
 		preserve, err := strconv.ParseBool(a.Preserve)
