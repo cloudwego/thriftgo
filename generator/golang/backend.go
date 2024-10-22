@@ -107,6 +107,10 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 	return g.buildResponse()
 }
 
+func (g *GoBackend) GetCoreUtils() *CodeUtils {
+	return g.utils
+}
+
 func (g *GoBackend) prepareUtilities() {
 	if g.err != nil {
 		return
