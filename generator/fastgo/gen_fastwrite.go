@@ -23,23 +23,39 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 )
 
+const nocopyWriteThreshold = 4096
+
 func (g *FastGoBackend) genFastWrite(w *codewriter, scope *golang.Scope, s *golang.StructLike) {
+	w.UsePkg("github.com/cloudwego/gopkg/protocol/thrift", "")
+	w.f("func (p *%s) FastWrite(b []byte) int { return p.FastWriteNocopy(b, nil) }\n\n", s.GoName())
+
+	w.f("func (p *%s) FastWriteNocopy(b []byte, w thrift.NocopyWriter) (n int) {", s.GoName())
+	w.f(`if n = len(p.FastAppend(b[:0])); n > len(b) {`)
+	w.f(`panic ("buffer overflow. concurrency issue?")`)
+	w.f(`}`)
+	w.f(`return`)
+	w.f("}\n\n") // end of FastWriteNocopy
+
+	g.genFastAppend(w, scope, s)
+}
+
+func (g *FastGoBackend) genFastAppend(w *codewriter, scope *golang.Scope, s *golang.StructLike) {
 	// var conventions:
 	// - p is the var of pointer to the struct going to be generated
 	// - b is the buf to write into
 	// - w is the var of thrift.NocopyWriter
-	// - off is the offset of b
+	// - x is the shortcut of thrift.BinaryProtocol
 
-	// func definition
 	w.UsePkg("github.com/cloudwego/gopkg/protocol/thrift", "")
-	w.f("func (p *%s) FastWrite(b []byte) int { return p.FastWriteNocopy(b, nil) }\n\n", s.GoName())
-	w.f("func (p *%s) FastWriteNocopy(b []byte, w thrift.NocopyWriter) int {", s.GoName())
+	w.f("func (p *%s) FastAppend(b []byte) []byte {", s.GoName())
+	defer w.f("}\n\n")
 
 	// case nil, STOP and return
-	w.f("if p == nil { b[0] = 0; return 1; }")
+	w.f(`if p == nil { return append(b, 0) }`)
 
-	// `off` definition for buf cursor
-	w.f("off := 0")
+	// shortcut for encoding
+	w.f("x := thrift.BinaryProtocol{}")
+	w.f("_ = x")
 
 	// fields
 	ff := getSortedFields(s)
@@ -49,24 +65,17 @@ func (g *FastGoBackend) genFastWrite(w *codewriter, scope *golang.Scope, s *gola
 			// never goes here, should fail early in generator/golang pkg
 			panic(err)
 		}
-		genFastWriteField(w, rwctx, f)
+		genFastAppendField(w, rwctx, f)
 	}
-
-	// end of field encoding
-	w.f("")               // empty line
-	w.f("b[off] = 0")     // STOP
-	w.f("return off + 1") // return including the STOP byte
-
-	// end of func definition
-	w.f("}\n\n")
+	w.f("\nreturn append(b, 0)") // return including the STOP byte
 }
 
-func genFastWriteField(w *codewriter, rwctx *golang.ReadWriteContext, f *golang.Field) {
+func genFastAppendField(w *codewriter, rwctx *golang.ReadWriteContext, f *golang.Field) {
 	// the real var name ref to the field
 	varname := string("p." + f.GoName())
 
 	// add comment like // ${FieldName} ${FieldID} ${FieldType}
-	w.f("\n// %s ID:%d %s", rwctx.Target, f.ID, category2GopkgConsts[f.Type.Category])
+	w.f("\n// %s", rwctx.Target)
 
 	// check skip cases
 	// only for optional fields
@@ -83,105 +92,90 @@ func genFastWriteField(w *codewriter, rwctx *golang.ReadWriteContext, f *golang.
 	}
 
 	// field header
-	w.UsePkg("encoding/binary", "")
-	w.f("b[off] = %d", category2ThriftWireType[f.Type.Category])
-	w.f("binary.BigEndian.PutUint16(b[off+1:], %d) ", f.ID)
-	w.f("off += 3")
+	w.f("b = append(b, %d, %d, %d)", // AppendFieldBegin
+		category2ThriftWireType[f.Type.Category], byte(f.ID>>8), byte(f.ID))
 
 	// field value
-	genFastWriteAny(w, rwctx, varname, 0)
-
+	genFastAppendAny(w, rwctx, varname, 0)
 }
 
-func genFastWriteAny(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
+func genFastAppendAny(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
 	t := rwctx.Type
 	pointer := rwctx.IsPointer
 	switch t.Category {
 	case parser.Category_Bool:
-		genFastWriteBool(w, pointer, varname)
+		genFastAppendBool(w, pointer, varname)
 	case parser.Category_Byte:
-		genFastWriteByte(w, pointer, varname)
+		genFastAppendByte(w, pointer, varname)
 	case parser.Category_I16:
-		genFastWriteInt16(w, pointer, varname)
+		genFastAppendInt16(w, pointer, varname)
 	case parser.Category_I32, parser.Category_Enum:
-		genFastWriteInt32(w, pointer, varname)
+		genFastAppendInt32(w, pointer, varname)
 	case parser.Category_I64:
-		genFastWriteInt64(w, pointer, varname)
+		genFastAppendInt64(w, pointer, varname)
 	case parser.Category_Double:
-		genFastWriteDouble(w, pointer, varname)
+		genFastAppendDouble(w, pointer, varname)
 	case parser.Category_String:
-		genFastWriteString(w, pointer, varname)
+		genFastAppendString(w, pointer, varname)
 	case parser.Category_Binary:
-		genFastWriteBinary(w, pointer, varname)
+		genFastAppendBinary(w, pointer, varname)
 	case parser.Category_Map:
-		genFastWriteMap(w, rwctx, varname, depth)
+		genFastAppendMap(w, rwctx, varname, depth)
 	case parser.Category_List, parser.Category_Set:
-		genFastWriteList(w, rwctx, varname, depth)
+		genFastAppendList(w, rwctx, varname, depth)
 	case parser.Category_Struct, parser.Category_Union, parser.Category_Exception:
 		// TODO: fix for parser.Category_Union? must only one field set
-		genFastWriteStruct(w, rwctx, varname)
+		genFastAppendStruct(w, rwctx, varname)
 	}
 }
 
-func genFastWriteBool(w *codewriter, pointer bool, varname string) {
+func genFastAppendBool(w *codewriter, pointer bool, varname string) {
 	// for bool, the underlying byte of true is always 1, and 0 for false
 	// which is same as thrift binary protocol
 	w.UsePkg("unsafe", "")
-	w.f("b[off] = *((*byte)(unsafe.Pointer(%s)))", varnamePtr(pointer, varname))
-	w.f("off++")
+	w.f("b = append(b, *(*byte)(unsafe.Pointer(%s)))", varnamePtr(pointer, varname))
 }
 
-func genFastWriteByte(w *codewriter, pointer bool, varname string) {
-	w.f("b[off] = byte(%s)", varnameVal(pointer, varname))
-	w.f("off++")
+func genFastAppendByte(w *codewriter, pointer bool, varname string) {
+	w.f("b = append(b, byte(%s))", varnameVal(pointer, varname))
 }
 
-func genFastWriteDouble(w *codewriter, pointer bool, varname string) {
-	w.UsePkg("unsafe", "")
-	w.f("binary.BigEndian.PutUint64(b[off:], *(*uint64)(unsafe.Pointer(%s)))", varnamePtr(pointer, varname))
-	w.f("off += 8")
+func genFastAppendDouble(w *codewriter, pointer bool, varname string) {
+	w.f("b = x.AppendDouble(b, float64(%s))", varnameVal(pointer, varname))
 }
 
-func genFastWriteInt16(w *codewriter, pointer bool, varname string) {
-	w.UsePkg("encoding/binary", "")
-	w.f("binary.BigEndian.PutUint16(b[off:], uint16(%s))", varnameVal(pointer, varname))
-	w.f("off += 2")
+func genFastAppendInt16(w *codewriter, pointer bool, varname string) {
+	w.f("b = x.AppendI16(b, int16(%s))", varnameVal(pointer, varname))
 }
 
-func genFastWriteInt32(w *codewriter, pointer bool, varname string) {
-	w.UsePkg("encoding/binary", "")
-	w.f("binary.BigEndian.PutUint32(b[off:], uint32(%s))", varnameVal(pointer, varname))
-	w.f("off += 4")
+func genFastAppendInt32(w *codewriter, pointer bool, varname string) {
+	w.f("b = x.AppendI32(b, int32(%s))", varnameVal(pointer, varname))
 }
 
-func genFastWriteInt64(w *codewriter, pointer bool, varname string) {
-	w.UsePkg("encoding/binary", "")
-	w.f("binary.BigEndian.PutUint64(b[off:], uint64(%s))", varnameVal(pointer, varname))
-	w.f("off += 8")
+func genFastAppendInt64(w *codewriter, pointer bool, varname string) {
+	w.f("b = x.AppendI64(b, int64(%s))", varnameVal(pointer, varname))
 }
 
-func genFastWriteBinary(w *codewriter, pointer bool, varname string) {
+func genFastAppendBinary(w *codewriter, pointer bool, varname string) {
 	varname = varnameVal(pointer, varname)
-	w.f("off += thrift.Binary.WriteBinaryNocopy(b[off:], w, %s)", varname)
+	w.f("b = x.AppendI32(b, int32(len(%s)))", varname)
+	w.f("b = append(b, %s...)", varname)
 }
 
-func genFastWriteString(w *codewriter, pointer bool, varname string) {
-	varname = varnameVal(pointer, varname)
-	w.f("off += thrift.Binary.WriteStringNocopy(b[off:], w, %s)", varname)
+func genFastAppendString(w *codewriter, pointer bool, varname string) {
+	genFastAppendBinary(w, pointer, varname)
 }
 
-func genFastWriteStruct(w *codewriter, rwctx *golang.ReadWriteContext, varname string) {
-	w.f("off += %s.FastWriteNocopy(b[off:], w)", varname)
+func genFastAppendStruct(w *codewriter, rwctx *golang.ReadWriteContext, varname string) {
+	w.f("b = %s.FastAppend(b)", varname)
 }
 
-func genFastWriteList(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
+func genFastAppendList(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
 	rwctx = rwctx.ValCtx
 	t := rwctx.Type
-	w.UsePkg("encoding/binary", "")
+
 	// list header
-	w.f("b[off] = %d", category2ThriftWireType[t.Category])
-	w.f("binary.BigEndian.PutUint32(b[off+1:], uint32(len(%s)))", varname)
-	w.f("off += 5")
+	w.f("b = x.AppendListBegin(b, %s, len(%s))", category2GopkgConsts[t.Category], varname)
 
 	// iteration tmp var
 	tmpv := "v"
@@ -189,20 +183,17 @@ func genFastWriteList(w *codewriter, rwctx *golang.ReadWriteContext, varname str
 		tmpv = "v" + strconv.Itoa(depth-1)
 	}
 	w.f("for _, %s := range %s {", tmpv, varname)
-	genFastWriteAny(w, rwctx, tmpv, depth+1)
+	genFastAppendAny(w, rwctx, tmpv, depth+1)
 	w.f("}")
 }
 
-func genFastWriteMap(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
+func genFastAppendMap(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
 	t := rwctx.Type
 	kt := t.KeyType
 	vt := t.ValueType
 	// map header
-	w.UsePkg("encoding/binary", "")
-	w.f("b[off] = %d", category2ThriftWireType[kt.Category])
-	w.f("b[off+1] = %d", category2ThriftWireType[vt.Category])
-	w.f("binary.BigEndian.PutUint32(b[off+2:], uint32(len(%s)))", varname)
-	w.f("off += 6")
+	w.f("b = x.AppendMapBegin(b, %s, %s, len(%s))",
+		category2GopkgConsts[kt.Category], category2GopkgConsts[vt.Category], varname)
 
 	// iteration tmp var
 	tmpk := "k"
@@ -212,7 +203,7 @@ func genFastWriteMap(w *codewriter, rwctx *golang.ReadWriteContext, varname stri
 		tmpv = "v" + strconv.Itoa(depth-1)
 	}
 	w.f("for %s, %s := range %s {", tmpk, tmpv, varname)
-	genFastWriteAny(w, rwctx.KeyCtx, tmpk, depth+1)
-	genFastWriteAny(w, rwctx.ValCtx, tmpv, depth+1)
+	genFastAppendAny(w, rwctx.KeyCtx, tmpk, depth+1)
+	genFastAppendAny(w, rwctx.ValCtx, tmpv, depth+1)
 	w.f("}")
 }

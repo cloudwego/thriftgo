@@ -79,7 +79,8 @@ func genBLengthField(w *codewriter, rwctx *golang.ReadWriteContext, f *golang.Fi
 	}
 
 	// field header
-	w.f("off += 3") // type + fid
+	// 3 will be added in genBLengthAny
+	// w.f("off += 3")
 
 	// field value
 	genBLengthAny(w, rwctx, varname, 0)
@@ -89,7 +90,7 @@ func genBLengthField(w *codewriter, rwctx *golang.ReadWriteContext, f *golang.Fi
 func genBLengthAny(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
 	t := rwctx.Type
 	if sz := category2WireSize[t.Category]; sz > 0 {
-		w.f("off += %d", sz)
+		w.f("off += 3 + %d", sz)
 		return
 	}
 	pointer := rwctx.IsPointer
@@ -107,22 +108,22 @@ func genBLengthAny(w *codewriter, rwctx *golang.ReadWriteContext, varname string
 
 func genBLengthBinary(w *codewriter, pointer bool, varname string) {
 	varname = varnameVal(pointer, varname)
-	w.f("off += 4 + len(%s)", varname)
+	w.f("off += 3 + 4 + len(%s)", varname)
 }
 
 func genBLengthString(w *codewriter, pointer bool, varname string) {
 	varname = varnameVal(pointer, varname)
-	w.f("off += 4 + len(%s)", varname)
+	w.f("off += 3 + 4 + len(%s)", varname)
 }
 
 func genBLengthStruct(w *codewriter, _ *golang.ReadWriteContext, varname string) {
-	w.f("off += %s.BLength()", varname)
+	w.f("off += 3 + %s.BLength()", varname)
 }
 
 func genBLengthList(w *codewriter, rwctx *golang.ReadWriteContext, varname string, depth int) {
 	t := rwctx.Type
 	// list header
-	w.f("off += 5")
+	w.f("off += 3 + 5")
 
 	// if element is basic type like int32, we can speed up the calc by sizeof(int32) * len(l)
 	if sz := category2WireSize[t.ValueType.Category]; sz > 0 { // fast path for less code
@@ -146,7 +147,7 @@ func genBLengthMap(w *codewriter, rwctx *golang.ReadWriteContext, varname string
 	vt := t.ValueType
 
 	// map header
-	w.f("off += 6")
+	w.f("off += 3 + 6")
 
 	// iteration tmp var
 	tmpk := "k"
