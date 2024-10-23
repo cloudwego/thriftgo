@@ -106,15 +106,18 @@ func (g *FastGoBackend) genFastRead(w *codewriter, scope *golang.Scope, s *golan
 
 	if len(ff) > 0 { // fix `label ReadFieldError defined and not used`
 		w.f("ReadFieldError:")
-		w.f(`return off, thrift.PrependError(fmt.Sprintf("%%T read field %%d '%%s' error: ", p, fid, fieldIDToName_%s[fid]), err)`, s.GoName())
+		w.f(`return off, thrift.PrependError(
+			fmt.Sprintf("%%T read field %%d '%%s' error: ", p, fid, fieldIDToName_%s[fid]), err)`, s.GoName())
 	}
 
 	w.f("SkipFieldError:")
-	w.f(`return off, thrift.PrependError(fmt.Sprintf("%%T skip field %%d type %%d error: ", p, fid, ftyp), err)`)
+	w.f(`return off, thrift.PrependError(
+		fmt.Sprintf("%%T skip field %%d type %%d error: ", p, fid, ftyp), err)`)
 
 	if isset.Len() > 0 {
 		w.f("RequiredFieldNotSetError:")
-		w.f(`return off, thrift.NewProtocolException(thrift.INVALID_DATA, fmt.Sprintf("required field %%s is not set", fieldIDToName_%s[fid]))`, s.GoName())
+		w.f(`return off, thrift.NewProtocolException(thrift.INVALID_DATA,
+		fmt.Sprintf("required field %%s is not set", fieldIDToName_%s[fid]))`, s.GoName())
 	}
 
 	// end of func definition
