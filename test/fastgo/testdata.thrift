@@ -28,69 +28,97 @@ struct Msg
 }
 
 struct TestTypes {
-  1: required bool FBool;
-  2: byte FByte;
-  3: i8 I8;
-  4: i16 I16;
-  5: i32 I32;
-  6: i64 I64;
-  7: double Double;
-  8: string String;
-  9: binary Binary;
-  10: Numberz Enum;
-  11: UserID UID;
-  12: Msg S;
-  20: required map<i32, i32> M0;
-  21: map<i32, string> M1;
-  22: map<i32, Msg> M2;
-  23: map<string, Msg> M3;
-  30: required list<i32> L0;
-  31: list<string> L1;
-  32: list<Msg> L2;
-  40: required set<i32> S0;
-  41: set<string> S1;
-  50: list<map<i32, i32>> LM;
-  60: map<i32, list<i32>> ML;
-}
+  1: bool B0;
+  2: required bool B1;
+  3: optional bool B2;
+  4: optional bool B3 = true;
 
-struct TestTypesOptional {
-  1: optional bool FBool;
-  2: optional byte FByte;
-  3: optional i8 I8;
-  4: optional i16 I16;
-  5: optional i32 I32;
-  6: optional i64 I64;
-  7: optional double Double;
-  8: optional string String;
-  9: optional binary Binary;
-  10: optional Numberz Enum;
-  11: optional UserID UID;
-  12: optional Msg S;
-  20: optional map<i32, i32> M0;
-  21: optional map<i32, string> M1;
-  22: optional map<i32, Msg> M2;
-  23: optional map<string, Msg> M3;
-  30: optional list<i32> L0;
-  31: optional list<string> L1;
-  32: optional list<Msg> L2;
-  40: optional set<i32> S0;
-  41: optional set<string> S1;
-  50: optional list<map<i32, i32>> LM;
-  60: optional map<i32, list<i32>> ML;
-}
+  11: byte Byte0;
+  12: required byte Byte1;
+  13: optional byte Byte2;
+  14: optional byte Byte3= 1;
 
-struct TestTypesWithDefault {
-  1: optional bool FBool = true;
-  2: optional byte FByte = 2;
-  3: optional i8 I8 = 3;
-  4: optional i16 I6 = 4;
-  5: optional i32 I32 = 5;
-  6: optional i64 I64 = 6;
-  7: optional double Double = 7;
-  8: optional string String = "8";
-  9: optional binary Binary = "8";
-  10: optional Numberz Enum = 10;
-  11: optional UserID UID = 11;
-  30: optional list<i32> L0 = [ 30 ];
-  40: optional set<i32> S0 = [ 40 ];
+  21: i8 I800;
+  22: required i8 I801;
+  23: optional i8 I802;
+  24: optional i8 I803 = 2;
+
+  31: i16 I160;
+  32: required i16 I161;
+  33: optional i16 I162;
+  34: optional i16 I163= 3;
+
+  41: i32 I320;
+  42: required i32 I321;
+  43: optional i32 I322;
+  44: optional i32 I323 = 4;
+
+  51: double Dbl0;
+  52: required double Dbl1;
+  53: optional double Dbl2;
+  54: optional double Dbl3= 5;
+
+  61: string Str0;
+  62: required string Str1;
+  63: optional string Str2;
+  64: optional string Str3 = "6";
+
+  71: binary Bin0;
+  72: required binary Bin1;
+  73: optional binary Bin2;
+  74: optional binary Bin3 = "7";
+
+  81: Numberz Num0;
+  82: required Numberz Num1;
+  83: optional Numberz Num2;
+  84: optional Numberz Num3 = 10;
+
+  91: UserID UID0;
+  92: required UserID UID1;
+  93: optional UserID UID2;
+  94: optional UserID UID3 = 9
+
+  101: Msg Msg0;
+  102: required Msg Msg1;
+  103: optional Msg Msg2;
+
+  111: map<i32, string> Map111;
+  112: required map<i32, string> Map112;
+  113: optional map<i32, string> Map113;
+
+  121: map<i32, i32> Map121;
+  122: required map<i32, i32> Map122;
+  123: optional map<i32, i32> Map123;
+
+  131: map<string, Msg> Map131;
+  132: required map<string, Msg> Map132;
+  133: optional map<string, Msg> Map133;
+
+  141: list<i32> List141;
+  142: required list<i32> List142;
+  143: optional list<i32> List143;
+
+  151: list<string> List151;
+  152: required list<string> List152;
+  153: optional list<string> List153;
+
+  161: list<Msg> List161;
+  162: required list<Msg> List162;
+  163: optional list<Msg> List163;
+
+  171: set<i32> Set171;
+  172: required set<i32> Set172;
+  173: optional set<i32> Set173;
+
+  181: set<string> Set181;
+  182: required set<string> Set182;
+  183: optional set<string> Set183;
+
+  191: list<map<i32, i32>> Mix191;
+  192: required list<map<i32, i32>> Mix192;
+  193: optional list<map<i32, i32>> Mix193;
+
+  201: map<i32, list<i32>> Mix201;
+  202: required map<i32, list<i32>> Mix202;
+  203: optional map<i32, list<i32>> Mix203;
 }

@@ -16,3 +16,6 @@
 
 all:
 	bash -x ./run.sh
+
+install:
+	cd ../.. && go install

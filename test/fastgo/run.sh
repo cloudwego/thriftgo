@@ -14,8 +14,4 @@
 #
 set -e
 thriftgo -g fastgo:no_default_serdes=true,gen_setter=true -o=. ./testdata.thrift
-cd testdata
-rm -f go.mod
-go mod init thriftgo/test/fastgo/testdata
-go mod tidy
-go build -v ./...
+cd testdata && go test -v -tags testfastgo
