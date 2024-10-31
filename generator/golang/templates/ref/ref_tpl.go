@@ -56,7 +56,6 @@ import (
 `
 
 var processorRef = `
-
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
 {{- $ServiceName := .GoName}}
@@ -89,6 +88,23 @@ var New{{$ResType}} = {{$RefPackage}}.New{{$ResType}}
 
 {{- end}}{{/* range .Functions */}}
 
+{{- if not Features.NoProcessor}}
+// processor refs
+{{- $ProcessorName := printf "%s%s" $ServiceName "Processor"}}
+{{- $ClientName := printf "%s%s" $ServiceName "Client"}}
+
+type {{$ProcessorName}} =  {{$RefPackage}}.{{$ProcessorName}}
+
+var New{{$ProcessorName}} =  {{$RefPackage}}.New{{$ProcessorName}}
+
+var New{{$ClientName}} = {{$RefPackage}}.New{{$ClientName}}
+
+var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}
+
+var New{{$ClientName}}Protocol = {{$RefPackage}}.New{{$ClientName}}Protocol
+
+
+{{- end}}{{/* if not Features.NoProcessor */}}
 `
 
 var constRef = `{{- $Consts := .Constants.GoConstants}}
