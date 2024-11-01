@@ -99,7 +99,7 @@ var New{{$ProcessorName}} =  {{$RefPackage}}.New{{$ProcessorName}}
 
 var New{{$ClientName}} = {{$RefPackage}}.New{{$ClientName}}
 
-var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}
+var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}Factory
 
 var New{{$ClientName}}Protocol = {{$RefPackage}}.New{{$ClientName}}Protocol
 
