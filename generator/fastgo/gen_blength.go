@@ -79,7 +79,7 @@ func genBLengthField(w *codewriter, rwctx *golang.ReadWriteContext, f *golang.Fi
 	}
 
 	// field header
-	w.f("off += 3") // type + fid
+	w.f("off += 3")
 
 	// field value
 	genBLengthAny(w, rwctx, varname, 0)
