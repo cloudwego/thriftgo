@@ -97,6 +97,8 @@ type {{$ProcessorName}} =  {{$RefPackage}}.{{$ProcessorName}}
 
 var New{{$ProcessorName}} =  {{$RefPackage}}.New{{$ProcessorName}}
 
+type {{$ClientName}} = {{$RefPackage}}.{{$ClientName}}
+
 var New{{$ClientName}} = {{$RefPackage}}.New{{$ClientName}}
 
 var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}Factory
