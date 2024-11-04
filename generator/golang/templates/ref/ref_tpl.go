@@ -113,6 +113,7 @@ var constRef = `{{- $Consts := .Constants.GoConstants}}
 {{- if $Consts}}
 const (
 	{{- range $Consts}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	{{.GoName}} = {{$RefPackage}}.{{.GoName}} 
 	{{- end}}{{/* range $Consts */}}
 )
@@ -130,6 +131,7 @@ var (
 
 var structRef = `
 	{{- $TypeName := .GoName}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	type {{$TypeName}}= {{$RefPackage}}.{{$TypeName}}
 	var New{{$TypeName}} = {{$RefPackage}}.New{{$TypeName}}
 	{{- range .Fields}}
@@ -152,6 +154,7 @@ var enumRef = `
 {{- range .Enums}}
 	{{- $EnumType := .GoName}}
 	{{- $TypeName := .GoName}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	type {{$TypeName}}= {{$RefPackage}}.{{$TypeName}}
 	var {{$EnumType}}FromString = {{$RefPackage}}.{{$EnumType}}FromString
 	var {{$EnumType}}Ptr = {{$RefPackage}}.{{$EnumType}}Ptr
@@ -166,6 +169,8 @@ var enumRef = `
 	{{- else }}
 	const (
 		{{- range .Values}}
+		{{- if and Features.ReserveComments .ReservedComments}}
+		{{.ReservedComments}}{{end}}
 		{{.GoName}} = {{$RefPackage}}.{{.GoName}}
 		{{- end}}
 	)
@@ -176,6 +181,7 @@ var enumRef = `
 var typedefRef = `
 {{- range .Typedefs}}
 	{{- $NewTypeName := .GoName}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	type {{$NewTypeName}}= {{$RefPackage}}.{{$NewTypeName}}
 	{{if .Type.Category.IsStructLike}} 
 	var New{{$NewTypeName}} = {{$RefPackage}}.New{{$NewTypeName}}
