@@ -169,6 +169,7 @@ var enumRef = `
 	{{- else }}
 	const (
 		{{- range .Values}}
+		{{- if and Features.ReserveComments .ReservedComments}}
 		{{.GoName}} = {{$RefPackage}}.{{.GoName}}
 		{{- end}}
 	)
