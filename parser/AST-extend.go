@@ -132,6 +132,13 @@ func (t *Type) String() string {
 	return t.Name
 }
 
+func (t *Type) NameWithReference() string {
+	if t.Reference != nil && t.Reference.Name != "" {
+		return t.Reference.Name
+	}
+	return t.Name
+}
+
 // GetField returns a field of the struct-like that matches the name.
 func (s *StructLike) GetField(name string) (*Field, bool) {
 	for _, fi := range s.Fields {
