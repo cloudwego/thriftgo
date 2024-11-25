@@ -48,10 +48,11 @@ type Trimmer struct {
 }
 
 type TrimASTArg struct {
-	Ast         *parser.Thrift
-	TrimMethods []string
-	Preserve    *bool
-	MatchGoName *bool
+	Ast             *parser.Thrift
+	TrimMethods     []string
+	Preserve        *bool
+	MatchGoName     *bool
+	PreserveStructs []string
 }
 
 type TrimResultInfo struct {
@@ -80,6 +81,7 @@ func (t *TrimResultInfo) FieldTrimmedPercentage() float64 {
 // TrimAST parse the cfg and trim the single AST
 func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 	var preservedStructs []string
+	preservedStructs = arg.PreserveStructs
 	if wd, err := dir_utils.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
 		if cfg != nil {
@@ -93,7 +95,9 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 			if arg.MatchGoName == nil && cfg.MatchGoName != nil {
 				arg.MatchGoName = cfg.MatchGoName
 			}
-			preservedStructs = cfg.PreservedStructs
+			if len(preservedStructs) == 0 {
+				preservedStructs = cfg.PreservedStructs
+			}
 		}
 	}
 	forceTrim := false
@@ -108,7 +112,7 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, matchGoName bool, preservedStructs []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName bool, preservedStructs []string) (
 	trimResultInfo *TrimResultInfo, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -128,7 +132,6 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming bool, mat
 				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
 				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
 				// os.Exit(2)
-
 			}
 		}
 		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
