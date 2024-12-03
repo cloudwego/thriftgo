@@ -15,6 +15,7 @@
 package trim
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -74,7 +75,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 	}
 
 	if len(t.trimMethods) != 0 && (svc.Extends != "" || svc.Reference != nil) {
-		t.traceExtendMethod(svc, svc, ast, filename)
+		t.traceExtendMethod([]*parser.Service{svc}, svc, ast, filename)
 	}
 
 	if svc.Extends != "" && t.marks[filename][svc] {
@@ -252,15 +253,21 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
 }
 
 // for -m, trace the extends and find specified method to base on
-func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
+func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
+	fmt.Println(svc.Name)
 	for _, function := range svc.Functions {
-		funcName := father.Name + "." + function.Name
-		for i, method := range t.trimMethods {
-			if ok, _ := method.MatchString(funcName); ok {
-				t.marks[filename][svc] = true
-				t.markFunction(function, ast, filename)
-				t.trimMethodValid[i] = true
-				ret = true
+		for _, father := range fathers {
+			// 子 method 写了来自 extends 的某个名字的时候，都间接向上查找，遍历所有子节点的名字尝试匹配
+			funcName := father.Name + "." + function.Name
+			for i, method := range t.trimMethods {
+				fmt.Println("try", method.String(), "with", funcName)
+				if ok, _ := method.MatchString(funcName); ok {
+					t.marks[filename][svc] = true
+					t.markFunction(function, ast, filename)
+					t.trimMethodValid[i] = true
+					ret = true
+					fmt.Println("Yes")
+				}
 			}
 		}
 	}
@@ -284,7 +291,7 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 				}
 			}
 		}
-		back := t.traceExtendMethod(father, nextSvc, nextAst, filename)
+		back := t.traceExtendMethod(append(fathers, nextSvc), nextSvc, nextAst, filename)
 		if !back {
 			t.markServiceExtends(svc)
 		}
