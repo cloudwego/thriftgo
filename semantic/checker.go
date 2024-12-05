@@ -145,9 +145,26 @@ func (c *checker) CheckStructLikes(t *parser.Thrift) (warns []string, err error)
 				warns = append(warns, fmt.Sprintf("non-positive ID %d of field %q in %q",
 					f.ID, f.Name, s.Name))
 			}
+			if containByteType(f.Type) {
+				warns = append(warns, fmt.Sprintf("field %q in %q is still using 'byte'. The 'byte' type is a compatibility alias for 'i8'. Use 'i8' to emphasize the signedness of this type. If you want to generate '[]byte', please use 'binary' in thrift IDL.",
+					f.Name, s.Name))
+			}
 		}
 	}
 	return
+}
+
+func containByteType(t *parser.Type) bool {
+	if parser.Typename2TypeID(t.Name) == parser.BYTE {
+		return true
+	}
+	if t.KeyType != nil && containByteType(t.KeyType) {
+		return true
+	}
+	if t.ValueType != nil && containByteType(t.ValueType) {
+		return true
+	}
+	return false
 }
 
 // CheckUnions checks the semantics of union nodes.
