@@ -32,13 +32,10 @@ func init() {
 	_ = g.RegisterBackend(new(fastgo.FastGoBackend))
 }
 
-var (
-	g generator.Generator
-)
+var g generator.Generator
 
 // InvokeThriftgo is the core logic of thriftgo, from parse idl to generate code.
 func InvokeThriftgo(SDKPlugins []plugin.SDKPlugin, args ...string) (err error) {
-
 	var a targs.Arguments
 
 	err = a.Parse(args)
@@ -57,7 +54,7 @@ func InvokeThriftgo(SDKPlugins []plugin.SDKPlugin, args ...string) (err error) {
 	// todo check log
 	log := a.MakeLogFunc()
 
-	ast, err := parser.ParseFile(a.IDL, a.Includes, true)
+	ast, err := parser.ParseFile(a.IDL, a.Includes, a.Recursive)
 	if err != nil {
 		return err
 	}

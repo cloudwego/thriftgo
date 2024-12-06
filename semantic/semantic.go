@@ -111,7 +111,8 @@ func (r *resolver) ResolveAST() (err error) {
 
 	r.ast.ForEachInclude(func(v *parser.Include) bool {
 		if v.Reference == nil {
-			panic(fmt.Errorf("reference %q of %q is not parsed", v.Path, r.ast.Filename))
+			return true
+			// panic(fmt.Errorf("reference %q of %q is not parsed", v.Path, r.ast.Filename))
 		}
 		if err = ResolveSymbols(v.Reference); err != nil {
 			panic(fmt.Errorf("resolve include %q: %w", v.Path, err))
