@@ -36,16 +36,17 @@ type Trimmer struct {
 	marks  map[string]map[interface{}]bool
 	outDir string
 	// use -m
-	trimMethods      []*regexp2.Regexp
-	matchGoName      bool
-	trimMethodValid  []bool
-	preserveRegex    *regexp.Regexp
-	forceTrimming    bool
-	preservedStructs []string
-	structsTrimmed   int
-	fieldsTrimmed    int
-	extServices      []*parser.Service
-	PreservedFiles   []string
+	trimMethods         []*regexp2.Regexp
+	matchGoName         bool
+	trimMethodValid     []bool
+	preserveRegex       *regexp.Regexp
+	forceTrimming       bool
+	preservedStructs    []string
+	structsTrimmed      int
+	fieldsTrimmed       int
+	extServices         []*parser.Service
+	PreservedFiles      []string
+	preserveFileStructs map[*parser.StructLike]bool
 }
 
 type TrimASTArg struct {
