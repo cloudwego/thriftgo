@@ -169,9 +169,9 @@ var StructLikeRead = `
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{- if Features.ApacheWarning -}}
-	{{- UseStdLibrary  "apache_warning" -}}
+	{{- UseStdLibrary  "apache_warning"}}
 	apache_warning.WarningApache("{{$TypeName}}")
-	{{- end -}}
+	{{end}}
 	{{- if Features.ApacheAdaptor -}}
 	{{- UseStdLibrary  "apache_adaptor" -}}
 	return apache_adaptor.AdaptRead(p, iprot)
@@ -326,9 +326,9 @@ var StructLikeWrite = `
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	{{- if Features.ApacheWarning -}}
-	{{- UseStdLibrary  "apache_warning" -}}
+	{{- UseStdLibrary  "apache_warning"}}
 	apache_warning.WarningApache("{{$TypeName}}")
-	{{- end -}}
+	{{end}}
 	{{- if Features.ApacheAdaptor -}}
 	{{- UseStdLibrary  "apache_adaptor" -}}
 	return apache_adaptor.AdaptWrite(p, oprot)
