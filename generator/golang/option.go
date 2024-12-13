@@ -71,6 +71,7 @@ type Features struct {
 	NoProcessor       bool `no_processor:" Do not generate default thrift processor and client. Later this feature will be a default feature."`
 	GetEnumAnnotation bool `get_enum_annotation:"Generate GetAnnotation method for enum types."`
 	ApacheWarning     bool `apache_warning:"Generate Apache Codec with warning on the first line."`
+	ApacheAdaptor     bool `apache_adaptor:"Generate adaptor for apache codec to kitex fast codec."`
 }
 
 var defaultFeatures = Features{
