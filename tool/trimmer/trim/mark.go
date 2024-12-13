@@ -316,5 +316,27 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 			return true
 		}
 	}
-	return t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments))
+	if t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
+		return true
+	}
+	// 如果整个文件也是要保留的，那么里面的结构体也不删除
+	if t.preserveFileStructs[theStruct] {
+		return true
+	}
+	return false
+}
+
+func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) {
+	preserveFilesMap := map[string]bool{}
+	for _, fn := range preserveFiles {
+		preserveFilesMap[fn] = true
+	}
+	t.preserveFileStructs = map[*parser.StructLike]bool{}
+	for th := range ast.DepthFirstSearch() {
+		if preserveFilesMap[th.Filename] {
+			for _, st := range ast.Structs {
+				t.preserveFileStructs[st] = true
+			}
+		}
+	}
 }
