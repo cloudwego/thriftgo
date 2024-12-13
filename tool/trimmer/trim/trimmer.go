@@ -45,6 +45,7 @@ type Trimmer struct {
 	structsTrimmed   int
 	fieldsTrimmed    int
 	extServices      []*parser.Service
+	PreservedFiles   []string
 }
 
 type TrimASTArg struct {
@@ -53,6 +54,7 @@ type TrimASTArg struct {
 	Preserve        *bool
 	MatchGoName     *bool
 	PreserveStructs []string
+	PreservedFiles  []string
 }
 
 type TrimResultInfo struct {
@@ -80,8 +82,9 @@ func (t *TrimResultInfo) FieldTrimmedPercentage() float64 {
 
 // TrimAST parse the cfg and trim the single AST
 func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
-	var preservedStructs []string
+	var preservedStructs, preservedFiles []string
 	preservedStructs = arg.PreserveStructs
+	preservedFiles = arg.PreservedFiles
 	if wd, err := dir_utils.Getwd(); err == nil {
 		cfg := ParseYamlConfig(wd)
 		if cfg != nil {
@@ -98,6 +101,9 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 			if len(preservedStructs) == 0 {
 				preservedStructs = cfg.PreservedStructs
 			}
+			if len(preservedFiles) == 0 {
+				preservedFiles = cfg.PreservedFiles
+			}
 		}
 	}
 	forceTrim := false
@@ -108,11 +114,11 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 	if arg.MatchGoName != nil {
 		matchGoName = *arg.MatchGoName
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs)
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs, preservedFiles)
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName bool, preservedStructs []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName bool, preservedStructs, preserveFiles []string) (
 	trimResultInfo *TrimResultInfo, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -143,6 +149,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 	trimmer.countStructs(ast)
 	originStructsNum := trimmer.structsTrimmed
 	originFieldNum := trimmer.fieldsTrimmed
+	trimmer.loadPreserveFiles(ast, preserveFiles)
 	trimmer.markAST(ast)
 	trimmer.traversal(ast, ast.Filename)
 	if path := parser.CircleDetect(ast); len(path) > 0 {
