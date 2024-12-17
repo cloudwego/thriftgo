@@ -75,6 +75,14 @@ func TestParseKV(t *testing.T) {
 	input = "{\n        valuemap:{k1:v1 k2:v2 k3:}\n        valuelist:[a,b,c,d]\n        valueset:[{email:e1},{email:e2}]\n        valuelistset:[[a,b,c],[d,e,f]]\n        valuelistsetstruct:[[{email:e1},{email:e2}],[{email:e3},{email:e4}]]\n        valuemapStruct:[k1:{email:e1} k2:{email:e2}]\n    }"
 	kv, err = ParseKV(input)
 	assert(t, err == nil)
+
+	// quote test
+	input = `{k1:"Hes Value" k2:normal, k3:"He's fine"}`
+	kv, err = ParseKV(input)
+	assert(t, err == nil && len(kv) == 3)
+	assert(t, kv["k1"] == `Hes Value`)
+	assert(t, kv["k2"] == "normal")
+	assert(t, kv["k3"] == `He's fine`)
 }
 
 func TestParseArr(t *testing.T) {
@@ -89,12 +97,12 @@ func TestParseArr(t *testing.T) {
 	arr, err = ParseArr(input)
 	assert(t, err == nil && len(arr) == 3)
 	assert(t, arr[0] == "a")
-	assert(t, arr[1] == "\"b\"")
+	assert(t, arr[1] == "b")
 	assert(t, arr[2] == "c")
 
-	input = "[a,'b,c]"
-	arr, err = ParseArr(input)
-	assert(t, err != nil)
+	// input = "[a,'b,c]"
+	// arr, err = ParseArr(input)
+	// assert(t, err != nil)
 
 	input = "[a,[b,c],c]"
 	arr, err = ParseArr(input)
@@ -118,6 +126,14 @@ func TestParseArr(t *testing.T) {
 	assert(t, arr[1] == "[b,{c,d}]")
 	assert(t, arr[2] == "c")
 	assert(t, arr[3] == "{e,f}")
+
+	input = "[a's,b,c,\"d's ok\"]"
+	arr, err = ParseArr(input)
+	assert(t, err == nil && len(arr) == 4)
+	assert(t, arr[0] == "a's")
+	assert(t, arr[1] == "b")
+	assert(t, arr[2] == "c")
+	assert(t, arr[3] == "d's ok")
 }
 
 func assert(t *testing.T, cond bool, val ...interface{}) {
