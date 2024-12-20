@@ -227,6 +227,13 @@ func RegisterAST(ast *parser.Thrift) (*GlobalDescriptor, *FileDescriptor) {
 	return gd, fd
 }
 
+// ReleaseGlobalDescriptor release the global descriptor
+func ReleaseGlobalDescriptor(gdUUID string) {
+	lock.Lock()
+	delete(globalDescriptorMap, gdUUID)
+	defer lock.Unlock()
+}
+
 func generateShortUUID() string {
 	uuid := make([]byte, 4)
 	_, _ = rand.Read(uuid)
