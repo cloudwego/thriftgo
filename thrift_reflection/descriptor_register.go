@@ -235,6 +235,9 @@ func ReleaseGlobalDescriptors(gds ...*GlobalDescriptor) {
 	lock.Lock()
 	defer lock.Unlock()
 	for _, gd := range gds {
+		if gd == nil {
+			continue
+		}
 		delete(globalDescriptorMap, gd.uuid)
 	}
 }
