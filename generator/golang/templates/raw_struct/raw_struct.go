@@ -19,6 +19,7 @@ func Extension() []string {
 	return []string{
 		StructLike,
 		File,
+		Typedef,
 	}
 }
 
@@ -83,5 +84,17 @@ import (
 {{- end}}
 
 {{- InsertionPoint "eof"}}
+`
+	Typedef = `
+{{define "Typedef"}}
+{{- $NewTypeName := .GoName}}
+{{- $OldTypeName := .GoTypeName}}
+{{- if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
+{{- if Features.TypedefAsTypeAlias }}
+type {{$NewTypeName}} = {{$OldTypeName}}
+{{- else}}
+type {{$NewTypeName}} {{$OldTypeName}}
+{{- end}}
+{{- end}}{{/* define "Typedef" */}}
 `
 )
