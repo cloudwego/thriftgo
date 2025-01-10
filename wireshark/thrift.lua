@@ -13,6 +13,18 @@
 -- limitations under the License.
 
 -------------------------------------------------------------------------------
+--- utils
+-- https://www.wireshark.org/docs/wsdg_html_chunked/_bitwise_operations.html
+-- Lua 5.3 and greater has native bitwise operators. 
+-- The bit32 library introduced in Lua 5.2 is in Lua 5.3, albeit deprecated, 
+-- but not present in Lua 5.4. For maximum backwards compatibility, 
+-- all versions of Wireshark with Lua support include the Lua BitOp library, 
+-- which has been ported to be compatible with Lua 5.3 and 5.4. The BitOp API reference
+-- is available at https://bitop.luajit.org/api.html. The API is similar to that of the bit32 
+-- library, and in many cases can function as a drop in replacement for code written to use that
+-- library by simply replacing a bit32 = require("bit32") statement with bit32 = bit.
+bit32 = bit
+
 --- protocols
 local ttheader_protocol = Proto("ttheader", "Thrift TTHeader Protocol")
 local tbinary_protocol = Proto("tbinary", "Thrift UnframedBinary Protocol")
