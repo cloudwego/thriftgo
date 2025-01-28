@@ -15,6 +15,7 @@
 package trim
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -329,7 +330,8 @@ func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) 
 	}
 	t.preserveFileStructs = map[*parser.StructLike]bool{}
 	for th := range ast.DepthFirstSearch() {
-		if preserveFilesMap[th.Filename] {
+		absPath, _ := filepath.Abs(th.Filename)
+		if preserveFilesMap[absPath] {
 			for _, st := range ast.Structs {
 				t.preserveFileStructs[st] = true
 			}
