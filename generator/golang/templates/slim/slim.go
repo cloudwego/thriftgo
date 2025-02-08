@@ -132,12 +132,6 @@ func (p *{{$TypeName}}) Error() string {
 }
 {{- end}}
 
-{{- if Features.GenDeepEqual}}
-{{template "StructLikeDeepEqual" .}}
-
-{{template "StructLikeDeepEqualField" .}}
-{{- end}}
-
 {{InsertionPoint "ExtraFieldMap"}}
 {{- end}}{{/* define "StructLike" */}}
 	`
