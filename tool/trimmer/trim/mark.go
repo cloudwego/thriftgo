@@ -17,6 +17,8 @@ package trim
 import (
 	"strings"
 
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
+
 	"github.com/cloudwego/thriftgo/parser"
 )
 
@@ -325,12 +327,19 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) {
 	preserveFilesMap := map[string]bool{}
 	for _, fn := range preserveFiles {
-		preserveFilesMap[fn] = true
+		// 下面对比部分，从 ast 里获取的 th.Filename 是当前命令行执行位置到对应IDL的相对路径文件名
+		// 但用户填写的 preserveFilesMap 可能是绝对的可能是相对的
+		// 这里统一转换为相对路径
+		relFn, err := dir_utils.ToRelative(fn)
+		if err != nil {
+			continue
+		}
+		preserveFilesMap[relFn] = true
 	}
 	t.preserveFileStructs = map[*parser.StructLike]bool{}
 	for th := range ast.DepthFirstSearch() {
 		if preserveFilesMap[th.Filename] {
-			for _, st := range ast.Structs {
+			for _, st := range th.Structs {
 				t.preserveFileStructs[st] = true
 			}
 		}
