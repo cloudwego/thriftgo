@@ -327,18 +327,18 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) {
 	preserveFilesMap := map[string]bool{}
 	for _, fn := range preserveFiles {
-		// 下面对比部分，从 ast 里获取的 th.Filename 是当前命令行执行位置到对应IDL的相对路径文件名
-		// 但用户填写的 preserveFilesMap 可能是绝对的可能是相对的
-		// 这里统一转换为相对路径
-		relFn, err := dir_utils.ToRelative(fn)
-		if err != nil {
-			continue
+		// 这里统一转换为绝对路径
+		absFn, err := dir_utils.ToAbsolute(fn)
+		if err == nil {
+			fn = absFn
 		}
-		preserveFilesMap[relFn] = true
+		preserveFilesMap[absFn] = true
 	}
 	t.preserveFileStructs = map[*parser.StructLike]bool{}
 	for th := range ast.DepthFirstSearch() {
-		if preserveFilesMap[th.Filename] {
+		// 两边都用绝对路径来对比，ast 里的 filename 有时候是相对有时候是绝对
+		absFilename, err := dir_utils.ToAbsolute(th.Filename)
+		if err == nil && preserveFilesMap[absFilename] {
 			for _, st := range th.Structs {
 				t.preserveFileStructs[st] = true
 			}
