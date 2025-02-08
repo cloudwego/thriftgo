@@ -107,6 +107,15 @@ var New{{$ClientName}}Protocol = {{$RefPackage}}.New{{$ClientName}}Protocol
 
 
 {{- end}}{{/* if not Features.NoProcessor */}}
+
+{{- range .Functions}}
+{{InsertionPoint "ExtraStruct"}}
+{{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
+{{- $arg := index .Arguments 0}}
+type {{.Service.GoName}}_{{.Name}}Server =  {{$RefPackage}}.{{.Service.GoName}}_{{.Name}}Server
+{{- end}}{{/* Streaming */}}
+{{- end}}{{/* range .Functions */}}
+
 `
 
 var constRef = `{{- $Consts := .Constants.GoConstants}}
