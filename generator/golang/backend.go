@@ -92,11 +92,13 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 		tr, err := trim.TrimAST(&trim.TrimASTArg{Ast: req.AST, TrimMethods: nil, Preserve: nil})
 		if err != nil {
 			g.log.Warn("trim error:", err.Error())
+			g.err = err
+			return g.buildResponse()
+		} else {
+			g.log.Warn(fmt.Sprintf("removed %d unused structures with %d fields", tr.StructsTrimmed, tr.FieldsTrimmed))
+
+			g.log.Warn(fmt.Sprintf("structs:%d->%d (%.1f%% Trimmed),  fields:%d->%d (%.1f%% Trimmed).", tr.StructsTotal, tr.StructsLeft(), tr.StructTrimmedPercentage(), tr.FieldsTotal, tr.FieldsLeft(), tr.FieldTrimmedPercentage()))
 		}
-
-		g.log.Warn(fmt.Sprintf("removed %d unused structures with %d fields", tr.StructsTrimmed, tr.FieldsTrimmed))
-
-		g.log.Warn(fmt.Sprintf("structs:%d->%d (%.1f%% Trimmed),  fields:%d->%d (%.1f%% Trimmed).", tr.StructsTotal, tr.StructsLeft(), tr.StructTrimmedPercentage(), tr.FieldsTotal, tr.FieldsLeft(), tr.FieldTrimmedPercentage()))
 	}
 	g.prepareTemplates()
 	g.fillRequisitions()
@@ -244,7 +246,6 @@ func (s *Scope) IsEmpty() bool {
 }
 
 func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template, filename string) error {
-
 	if scope == nil {
 		return nil
 	}
