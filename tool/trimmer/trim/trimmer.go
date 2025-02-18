@@ -170,7 +170,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 
 	for i, method := range trimMethods {
 		if !trimmer.trimMethodValid[i] {
-			return nil, fmt.Errorf("err: method %s not found in %s!\n", method, ast.Filename)
+			fmt.Printf("warning: method %s not found in %s!\n", method, ast.Filename)
 		}
 	}
 
