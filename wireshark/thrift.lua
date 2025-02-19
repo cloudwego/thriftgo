@@ -287,7 +287,7 @@ function tbinary_protocol.dissector(buffer, pinfo, tree)
     local version = bit32.band(sz, THRIFT_VERSION_MASK)
 
     local tbuf = ThriftBuffer:new(buffer)
-    if sz < 0 and bit32.btest(version, THRIFT_VERSION_1) then
+    if sz < 0 and bit32.band(version, THRIFT_VERSION_1) ~= 0 then
         local type = bit32.band(sz, THRIFT_TYPE_MASK)
         tree:add(tbinary_fields.msg_type, type)
         tbuf(4) --- skip 4 bytes
