@@ -442,3 +442,183 @@ func TestNamespace(t *testing.T) {
 	test.Assert(t, ast.Namespaces[2].Language == "py")
 	test.Assert(t, ast.Namespaces[2].Name == "python.org")
 }
+
+const testInteraction = `
+interaction MyInteraction {
+	i32 start(); 
+}
+
+service Service {
+	MyInteraction, stream<Output> regularStream();
+	MyInteraction, i32, sink<i32, string throws (1: Error e)> specialStream()
+	performs MyInteraction;
+}
+`
+
+func TestInteraction(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testInteraction)
+	test.Assert(t, err == nil)
+	test.Assert(t, len(ast.Interactions) == 1)
+	test.Assert(t, ast.Interactions[0].Name == "MyInteraction")
+	test.Assert(t, len(ast.Interactions[0].Functions) == 1)
+	test.Assert(t, ast.Interactions[0].Functions[0].ReturnClause.Type0.Name == "i32")
+	test.Assert(t, len(ast.Services) == 1)
+	test.Assert(t, len(ast.Services[0].Functions) == 2)
+	clause0 := ast.Services[0].Functions[0].ReturnClause
+	test.Assert(t, clause0.Type0.Name == "MyInteraction")
+	test.Assert(t, clause0.Type1.Name == "stream")
+	test.Assert(t, clause0.Type1.ValueType.Name == "Output")
+	clause1 := ast.Services[0].Functions[1].ReturnClause
+	test.Assert(t, clause1.Type0.Name == "MyInteraction")
+	test.Assert(t, clause1.Type1.Name == "i32")
+	test.Assert(t, clause1.Type2.Name == "sink")
+	test.Assert(t, clause1.Type2.KeyType.Name == "i32")
+	test.Assert(t, clause1.Type2.ValueType.Name == "string")
+	test.Assert(t, len(clause1.Type2.ValueTypeThrows) == 1)
+	test.Assert(t, clause1.Type2.ValueTypeThrows[0].Type.Name == "Error")
+	test.Assert(t, len(ast.Services[0].Performs) == 1)
+	test.Assert(t, ast.Services[0].Performs[0].Interaction == "MyInteraction")
+}
+
+const testStructuredAnnotations = `
+@foo{a = "b"}
+@bar
+const string str = "str"
+
+@cpp.template{t = "std::map"}
+typedef map<i32, string> itoa_map 
+
+@string.presentation{v=2}
+typedef list<double> float_list
+
+@value
+enum Enum {
+	@value{v = 10}
+	E1,
+	E2
+	@value{v = 100}
+	E3
+}
+
+@foo.bar{data = baz{x=1}, param = 2}
+struct s {
+	@a
+	1: string f1;
+	@a
+	@b
+	2: string f2;
+} 
+
+@foo.bar
+exception myerror {
+	@range{r = "<0"}
+	1: i32 error_code
+	2: string error_msg
+} 
+
+@meta{fooable = true, barable = 12.0}
+service test_service {
+	@meta{what = "method-annotation"}
+	i32 method()
+} 
+`
+
+func TestStructuredAnnotations(t *testing.T) {
+	ast, err := parser.ParseString("main.thrift", testStructuredAnnotations)
+	test.Assert(t, err == nil)
+	test.Assert(t, len(ast.Constants) == 1)
+	test.Assert(t, len(ast.Constants[0].StructuredAnnotations) == 2)
+	a := ast.Constants[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "foo")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "a")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Literal == "b")
+
+	test.Assert(t, len(ast.Typedefs) == 2)
+	test.Assert(t, len(ast.Typedefs[0].StructuredAnnotations) == 1)
+	a = ast.Typedefs[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "cpp.template")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "t")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Literal == "std::map")
+	test.Assert(t, len(ast.Typedefs[1].StructuredAnnotations) == 1)
+	a = ast.Typedefs[1].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "string.presentation")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "v")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Int == 2)
+
+	test.Assert(t, len(ast.Enums) == 1)
+	test.Assert(t, len(ast.Enums[0].StructuredAnnotations) == 1)
+	a = ast.Enums[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "value")
+	test.Assert(t, len(a.Values) == 0)
+	test.Assert(t, len(ast.Enums[0].Values) == 3)
+	test.Assert(t, len(ast.Enums[0].Values[0].StructuredAnnotations) == 1)
+	a = ast.Enums[0].Values[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "value")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "v")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Int == 10)
+	test.Assert(t, len(ast.Enums[0].Values[1].StructuredAnnotations) == 0)
+	test.Assert(t, len(ast.Enums[0].Values[2].StructuredAnnotations) == 1)
+	a = ast.Enums[0].Values[2].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "value")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "v")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Int == 100)
+
+	test.Assert(t, len(ast.Structs) == 1)
+	test.Assert(t, len(ast.Structs[0].StructuredAnnotations) == 1)
+	a = ast.Structs[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "foo.bar")
+	test.Assert(t, len(a.Values) == 2)
+	test.Assert(t, a.Values[0].Key == "data")
+	test.Assert(t, a.Values[0].Value.TypedValue.Struct.Identifier == "baz")
+	test.Assert(t, len(a.Values[0].Value.TypedValue.Struct.Values) == 1)
+	test.Assert(t, a.Values[0].Value.TypedValue.Struct.Values[0].Key == "x")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Struct.Values[0].Value.TypedValue.Int == 1)
+	test.Assert(t, len(ast.Structs[0].Fields) == 2)
+	test.Assert(t, len(ast.Structs[0].Fields[0].StructuredAnnotations) == 1)
+	a = ast.Structs[0].Fields[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "a")
+	test.Assert(t, len(a.Values) == 0)
+	test.Assert(t, len(ast.Structs[0].Fields[1].StructuredAnnotations) == 2)
+	a = ast.Structs[0].Fields[1].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "a")
+	test.Assert(t, len(a.Values) == 0)
+	a = ast.Structs[0].Fields[1].StructuredAnnotations[1]
+	test.Assert(t, a.Identifier == "b")
+	test.Assert(t, len(a.Values) == 0)
+
+	test.Assert(t, len(ast.Exceptions) == 1)
+	test.Assert(t, len(ast.Exceptions[0].StructuredAnnotations) == 1)
+	a = ast.Exceptions[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "foo.bar")
+	test.Assert(t, len(a.Values) == 0)
+	test.Assert(t, len(ast.Exceptions[0].Fields) == 2)
+	test.Assert(t, len(ast.Exceptions[0].Fields[0].StructuredAnnotations) == 1)
+	a = ast.Exceptions[0].Fields[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "range")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "r")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Literal == "<0")
+	test.Assert(t, len(ast.Exceptions[0].Fields[1].StructuredAnnotations) == 0)
+
+	test.Assert(t, len(ast.Services) == 1)
+	test.Assert(t, len(ast.Services[0].StructuredAnnotations) == 1)
+	a = ast.Services[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "meta")
+	test.Assert(t, len(a.Values) == 2)
+	test.Assert(t, a.Values[0].Key == "fooable")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Identifier == "true")
+	test.Assert(t, a.Values[1].Key == "barable")
+	test.Assert(t, *a.Values[1].Value.TypedValue.Double == 12.0)
+	test.Assert(t, len(ast.Services[0].Functions) == 1)
+	test.Assert(t, len(ast.Services[0].Functions[0].StructuredAnnotations) == 1)
+	a = ast.Services[0].Functions[0].StructuredAnnotations[0]
+	test.Assert(t, a.Identifier == "meta")
+	test.Assert(t, len(a.Values) == 1)
+	test.Assert(t, a.Values[0].Key == "what")
+	test.Assert(t, *a.Values[0].Value.TypedValue.Literal == "method-annotation")
+}

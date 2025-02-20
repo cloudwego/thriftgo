@@ -7,43 +7,61 @@ type ThriftIDL Peg {
 
 Document <- Header* Definition* Skip !.
 
-Header <- Skip (Include / CppInclude / Namespace) SkipLine
+Header <- Skip (Include / CppInclude / HsInclude / Namespace / Package) SkipLine
 
 Include <- INCLUDE Literal
 
 CppInclude <- CPPINCLUDE Literal
 
-Namespace <- NAMESPACE NamespaceScope Identifier Annotations?
+HsInclude <- HSINCLUDE Literal
+
+Namespace <- NAMESPACE NamespaceScope (Identifier / Literal) Annotations?
+
+Package <- ReservedComments StructuredAnnotations? PACKAGE Literal? ListSeparator?
 
 NamespaceScope <- Skip
     <'*'> Indent*
     / Identifier
 
-Definition <- ReservedComments Skip (Const / Typedef / Enum / Service / Struct / Union / Exception) Annotations? SkipLine
+Definition <- ReservedComments Skip (Const / Typedef / Enum / Service / Interaction / Struct / Union / Exception) Annotations? SkipLine
 
-Const <- CONST FieldType Identifier EQUAL ConstValue ListSeparator?
+Const <- StructuredAnnotations? CONST FieldType Identifier EQUAL ConstValue ListSeparator?
 
-Typedef <- TYPEDEF FieldType Identifier
+Typedef <- StructuredAnnotations? TYPEDEF FieldType Identifier ListSeparator?
 
-Enum  <- ENUM Identifier LWING (ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator? ReservedEndLineComments SkipLine)* RWING
+Enum  <- StructuredAnnotations? ENUM Identifier LWING (ReservedComments StructuredAnnotations? Identifier (EQUAL IntConstant)? Annotations? ListSeparator? ReservedEndLineComments SkipLine)* RWING
 
-Service <- SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
+Service <- StructuredAnnotations? SERVICE Identifier ( EXTENDS Identifier )? LWING (Function / Performs)* RWING
 
-Struct <- STRUCT Identifier LWING Field* RWING
+Interaction <- StructuredAnnotations? INTERACTION Identifier LWING Function* RWING
 
-Union <- UNION Identifier LWING Field* RWING
+Struct <- StructuredAnnotations? STRUCT Identifier LWING Field* RWING
 
-Exception <- EXCEPTION Identifier LWING Field* RWING
+Union <- StructuredAnnotations? UNION Identifier LWING Field* RWING
 
-Field <- ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? ReservedEndLineComments SkipLine
+Exception <- StructuredAnnotations? ExceptionMeta? EXCEPTION Identifier LWING Field* RWING
+
+ExceptionMeta <- ExceptionLabel*
+
+ExceptionLabel <- SAFE / UNSAFE / TRANSIENT / PERMANENT / STATEFUL / SERVER / CLIENT
+
+Field <- ReservedComments Skip StructuredAnnotations? FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? ReservedEndLineComments SkipLine
 
 FieldId <- Skip IntConstant COLON Indent*
 
 FieldReq <- Skip <('required' / 'optional')> Indent*
 
-Function  <- ReservedComments Skip ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator? SkipLine
+Function  <- ReservedComments Skip StructuredAnnotations? FunctionMeta? ReturnClause Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator? SkipLine
 
-FunctionType  <- VOID / FieldType
+ReturnClause <- FunctionType (COMMA FunctionType)? (COMMA FunctionType)?
+
+FunctionType  <- VOID / Sink / Stream / FieldType
+
+FunctionMeta <- FunctionLabel?
+
+FunctionLabel <- ONEWAY / READONLY / IDEMPOTENT
+
+Performs <- ReservedComments Skip PERFORMS Identifier ListSeparator? SkipLine
 
 Throws <- THROWS LPAR Field* RPAR
 
@@ -61,9 +79,13 @@ ListType <- LIST LPOINT FieldType RPOINT CppType?
 
 CppType <- CPPTYPE Literal
 
-ConstValue <- DoubleConstant / IntConstant / Literal / Identifier / ConstList / ConstMap
+Sink <- SINK LPOINT FieldType Throws? COMMA FieldType Throws? RPOINT
 
-IntConstant <- Skip < '0x' ([0-9] / [A-Z] / [a-z])+ / '0o' Digit+ / [+\-]? Digit+ > Indent*
+Stream <- STREAM LPOINT FieldType Throws? RPOINT
+
+ConstValue <- DoubleConstant / IntConstant / Literal / ConstStruct / Identifier / ConstList / ConstMap
+
+IntConstant <- Skip < [+\-]? '0' [bB] [01]+ / [+\-]? '0' [xX] ([0-9] / [A-Z] / [a-z])+ / '0o' Digit+ / [+\-]? Digit+ > Indent*
 
 DoubleConstant  <- Skip <[+\-]? (
         Digit* '.' Digit+  Exponent?
@@ -74,13 +96,19 @@ Exponent <- ('e' / 'E') IntConstant
 
 Annotations <- LPAR Annotation* RPAR
 
-Annotation <- Identifier EQUAL Literal ListSeparator?
+Annotation <- ((Identifier EQUAL ConstValue) / Identifier) ListSeparator?
+
+StructuredAnnotations <- StructuredAnnotation*
+
+StructuredAnnotation <- AT (ConstStruct / Identifier)
 
 ConstList  <- LBRK (ConstValue ListSeparator?)* RBRK
 
 ConstMap  <- LWING (ConstValue COLON ConstValue ListSeparator?)* RWING
 
-EscapeLiteralChar <- '\\' ["']
+ConstStruct <- Identifier LWING (Identifier EQUAL ConstValue ListSeparator?)* RWING
+
+EscapeLiteralChar <- '\\' ["'] / '\\\\'
 
 Literal <- Skip '"' <(EscapeLiteralChar / !'"' .)*> '"' Indent*
         / Skip "'" <(EscapeLiteralChar / !"'" .)*> "'" Indent*
@@ -120,6 +148,8 @@ STRING      <- Skip <'string'>      !LetterOrDigit  Indent*
 BINARY      <- Skip <'binary'>      !LetterOrDigit  Indent*
 CONST       <- Skip 'const'         !LetterOrDigit  Indent*
 ONEWAY      <- Skip 'oneway'        !LetterOrDigit  Indent*
+READONLY    <- Skip 'readonly'      !LetterOrDigit  Indent*
+IDEMPOTENT  <- Skip 'idempotent'    !LetterOrDigit  Indent*
 TYPEDEF     <- Skip 'typedef'       !LetterOrDigit  Indent*
 MAP         <- Skip 'map'           !LetterOrDigit  Indent*
 SET         <- Skip 'set'           !LetterOrDigit  Indent*
@@ -127,15 +157,28 @@ LIST        <- Skip 'list'          !LetterOrDigit  Indent*
 VOID        <- Skip 'void'          !LetterOrDigit  Indent*
 THROWS      <- Skip 'throws'        !LetterOrDigit  Indent*
 EXCEPTION   <- Skip 'exception'     !LetterOrDigit  Indent*
+SAFE        <- Skip 'safe'          !LetterOrDigit  Indent*
+UNSAFE      <- Skip 'unsafe'        !LetterOrDigit  Indent*
+TRANSIENT   <- Skip 'transient'     !LetterOrDigit  Indent*
+PERMANENT   <- Skip 'permanent'     !LetterOrDigit  Indent*
+STATEFUL    <- Skip 'stateful'      !LetterOrDigit  Indent*
+SERVER      <- Skip 'server'        !LetterOrDigit  Indent*
+CLIENT      <- Skip 'client'        !LetterOrDigit  Indent*
 EXTENDS     <- Skip 'extends'       !LetterOrDigit  Indent*
 SERVICE     <- Skip 'service'       !LetterOrDigit  Indent*
+INTERACTION <- Skip 'interaction'   !LetterOrDigit  Indent*
 STRUCT      <- Skip 'struct'        !LetterOrDigit  Indent*
 UNION       <- Skip 'union'         !LetterOrDigit  Indent*
 ENUM        <- Skip 'enum'          !LetterOrDigit  Indent*
 INCLUDE     <- Skip 'include'       !LetterOrDigit  Indent*
 CPPINCLUDE  <- Skip 'cpp_include'   !LetterOrDigit  Indent*
+HSINCLUDE   <- Skip 'hs_include'    !LetterOrDigit  Indent*
 NAMESPACE   <- Skip 'namespace'     !LetterOrDigit  Indent*
+PACKAGE     <- Skip 'package'       !LetterOrDigit  Indent*
 CPPTYPE     <- Skip 'cpp_type'      !LetterOrDigit  Indent*
+PERFORMS    <- Skip 'performs'      !LetterOrDigit  Indent*
+SINK        <- Skip 'sink'          !LetterOrDigit  Indent*
+STREAM      <- Skip 'stream'        !LetterOrDigit  Indent*
 LBRK        <- Skip '['     Indent*
 RBRK        <- Skip ']'     Indent*
 LWING       <- Skip '{'     Indent*
@@ -147,3 +190,4 @@ COMMA       <- Skip ','     Indent*
 LPAR        <- Skip '('     Indent*
 RPAR        <- Skip ')'     Indent*
 COLON       <- Skip ':'     Indent*
+AT          <- Skip '@'     Indent*

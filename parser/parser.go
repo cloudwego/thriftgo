@@ -236,6 +236,14 @@ func (p *parser) parseHeader(node *node32) (err error) {
 		if err := p.parseCppInclude(node); err != nil {
 			return err
 		}
+	case ruleHsInclude:
+		if err := p.parseHsInclude(node); err != nil {
+			return err
+		}
+	case rulePackage:
+		if err := p.parsePackage(node); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
 	}
@@ -266,6 +274,42 @@ func (p *parser) parseCppInclude(node *node32) (err error) {
 		return err
 	}
 	p.CppIncludes = append(p.CppIncludes, p.pegText(node))
+	return nil
+}
+
+func (p *parser) parseHsInclude(node *node32) (err error) {
+	node, err = checkrule(node, ruleHsInclude)
+	if err != nil {
+		return err
+	}
+	p.HsIncludes = append(p.HsIncludes, p.pegText(node))
+	return nil
+}
+
+func (p *parser) parsePackage(node *node32) (err error) {
+	node, err = checkrule(node, rulePackage)
+	if err != nil {
+		return err
+	}
+	// ReservedComments StructuredAnnotations? PACKAGE Literal
+	var comments string
+	if node.pegRule == ruleReservedComments {
+		comments, err = p.parseReservedComments(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
+	name := p.pegText(node)
+	p.Package = &Package{Name: name, StructuredAnnotations: structAnotations, ReservedComments: comments}
 	return nil
 }
 
@@ -338,6 +382,10 @@ func (p *parser) parseDefinition(node *node32) (err error) {
 		if err := p.parseService(node); err != nil {
 			return err
 		}
+	case ruleInteraction:
+		if err := p.parseInteraction(node); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
 	}
@@ -357,7 +405,15 @@ func (p *parser) parseConst(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// CONST FieldType Identifier EQUAL ConstValue ListSeparator?
+	// StructuredAnnotations? CONST FieldType Identifier EQUAL ConstValue ListSeparator?
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	node = node.next // ignore CONST
 	ft, err := p.parseFieldType(node)
 	if err != nil {
@@ -370,7 +426,7 @@ func (p *parser) parseConst(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	c := &Constant{Name: name, Type: ft, Value: value}
+	c := &Constant{Name: name, Type: ft, Value: value, StructuredAnnotations: structAnotations}
 	c.ReservedComments = p.DefinitionReservedComment
 	p.Constants = append(p.Constants, c)
 	p.Annotations = &c.Annotations
@@ -514,6 +570,12 @@ func (p *parser) parseConstValue(node *node32) (cv *ConstValue, err error) {
 			ret = append(ret, &MapConstValue{Key: k, Value: v})
 		}
 		return &ConstValue{Type: ConstType_ConstMap, TypedValue: &ConstTypedValue{Map: ret}}, nil
+	case ruleConstStruct:
+		constStruct, err := p.parseConstStruct(node)
+		if err != nil {
+			return nil, err
+		}
+		return &ConstValue{Type: ConstType_ConstStruct, TypedValue: &ConstTypedValue{Struct: constStruct}}, nil
 	default:
 		return nil, fmt.Errorf("unknown rule: " + rul3s[node.pegRule])
 	}
@@ -524,7 +586,15 @@ func (p *parser) parseTypedef(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// TYPEDEF FieldType Identifier
+	// StructuredAnnotations? TYPEDEF FieldType Identifier
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	node = node.next // ignore TYPEDEF
 	ft, err := p.parseFieldType(node)
 	if err != nil {
@@ -532,6 +602,7 @@ func (p *parser) parseTypedef(node *node32) (err error) {
 	}
 	var typd Typedef
 	typd.Type = ft
+	typd.StructuredAnnotations = structAnotations
 	node = node.next
 	typd.Alias = p.pegText(node)
 	typd.ReservedComments = p.DefinitionReservedComment
@@ -545,14 +616,30 @@ func (p *parser) parseEnum(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// ENUM Identifier LWING ( ReservedComments Identifier (EQUAL IntConstant)? Annotations? ListSeparator? ReservedEndLineComments SkipLine)* RWING
+	// StructuredAnnotations? ENUM Identifier LWING ( ReservedComments StructuredAnnotations? Identifier (EQUAL IntConstant)? Annotations? ListSeparator? ReservedEndLineComments SkipLine)* RWING
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	node = node.next // ignore ENUM
 	name := p.pegText(node)
 	var values []*EnumValue
 	for n := node.next.next; n != nil; n = n.next {
 		valueComments := ""
+		var valueStructAnnotations StructuredAnnotations
 		if n.pegRule == ruleReservedComments {
 			valueComments, err = p.parseReservedComments(n)
+			if err != nil {
+				return err
+			}
+			n = n.next
+		}
+		if n.pegRule == ruleStructuredAnnotations {
+			valueStructAnnotations, err = p.parseStructuredAnnotations(n)
 			if err != nil {
 				return err
 			}
@@ -561,6 +648,7 @@ func (p *parser) parseEnum(node *node32) (err error) {
 		if n.pegRule == ruleIdentifier {
 			var v EnumValue
 			v.ReservedComments = valueComments
+			v.StructuredAnnotations = valueStructAnnotations
 			v.Name = p.pegText(n)
 			if n.next.pegRule == ruleEQUAL {
 				n = n.next.next
@@ -593,7 +681,7 @@ func (p *parser) parseEnum(node *node32) (err error) {
 			values = append(values, &v)
 		}
 	}
-	e := &Enum{Name: name, Values: values}
+	e := &Enum{Name: name, Values: values, StructuredAnnotations: structAnotations}
 	e.ReservedComments = p.DefinitionReservedComment
 	p.Enums = append(p.Enums, e)
 	p.Annotations = &e.Annotations
@@ -605,7 +693,15 @@ func (p *parser) parseUnion(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// UNION Identifier LWING Field* RWING
+	// StructuredAnnotations? UNION Identifier LWING Field* RWING
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	node = node.next // ignore UNION
 	name := p.pegText(node)
 	node = node.next
@@ -627,7 +723,7 @@ func (p *parser) parseUnion(node *node32) (err error) {
 			fields = append(fields, field)
 		}
 	}
-	u := &StructLike{Category: "union", Name: name, Fields: fields}
+	u := &StructLike{Category: "union", Name: name, Fields: fields, StructuredAnnotations: structAnotations}
 	u.ReservedComments = p.DefinitionReservedComment
 	p.Unions = append(p.Unions, u)
 	p.Annotations = &u.Annotations
@@ -639,7 +735,15 @@ func (p *parser) parseStruct(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// STRUCT Identifier LWING Field* RWING
+	// StructuredAnnotations? STRUCT Identifier LWING Field* RWING
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	node = node.next // ignore STRUCT
 	name := p.pegText(node)
 	node = node.next
@@ -661,7 +765,7 @@ func (p *parser) parseStruct(node *node32) (err error) {
 			fields = append(fields, field)
 		}
 	}
-	s := &StructLike{Category: "struct", Name: name, Fields: fields}
+	s := &StructLike{Category: "struct", Name: name, Fields: fields, StructuredAnnotations: structAnotations}
 	s.ReservedComments = p.DefinitionReservedComment
 	p.Structs = append(p.Structs, s)
 	p.Annotations = &s.Annotations
@@ -673,7 +777,23 @@ func (p *parser) parseException(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// EXCEPTION Identifier LWING Field* RWING
+	// StructuredAnnotations? EXCEPTION Identifier LWING Field* RWING
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
+	var meta ExceptionMeta
+	if node != nil && node.pegRule == ruleExceptionMeta {
+		meta, err = p.parseExceptionMeta(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	node = node.next // ignore EXCEPTION
 	name := p.pegText(node)
 	var fields []*Field
@@ -693,7 +813,7 @@ func (p *parser) parseException(node *node32) (err error) {
 			fields = append(fields, field)
 		}
 	}
-	e := &StructLike{Category: "exception", Name: name, Fields: fields}
+	e := &StructLike{Category: "exception", Name: name, Fields: fields, StructuredAnnotations: structAnotations, ExceptionMeta: meta}
 	e.ReservedComments = p.DefinitionReservedComment
 	p.Exceptions = append(p.Exceptions, e)
 	p.Annotations = &e.Annotations
@@ -705,7 +825,7 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// ReservedComments Skip FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? ReservedEndLineComments
+	// ReservedComments Skip StructuredAnnotations? FieldId? FieldReq? FieldType Identifier (EQUAL ConstValue)? Annotations? ListSeparator? ReservedEndLineComments
 	var f Field
 	f.ID = NOTSET
 	for ; node != nil; node = node.next {
@@ -726,6 +846,14 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 			}
 			if f.ReservedComments == "" {
 				f.ReservedComments = reservedComments
+			}
+		case ruleStructuredAnnotations:
+			structAnotations, err := p.parseStructuredAnnotations(node)
+			if err != nil {
+				return nil, err
+			}
+			if f.StructuredAnnotations == nil {
+				f.StructuredAnnotations = structAnotations
 			}
 		case ruleFieldId:
 			i, _ := strconv.Atoi(p.pegText(node))
@@ -782,16 +910,110 @@ func (p *parser) parseAnnotations(node *node32) ([]*Annotation, error) {
 }
 
 func (p *parser) parseAnnotation(node *node32) (k, v string, err error) {
-	// Identifier EQUAL Literal ListSeparator?
+	// ((Identifier EQUAL ConstValue) / Identifier) ListSeparator?
 	node, err = checkrule(node, ruleAnnotation)
 	if err != nil {
 		return "", "", err
 	}
 
 	k = p.pegText(node) // Identifier
+	if node.next == nil || node.next.pegRule != ruleEQUAL {
+		// Annotation without value
+		return k, "", nil
+	}
 	node = node.next.next
 	v = p.pegText(node) // Literal
 	return k, v, nil
+}
+
+func (p *parser) parseStructuredAnnotations(node *node32) (StructuredAnnotations, error) {
+	// StructuredAnnotation*
+	var err error
+	ret := &StructuredAnnotations{}
+	node, err = checkrule(node, ruleStructuredAnnotations)
+	if err != nil {
+		return nil, err
+	}
+	for ; node != nil; node = node.next {
+		annotation, err := p.parseStructuredAnnotation(node)
+		if err != nil {
+			return nil, err
+		}
+		*ret = append(*ret, annotation)
+	}
+	return *ret, nil
+}
+
+func (p *parser) parseStructuredAnnotation(node *node32) (*StructuredAnnotation, error) {
+	// AT ConstStruct
+	node, err := checkrule(node, ruleStructuredAnnotation)
+	if err != nil {
+		return nil, err
+	}
+	node = node.next // skip AT
+	constStruct, err := p.parseConstStruct(node)
+	if err != nil {
+		return nil, err
+	}
+	ret := StructuredAnnotation(*constStruct)
+	return &ret, nil
+}
+
+func (p *parser) parseConstStruct(node *node32) (*ConstStructValue, error) {
+	// Identifier LWING (Identifier EQUAL ConstValue ListSeparator?)* RWING
+	identifier := p.pegText(node)
+	node = node.up
+	values := []*StructConstValue{} // important: can't not be nil
+	for node = node.next; node != nil; node = node.next {
+		if node.pegRule != ruleIdentifier {
+			continue
+		}
+		k := p.pegText(node)
+		node = node.next.next // ignore EQUAL
+		v, err := p.parseConstValue(node)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, &StructConstValue{Key: k, Value: v})
+	}
+	return &ConstStructValue{
+		Identifier: identifier,
+		Values:     values,
+	}, nil
+}
+
+func (p *parser) parseInteraction(node *node32) (err error) {
+	node, err = checkrule(node, ruleInteraction)
+	if err != nil {
+		return err
+	}
+	// StructuredAnnotations? INTERACTION Identifier LWING Function* RWING
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
+	var interaction Interaction
+	node = node.next // ignore INTERACTION
+	interaction.Name = p.pegText(node)
+	node = node.next
+	for node = node.next; node != nil; node = node.next {
+		if node.pegRule == ruleFunction {
+			fu, err := p.parseFunction(node)
+			if err != nil {
+				return err
+			}
+			interaction.Functions = append(interaction.Functions, fu)
+		}
+	}
+	interaction.ReservedComments = p.DefinitionReservedComment
+	interaction.StructuredAnnotations = structAnotations
+	p.Interactions = append(p.Interactions, &interaction)
+	p.Annotations = &interaction.Annotations
+	return nil
 }
 
 func (p *parser) parseService(node *node32) (err error) {
@@ -799,7 +1021,15 @@ func (p *parser) parseService(node *node32) (err error) {
 	if err != nil {
 		return err
 	}
-	// SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
+	// StructuredAnnotations? SERVICE Identifier ( EXTENDS Identifier )? LWING Function* RWING
+	var structAnotations StructuredAnnotations
+	if node != nil && node.pegRule == ruleStructuredAnnotations {
+		structAnotations, err = p.parseStructuredAnnotations(node)
+		if err != nil {
+			return err
+		}
+		node = node.next
+	}
 	var s Service
 	node = node.next // ignore SERVICE
 	s.Name = p.pegText(node)
@@ -815,12 +1045,39 @@ func (p *parser) parseService(node *node32) (err error) {
 				return err
 			}
 			s.Functions = append(s.Functions, fu)
+		} else if node.pegRule == rulePerforms {
+			performs, err := p.parsePerforms(node)
+			if err != nil {
+				return err
+			}
+			s.Performs = append(s.Performs, performs)
 		}
 	}
 	s.ReservedComments = p.DefinitionReservedComment
+	s.StructuredAnnotations = structAnotations
 	p.Services = append(p.Services, &s)
 	p.Annotations = &s.Annotations
 	return nil
+}
+
+func (p *parser) parsePerforms(node *node32) (*Performs, error) {
+	node, err := checkrule(node, rulePerforms)
+	if err != nil {
+		return nil, err
+	}
+	// ReservedComments Skip PERFORMS Identifier ListSeparator? SkipLine
+	var comments string
+	if node.pegRule == ruleReservedComments {
+		comments, err = p.parseReservedComments(node)
+		if err != nil {
+			return nil, err
+		}
+		node = node.next
+	}
+	node = node.next // ignore PERFORMS
+	name := p.pegText(node)
+	ret := &Performs{Interaction: name, ReservedComments: comments}
+	return ret, nil
 }
 
 func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
@@ -828,7 +1085,7 @@ func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// ReservedComments ONEWAY? FunctionType Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator?
+	// ReservedComments Skip StructuredAnnotations? FunctionMeta? ReturnClause Identifier LPAR Field* RPAR Throws? Annotations? ListSeparator?
 	var f Function
 	for ; node != nil; node = node.next {
 		switch node.pegRule {
@@ -838,19 +1095,34 @@ func (p *parser) parseFunction(node *node32) (fu *Function, err error) {
 				return nil, err
 			}
 			f.ReservedComments = reservedComments
-		case ruleONEWAY:
-			f.Oneway = true
-		case ruleFunctionType:
-			n := node.up
-			if n.pegRule == ruleFieldType {
-				f.FunctionType, err = p.parseFieldType(n)
-				if err != nil {
-					return nil, err
-				}
-			} else if n.pegRule == ruleVOID {
-				f.Void = true
-				f.FunctionType = &Type{Name: "void"}
+		case ruleStructuredAnnotations:
+			structAnotations, err := p.parseStructuredAnnotations(node)
+			if err != nil {
+				return nil, err
 			}
+			f.StructuredAnnotations = structAnotations
+		case ruleFunctionMeta:
+			meta, err := p.parseFunctionMeta(node)
+			if err != nil {
+				return nil, err
+			}
+			// Maintain compatibility with apache thrift
+			for _, label := range meta {
+				if label == FunctionLabel_Oneway {
+					f.Oneway = true
+					break
+				}
+			}
+			f.FunctionMeta = meta
+		case ruleReturnClause:
+			clause, err := p.parseReturnClause(node)
+			if err != nil {
+				return nil, err
+			}
+			f.ReturnClause = clause
+			// Maintain compatibility with apache thrift
+			f.FunctionType = clause.Type0
+			f.Void = clause.Type0.Name == "void"
 		case ruleIdentifier:
 			f.Name = p.pegText(node)
 		case ruleField:
@@ -941,4 +1213,173 @@ func (p *parser) parseReservedEndLineComments(node *node32) (ReservedComments st
 		}
 	}
 	return strings.Join(comments, "\n"), nil
+}
+
+func (p *parser) parseExceptionMeta(node *node32) (meta ExceptionMeta, err error) {
+	node, err = checkrule(node, ruleExceptionMeta)
+	if err != nil {
+		return nil, err
+	}
+	for ; node != nil; node = node.next {
+		switch node.pegRule {
+		case ruleSAFE:
+			meta = append(meta, ExceptionLabel_Safe)
+		case ruleUNSAFE:
+			meta = append(meta, ExceptionLabel_Unsafe)
+		case ruleTRANSIENT:
+			meta = append(meta, ExceptionLabel_Transient)
+		case rulePERMANENT:
+			meta = append(meta, ExceptionLabel_Permanent)
+		case ruleSTATEFUL:
+			meta = append(meta, ExceptionLabel_Stateful)
+		case ruleSERVER:
+			meta = append(meta, ExceptionLabel_Server)
+		case ruleCLIENT:
+			meta = append(meta, ExceptionLabel_Client)
+		}
+	}
+	return meta, nil
+}
+
+func (p *parser) parseFunctionMeta(node *node32) (meta FunctionMeta, err error) {
+	node, err = checkrule(node, ruleFunctionMeta)
+	if err != nil {
+		return nil, err
+	}
+	for ; node != nil; node = node.next {
+		switch node.pegRule {
+		case ruleONEWAY:
+			meta = append(meta, FunctionLabel_Oneway)
+		case ruleREADONLY:
+			meta = append(meta, FunctionLabel_Readonly)
+		case ruleIDEMPOTENT:
+			meta = append(meta, FunctionLabel_Idempotent)
+		}
+	}
+	return meta, nil
+}
+
+func (p *parser) parseReturnClause(node *node32) (*ReturnClause, error) {
+	node, err := checkrule(node, ruleReturnClause)
+	if err != nil {
+		return nil, err
+	}
+	var t0, t1, t2 *Type
+	// FunctionType (COMMA FunctionType)? (COMMA FunctionType)?
+	t0, err = p.parseFunctionType(node)
+	if err != nil {
+		return nil, err
+	}
+	node = node.next
+	if node != nil && node.pegRule == ruleCOMMA {
+		node = node.next // skip COMMA
+		t1, err = p.parseFunctionType(node)
+		if err != nil {
+			return nil, err
+		}
+		node = node.next
+	}
+	if node != nil && node.pegRule == ruleCOMMA {
+		node = node.next // skip COMMA
+		t2, err = p.parseFunctionType(node)
+		if err != nil {
+			return nil, err
+		}
+		node = node.next
+	}
+	ret := &ReturnClause{Type0: t0, Type1: t1, Type2: t2}
+	return ret, nil
+}
+
+func (p *parser) parseFunctionType(node *node32) (*Type, error) {
+	node, err := checkrule(node, ruleFunctionType)
+	if err != nil {
+		return nil, err
+	}
+	switch node.pegRule {
+	case ruleFieldType:
+		fieldType, err := p.parseFieldType(node)
+		if err != nil {
+			return nil, err
+		}
+		return fieldType, nil
+	case ruleVOID:
+		return &Type{Name: "void"}, nil
+	case ruleSink:
+		sink, err := p.parseSink(node)
+		if err != nil {
+			return nil, err
+		}
+		return sink, nil
+	case ruleStream:
+		stream, err := p.parseStream(node)
+		if err != nil {
+			return nil, err
+		}
+		return stream, nil
+	default:
+		return nil, fmt.Errorf("unknown rule: %s", rul3s[node.pegRule])
+	}
+}
+
+func (p *parser) parseSink(node *node32) (*Type, error) {
+	node, err := checkrule(node, ruleSink)
+	if err != nil {
+		return nil, err
+	}
+	// SINK LPOINT FieldType Throws? COMMA FieldType Throws? RPOINT
+	node = node.next.next // ignore SINK
+	kt, err := p.parseFieldType(node)
+	if err != nil {
+		return nil, err
+	}
+	node = node.next
+	var ktThrows []*Field
+	if node != nil && node.pegRule == ruleThrows {
+		ktThrows, err = p.parseThrows(node)
+		if err != nil {
+			return nil, err
+		}
+		node = node.next
+	}
+	node = node.next // ignore COMMA
+	vt, err := p.parseFieldType(node)
+	if err != nil {
+		return nil, err
+	}
+	node = node.next
+	var vtThrows []*Field
+	if node != nil && node.pegRule == ruleThrows {
+		vtThrows, err = p.parseThrows(node)
+		if err != nil {
+			return nil, err
+		}
+		node = node.next
+	}
+	ret := &Type{Name: "sink", KeyType: kt, ValueType: vt, Category: Category_Sink, KeyTypeThrows: ktThrows, ValueTypeThrows: vtThrows}
+	return ret, nil
+}
+
+func (p *parser) parseStream(node *node32) (*Type, error) {
+	node, err := checkrule(node, ruleStream)
+	if err != nil {
+		return nil, err
+	}
+	// STREAM LPOINT FieldType Throws? RPOINT
+	node = node.next.next // ignore STREAM LPOINT
+	vt, err := p.parseFieldType(node)
+	if err != nil {
+		return nil, err
+	}
+	node = node.next
+	var vtThrows []*Field
+	if node != nil && node.pegRule == ruleThrows {
+		vtThrows, err = p.parseThrows(node)
+		if err != nil {
+			return nil, err
+		}
+		node = node.next
+	}
+	ret := &Type{Name: "stream", ValueType: vt, Category: Category_Stream, ValueTypeThrows: vtThrows}
+	return ret, nil
 }
