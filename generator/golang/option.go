@@ -65,6 +65,7 @@ type Features struct {
 	NoAliasTypeReflectionMethod bool `no_alias_type_reflection_method:"Do not generate type related methods in <idl>_reflection.go when 'thrift.is_alias=\"true\"' annotation is set to types."`
 	EnableRefInterface          bool `enable_ref_interface:"Generate Interface field without pointer type when 'thrift.is_interface=\"true\"' annotation is set to types in referred thrift."`
 	UseOption                   bool `use_option:"Parse specific Thrift annotations into struct-style option fields. If key not match, thriftgo will just ignore it."`
+	StreamX                     bool `streamx:"Generate stream interfaces with streamx mode."`
 	// ForceUseOption         bool `use_option:"Forcefully parse all Thrift annotations into struct-style option fields. If parsing is not possible, an error will be thrown."`
 	NoFmt             bool `no_fmt:"To achieve faster generation speed, skipping the formatting of Golang code can improve performance by approximately 50%."`
 	SkipEmpty         bool `skip_empty:"If there's not content in file, just skip it. Later this feature will be a default feature."`
