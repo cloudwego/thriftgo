@@ -100,12 +100,17 @@ func (g *GoBackend) Generate(req *plugin.Request, log backend.LogFunc) *plugin.R
 			g.log.Warn(fmt.Sprintf("structs:%d->%d (%.1f%% Trimmed),  fields:%d->%d (%.1f%% Trimmed).", tr.StructsTotal, tr.StructsLeft(), tr.StructTrimmedPercentage(), tr.FieldsTotal, tr.FieldsLeft(), tr.FieldTrimmedPercentage()))
 		}
 	}
-	g.prepareTemplates()
-	g.fillRequisitions()
 	if !g.utils.Features().ThriftStreaming {
 		g.removeStreamingFunctions(req.GetAST())
 	}
-	g.executeTemplates()
+
+	if g.utils.Features().SkipGoGen {
+		g.log.Warn("You are skipping Thriftgo Go Code Generating")
+	} else {
+		g.prepareTemplates()
+		g.fillRequisitions()
+		g.executeTemplates()
+	}
 	return g.buildResponse()
 }
 

@@ -72,6 +72,7 @@ type Features struct {
 	GetEnumAnnotation bool `get_enum_annotation:"Generate GetAnnotation method for enum types."`
 	ApacheWarning     bool `apache_warning:"Generate Apache Codec with warning on the first line."`
 	ApacheAdaptor     bool `apache_adaptor:"Generate adaptor for apache codec to kitex fast codec."`
+	SkipGoGen         bool `skip_go_gen:"Skip thriftgo go code generation, just parse the AST and execute the plugins."`
 }
 
 var defaultFeatures = Features{
