@@ -130,20 +130,22 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	trimmer.forceTrimming = forceTrimming
 	trimmer.matchGoName = matchGoName
-	for i, method := range trimMethods {
-		parts := strings.Split(method, ".")
-		if len(parts) < 2 {
-			if len(ast.Services) == 1 {
-				trimMethods[i] = ast.Services[0].Name + "." + method
-			} else {
-				trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
-				// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
-				// os.Exit(2)
+	if len(ast.Services) > 0 {
+		for i, method := range trimMethods {
+			parts := strings.Split(method, ".")
+			if len(parts) < 2 {
+				if len(ast.Services) == 1 {
+					trimMethods[i] = ast.Services[0].Name + "." + method
+				} else {
+					trimMethods[i] = ast.Services[len(ast.Services)-1].Name + "." + method
+					// println("please specify service name!\n  -m usage: -m [service_name.method_name]")
+					// os.Exit(2)
+				}
 			}
-		}
-		trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
-		if err != nil {
-			return nil, err
+			trimmer.trimMethods[i], err = regexp2.Compile(trimMethods[i], 0)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	trimmer.preservedStructs = preservedStructs
@@ -168,7 +170,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 
 	for i, method := range trimMethods {
 		if !trimmer.trimMethodValid[i] {
-			return nil, fmt.Errorf("err: method %s not found!\n", method)
+			fmt.Printf("warning: method %s not found in %s!\n", method, ast.Filename)
 		}
 	}
 
