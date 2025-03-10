@@ -20,7 +20,7 @@ var FunctionSignature = `
 {{- $Function := .}}
 {{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 	{{- $arg := index .Arguments 0}}
-	{{- .GoName}}(
+	{{- .GoName}}({{- if Features.StreamX}}ctx context.Context,{{- end}}
 	{{- if and .Streaming.ServerStreaming (not .Streaming.ClientStreaming) -}}
 		req {{$arg.GoTypeName}},
 	{{- end -}}

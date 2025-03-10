@@ -444,6 +444,9 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		},
 		"backquoted":     BackQuoted,
 		"genAnnotations": genAnnotations,
+		"NotPtr": func(s TypeName) string {
+			return strings.ReplaceAll(string(s), "*", "")
+		},
 	}
 	return m
 }
