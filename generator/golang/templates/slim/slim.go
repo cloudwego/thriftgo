@@ -150,6 +150,7 @@ func (p *{{$TypeName}}) Error() string {
 {{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 {{- $arg := index .Arguments 0}}
 {{- if Features.StreamX}}{{/* StreamX */}}
+{{- UseStdLibrary "streaming" -}}
 {{- if and .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 type {{.Service.GoName}}_{{.Name}}Server streaming.BidiStreamingServer[{{NotPtr $arg.GoTypeName}},{{NotPtr .ResponseGoTypeName}}]
 {{- else if .Streaming.ClientStreaming}}
