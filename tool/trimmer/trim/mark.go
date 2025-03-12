@@ -309,8 +309,14 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	if t.forceTrimming {
 		return false
 	}
+	theStructName := theStruct.Name
+
 	for _, name := range t.preservedStructs {
-		if name == theStruct.Name {
+		if t.matchGoName {
+			name = toGoName(name)
+			theStructName = toGoName(theStructName)
+		}
+		if name == theStructName {
 			return true
 		}
 	}
