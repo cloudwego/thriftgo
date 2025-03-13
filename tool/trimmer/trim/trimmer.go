@@ -51,12 +51,13 @@ type Trimmer struct {
 }
 
 type TrimASTArg struct {
-	Ast             *parser.Thrift
-	TrimMethods     []string
-	Preserve        *bool
-	MatchGoName     *bool
-	PreserveStructs []string
-	PreservedFiles  []string
+	Ast                    *parser.Thrift
+	TrimMethods            []string
+	Preserve               *bool
+	MatchGoName            *bool
+	PreserveCommentEnabled *bool
+	PreserveStructs        []string
+	PreservedFiles         []string
 }
 
 type TrimResultInfo struct {
@@ -100,6 +101,9 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 			if arg.MatchGoName == nil && cfg.MatchGoName != nil {
 				arg.MatchGoName = cfg.MatchGoName
 			}
+			if arg.PreserveCommentEnabled == nil && cfg.PreserveCommentEnabled != nil {
+				arg.PreserveCommentEnabled = cfg.PreserveCommentEnabled
+			}
 			if len(preservedStructs) == 0 {
 				preservedStructs = cfg.PreservedStructs
 			}
@@ -116,7 +120,11 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 	if arg.MatchGoName != nil {
 		matchGoName = *arg.MatchGoName
 	}
-	preserveCommentEnabled := false
+	// optimize 整理配置文件的写法
+	preserveCommentEnabled := true
+	if arg.PreserveCommentEnabled != nil {
+		preserveCommentEnabled = *arg.PreserveCommentEnabled
+	}
 	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preserveCommentEnabled, preservedStructs, preservedFiles)
 }
 
@@ -156,7 +164,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 		trimmer.preservedStructsMap[name] = struct{}{}
 	}
 
-	trimmer.preserveCommentEnabled = true
+	trimmer.preserveCommentEnabled = preserveCommentEnabled
 
 	trimmer.countStructs(ast)
 	originStructsNum := trimmer.structsTrimmed

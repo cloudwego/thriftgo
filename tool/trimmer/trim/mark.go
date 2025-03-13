@@ -318,9 +318,13 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 		return true
 	}
 
-	if t.preserveCommentEnabled && t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
-		return true
+	if t.preserveCommentEnabled {
+		// 当 struct 总量相当大的时候，关闭 comment 校验，速度会提高很多。（但默认是 true 的）
+		if t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
+			return true
+		}
 	}
+
 	// 如果整个文件也是要保留的，那么里面的结构体也不删除
 	if t.preserveFileStructs[theStruct] {
 		return true
