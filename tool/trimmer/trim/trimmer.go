@@ -36,17 +36,18 @@ type Trimmer struct {
 	marks  map[string]map[interface{}]bool
 	outDir string
 	// use -m
-	trimMethods         []*regexp2.Regexp
-	matchGoName         bool
-	trimMethodValid     []bool
-	preserveRegex       *regexp.Regexp
-	forceTrimming       bool
-	preservedStructs    []string
-	structsTrimmed      int
-	fieldsTrimmed       int
-	extServices         []*parser.Service
-	PreservedFiles      []string
-	preserveFileStructs map[*parser.StructLike]bool
+	trimMethods            []*regexp2.Regexp
+	matchGoName            bool
+	trimMethodValid        []bool
+	preserveRegex          *regexp.Regexp
+	forceTrimming          bool
+	preservedStructsMap    map[string]struct{}
+	preserveCommentEnabled bool
+	structsTrimmed         int
+	fieldsTrimmed          int
+	extServices            []*parser.Service
+	PreservedFiles         []string
+	preserveFileStructs    map[*parser.StructLike]bool
 }
 
 type TrimASTArg struct {
@@ -115,11 +116,12 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 	if arg.MatchGoName != nil {
 		matchGoName = *arg.MatchGoName
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preservedStructs, preservedFiles)
+	preserveCommentEnabled := false
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preserveCommentEnabled, preservedStructs, preservedFiles)
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName bool, preservedStructs, preserveFiles []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName, preserveCommentEnabled bool, preservedStructs, preserveFiles []string) (
 	trimResultInfo *TrimResultInfo, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -148,7 +150,14 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 			}
 		}
 	}
-	trimmer.preservedStructs = preservedStructs
+	// 预处理：将 preservedStructs 数组转换为 map
+	trimmer.preservedStructsMap = make(map[string]struct{}, len(preservedStructs))
+	for _, name := range preservedStructs {
+		trimmer.preservedStructsMap[name] = struct{}{}
+	}
+
+	trimmer.preserveCommentEnabled = true
+
 	trimmer.countStructs(ast)
 	originStructsNum := trimmer.structsTrimmed
 	originFieldNum := trimmer.fieldsTrimmed

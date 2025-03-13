@@ -309,18 +309,16 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	if t.forceTrimming {
 		return false
 	}
-	theStructName := theStruct.Name
 
-	for _, name := range t.preservedStructs {
-		if t.matchGoName {
-			name = toGoName(name)
-			theStructName = toGoName(theStructName)
-		}
-		if name == theStructName {
-			return true
-		}
+	currentStructName := theStruct.Name
+	if t.matchGoName {
+		currentStructName = toGoName(currentStructName)
 	}
-	if t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
+	if _, exists := t.preservedStructsMap[currentStructName]; exists {
+		return true
+	}
+
+	if t.preserveCommentEnabled && t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
 		return true
 	}
 	// 如果整个文件也是要保留的，那么里面的结构体也不删除
