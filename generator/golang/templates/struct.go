@@ -168,6 +168,14 @@ var StructLikeRead = `
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
+	{{- if Features.ApacheWarning -}}
+	{{- UseStdLibrary  "apache_warning"}}
+	apache_warning.WarningApache("{{$TypeName}}")
+	{{end}}
+	{{- if Features.ApacheAdaptor -}}
+	{{- UseStdLibrary  "apache_adaptor" -}}
+	return apache_adaptor.AdaptRead(p, iprot)
+	{{- else -}}
 	{{if Features.KeepUnknownFields}}var name string{{end}}
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -261,6 +269,7 @@ ReadStructEndError:
 RequiredFieldNotSetError:
 	return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("required field %s is not set", fieldIDToName_{{$TypeName}}[fieldId]))
 {{- end}}{{/* if $RequiredFieldNotSetError */}}
+{{- end}}{{/* if Features.ApacheAdaptor */}}
 }
 {{- end}}{{/* define "StructLikeRead" */}}
 `
@@ -287,6 +296,7 @@ var StructLikeReadField = `
 {{- range .Fields}}
 {{$FieldName := .GoName}}
 {{- $isBaseVal := .Type | IsBaseType -}}
+{{- if not Features.ApacheAdaptor -}}
 func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
 	{{- if Features.WithFieldMask}}
 	if {{if $isBaseVal}}_{{else}}fm{{end}}, ex := p._fieldmask.Field({{.ID}}); ex {
@@ -304,6 +314,7 @@ func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
 	{{- end}}
 	return nil
 }
+{{- end}}{{/* if Features.ApacheAdaptor */}}
 {{- end}}{{/* range .Fields */}}
 {{- end}}{{/* define "StructLikeReadField" */}}
 `
@@ -314,6 +325,14 @@ var StructLikeWrite = `
 {{- UseStdLibrary "thrift" "fmt"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
+	{{- if Features.ApacheWarning -}}
+	{{- UseStdLibrary  "apache_warning"}}
+	apache_warning.WarningApache("{{$TypeName}}")
+	{{end}}
+	{{- if Features.ApacheAdaptor -}}
+	{{- UseStdLibrary  "apache_adaptor" -}}
+	return apache_adaptor.AdaptWrite(p, oprot)
+	{{- else -}}
 	{{- if gt (len .Fields) 0 }}
 	var fieldId int16
 	{{- end}}
@@ -365,6 +384,7 @@ WriteStructEndError:
 UnknownFieldsWriteError:
 	return thrift.PrependError(fmt.Sprintf("%T write unknown fields error: ", p), err)
 {{- end}}{{/* if Features.KeepUnknownFields */}}
+{{- end}}{{/* if Features.ApacheAdaptor */}}
 }
 {{- end}}{{/* define "StructLikeWrite" */}}
 `
@@ -379,6 +399,7 @@ var StructLikeWriteField = `
 {{- $IsSetName := .IsSetter}}
 {{- $TypeID := .Type | GetTypeIDConstant }}
 {{- $isBaseVal := .Type | IsBaseType }}
+{{- if not Features.ApacheAdaptor -}}
 func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
@@ -424,6 +445,7 @@ WriteFieldBeginError:
 WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field {{.ID}} end error: ", p), err)
 }
+{{- end}}{{/* if Features.ApacheAdaptor */}}
 {{end}}{{/* range .Fields */}}
 {{- end}}{{/* define "StructLikeWriteField" */}}
 `

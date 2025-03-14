@@ -149,6 +149,16 @@ func (p *{{$TypeName}}) Error() string {
 {{InsertionPoint "ExtraStruct"}}
 {{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
 {{- $arg := index .Arguments 0}}
+{{- if Features.StreamX}}{{/* StreamX */}}
+{{- UseStdLibrary "streaming" -}}
+{{- if and .Streaming.ClientStreaming .Streaming.ServerStreaming}}
+type {{.Service.GoName}}_{{.Name}}Server streaming.BidiStreamingServer[{{NotPtr $arg.GoTypeName}},{{NotPtr .ResponseGoTypeName}}]
+{{- else if .Streaming.ClientStreaming}}
+type {{.Service.GoName}}_{{.Name}}Server streaming.ClientStreamingServer[{{NotPtr $arg.GoTypeName}},{{NotPtr .ResponseGoTypeName}}]
+{{- else}}
+type {{.Service.GoName}}_{{.Name}}Server streaming.ServerStreamingServer[{{NotPtr .ResponseGoTypeName}}]
+{{- end}}
+{{- else}}
 type {{.Service.GoName}}_{{.Name}}Server interface {
 	{{- UseStdLibrary "streaming" -}}
 	streaming.Stream
@@ -162,6 +172,7 @@ type {{.Service.GoName}}_{{.Name}}Server interface {
 	SendAndClose({{.ResponseGoTypeName}}) error
 	{{end}}
 }
+{{- end}}{{/* StreamX */}}
 {{- end}}{{/* Streaming */}}
 {{- end}}{{/* range .Functions */}}
 {{end}}{{/* define "ThriftClient" */}}`

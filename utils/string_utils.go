@@ -29,6 +29,8 @@ func ParseArr(str string) ([]string, error) {
 		newstr = strings.ReplaceAll(newstr, " ]", "]")
 		newstr = strings.ReplaceAll(newstr, "[ ", "[")
 		newstr = strings.ReplaceAll(newstr, "  ", " ")
+		// 特殊处理 ', 不进行转义分析
+		newstr = strings.ReplaceAll(newstr, "'", "@&@")
 		newstr = strings.TrimSpace(newstr)
 		if len(newstr) == len(str) {
 			break
@@ -75,6 +77,10 @@ func ParseArr(str string) ([]string, error) {
 				kend = i
 				key = str[kstart:kend]
 				kstart = i + 1
+				key = strings.TrimSpace(key)
+				key = strings.TrimPrefix(key, `"`)
+				key = strings.TrimSuffix(key, `"`)
+				key = strings.ReplaceAll(key, `@&@`, `'`)
 				result = append(result, key)
 			}
 			continue
@@ -86,6 +92,10 @@ func ParseArr(str string) ([]string, error) {
 			return nil, errors.New("grammar error for:" + str)
 		}
 		key = str[kstart:kend]
+		key = strings.TrimSpace(key)
+		key = strings.TrimPrefix(key, `"`)
+		key = strings.TrimSuffix(key, `"`)
+		key = strings.ReplaceAll(key, `@&@`, `'`)
 		result = append(result, key)
 		return result, nil
 	} else {
@@ -109,6 +119,8 @@ func ParseKV(str string) (map[string]string, error) {
 		newstr = strings.ReplaceAll(newstr, ": ", ":")
 		newstr = strings.ReplaceAll(newstr, " ,", ",")
 		newstr = strings.ReplaceAll(newstr, "  ", " ")
+		// 特殊处理 ', 不进行转义分析
+		newstr = strings.ReplaceAll(newstr, "'", "@&@")
 		newstr = strings.TrimSpace(newstr)
 		if len(newstr) == len(str) {
 			break
@@ -171,7 +183,11 @@ func ParseKV(str string) (map[string]string, error) {
 				if strings.HasSuffix(value, ",") {
 					value = strings.TrimSuffix(value, ",")
 				}
-				result[strings.TrimSpace(key)] = strings.TrimSpace(value)
+				value = strings.TrimSpace(value)
+				value = strings.TrimPrefix(value, `"`)
+				value = strings.TrimSuffix(value, `"`)
+				value = strings.ReplaceAll(value, `@&@`, `'`)
+				result[strings.TrimSpace(key)] = value
 			}
 			continue
 		}
@@ -189,7 +205,11 @@ func ParseKV(str string) (map[string]string, error) {
 		if strings.HasSuffix(value, ",") {
 			value = strings.TrimSuffix(value, ",")
 		}
-		result[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		value = strings.TrimSpace(value)
+		value = strings.TrimPrefix(value, `"`)
+		value = strings.TrimSuffix(value, `"`)
+		value = strings.ReplaceAll(value, `@&@`, `'`)
+		result[strings.TrimSpace(key)] = value
 		return result, nil
 	} else {
 		if dq && sq {

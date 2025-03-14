@@ -129,7 +129,7 @@ func registerGlobalUUID(fd *FileDescriptor, uuid string) {
 	structs = append(structs, fd.Structs...)
 	structs = append(structs, fd.Unions...)
 	structs = append(structs, fd.Exceptions...)
-	for _, strct := range fd.Structs {
+	for _, strct := range structs {
 		addExtraToDescriptor(uuid, strct)
 		for _, f := range strct.Fields {
 			addExtraToDescriptor(uuid, f)
@@ -225,6 +225,21 @@ func RegisterAST(ast *parser.Thrift) (*GlobalDescriptor, *FileDescriptor) {
 	defer lock.Unlock()
 	globalDescriptorMap[gd.uuid] = gd
 	return gd, fd
+}
+
+// ReleaseGlobalDescriptors release the global descriptor
+func ReleaseGlobalDescriptors(gds ...*GlobalDescriptor) {
+	if len(gds) == 0 {
+		return
+	}
+	lock.Lock()
+	defer lock.Unlock()
+	for _, gd := range gds {
+		if gd == nil {
+			continue
+		}
+		delete(globalDescriptorMap, gd.uuid)
+	}
 }
 
 func generateShortUUID() string {

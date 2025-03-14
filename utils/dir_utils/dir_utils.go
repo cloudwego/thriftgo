@@ -17,7 +17,6 @@ package dir_utils
 import (
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 var globalwd string
@@ -43,7 +42,7 @@ func Getwd() (string, error) {
 }
 
 func ToAbsolute(k string) (string, error) {
-	if !strings.HasSuffix(k, "/") {
+	if !filepath.IsAbs(k) {
 		wd, err := Getwd()
 		if err != nil {
 			return "", err
@@ -56,4 +55,20 @@ func ToAbsolute(k string) (string, error) {
 		k = absK
 	}
 	return k, nil
+}
+
+// ToRelative 将绝对路径转换为相对路径
+func ToRelative(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		wd, err := Getwd()
+		if err != nil {
+			return "", err
+		}
+		relPath, err := filepath.Rel(wd, path)
+		if err != nil {
+			return "", err
+		}
+		path = relPath
+	}
+	return path, nil
 }

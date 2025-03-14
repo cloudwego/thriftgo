@@ -13,6 +13,18 @@
 -- limitations under the License.
 
 -------------------------------------------------------------------------------
+--- utils
+-- https://www.wireshark.org/docs/wsdg_html_chunked/_bitwise_operations.html
+-- Lua 5.3 and greater has native bitwise operators. 
+-- The bit32 library introduced in Lua 5.2 is in Lua 5.3, albeit deprecated, 
+-- but not present in Lua 5.4. For maximum backwards compatibility, 
+-- all versions of Wireshark with Lua support include the Lua BitOp library, 
+-- which has been ported to be compatible with Lua 5.3 and 5.4. The BitOp API reference
+-- is available at https://bitop.luajit.org/api.html. The API is similar to that of the bit32 
+-- library, and in many cases can function as a drop in replacement for code written to use that
+-- library by simply replacing a bit32 = require("bit32") statement with bit32 = bit.
+bit32 = bit
+
 --- protocols
 local ttheader_protocol = Proto("ttheader", "Thrift TTHeader Protocol")
 local tbinary_protocol = Proto("tbinary", "Thrift UnframedBinary Protocol")
@@ -52,6 +64,7 @@ THRIFT_HEADER_TYPE_STR_KV = 0x01
 THRIFT_HEADER_TYPE_INT_KV = 0x10
 THRIFT_HEADER_TYPE_ACL_KV = 0x11
 THRIFT_TYPE_MASK = 0x000000ff
+THRIFT_STREAMING = 0x0002
 
 -------------------------------------------------------------------------------
 --- fields
@@ -270,17 +283,14 @@ end
 -------------------------------------------------------------------------------
 --- root tbinary dissector. will dissect a unframed tbinary message
 function tbinary_protocol.dissector(buffer, pinfo, tree)
+    local sz = buffer(0, 4):int()
+    local version = bit32.band(sz, THRIFT_VERSION_MASK)
+
     local tbuf = ThriftBuffer:new(buffer)
-    local sz = tbuf(4):int()
-
-    if sz < 0 then
-        local version = bit32.band(sz, THRIFT_VERSION_MASK)
-        if not bit32.btest(version, THRIFT_VERSION_1) then
-            return 0
-        end
-
+    if sz < 0 and bit32.band(version, THRIFT_VERSION_1) ~= 0 then
         local type = bit32.band(sz, THRIFT_TYPE_MASK)
         tree:add(tbinary_fields.msg_type, type)
+        tbuf(4) --- skip 4 bytes
 
         local name_pos = tbuf.pos
         local name = tbuf:string()
@@ -288,15 +298,13 @@ function tbinary_protocol.dissector(buffer, pinfo, tree)
             tree:add(tbinary_fields.msg_name, buffer(name_pos, tbuf.pos-name_pos), name)
         end
 
-
         pinfo.cols.info = string.format("%s %s %s", pinfo.cols.info, msgtype_valstr[type], name)
 
         local seq_pos = tbuf.pos
         local seqid = tbuf(4):int()
         tree:add(tbinary_fields.msg_seq, buffer(seq_pos, 4), seqid)
     else
-        -- TODO(eac): implement me
-        print("non-versioned tbinary protocol unimplemented")
+        -- pure struct codec
     end
 
     decode_tfields(buffer(tbuf.pos, buffer:len()-tbuf.pos), tree)
@@ -312,8 +320,8 @@ function ttheader_protocol.dissector(buffer, pinfo, tree)
 
     local subtree = tree:add(ttheader_protocol, buffer(), "Thrift Protocol Data")
 
+    --- Length
     local frame_size = buffer(0, 4):int()
-
     if (buffer:len() - 4) < frame_size then
         pinfo.desegment_len = frame_size - (buffer:len() - 4)
         pinfo.desegment_offset = 0
@@ -322,13 +330,16 @@ function ttheader_protocol.dissector(buffer, pinfo, tree)
 
     local framebuf = buffer(4, frame_size):tvb()
 
+    --- Header
     local tb = ThriftBuffer:new(framebuf)
     local version = framebuf(0, 4):int()
+    local is_streaming = false
     if bit32.rshift(version, 16) == THRIFT_HEADER_MAGIC then
         local flags, seq_id, header_length, end_of_headers, protocol_id, transform_count = nil
         tb:seek(2)
 
         flags = tb(2):uint()
+        is_streaming = bit32.band(flags, THRIFT_STREAMING) == THRIFT_STREAMING
         seq_id = tb(4):int()
         header_length = tb(2):uint() * 4
         end_of_headers = tb.pos + header_length
@@ -395,18 +406,28 @@ function ttheader_protocol.dissector(buffer, pinfo, tree)
             end
         end
 
-        --- TODO: unstrict
+        --- Payload
         local remaining_size = framebuf:len() - end_of_headers
-        local first_word = tb(4):int()
-        if first_word > 0
+        if is_streaming
         then
-            remaining_size = remaining_size - 4
-            end_of_headers = end_of_headers + 4
-            pinfo.cols.info = "TTHeader(Framed)"
+            pinfo.cols.info = "TTHeader(Streaming)"
+            --- streaming frame without payload
+            if remaining_size == 0
+            then
+                pinfo.cols.info = "TTHeader(Streaming)"
+                return
+            end
         else
-            pinfo.cols.info = "TTHeader(Buffered)"
+            local first_word = tb(4):int()
+            if first_word > 0
+            then
+                remaining_size = remaining_size - 4
+                end_of_headers = end_of_headers + 4
+                pinfo.cols.info = "TTHeader(Framed)"
+            else
+                pinfo.cols.info = "TTHeader(Buffered)"
+            end
         end
-
         remaining_buf = framebuf(end_of_headers, remaining_size)
         local payload_tree = subtree:add(tbinary_protocol, remaining_buf, "Payload")
         Dissector.get("tbinary"):call(remaining_buf:tvb(), pinfo, payload_tree)

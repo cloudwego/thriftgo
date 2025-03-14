@@ -56,7 +56,6 @@ import (
 `
 
 var processorRef = `
-
 {{- $BasePrefix := ServicePrefix .Base}}
 {{- $BaseService := ServiceName .Base}}
 {{- $ServiceName := .GoName}}
@@ -89,12 +88,41 @@ var New{{$ResType}} = {{$RefPackage}}.New{{$ResType}}
 
 {{- end}}{{/* range .Functions */}}
 
+{{- if not Features.NoProcessor}}
+// processor refs
+{{- $ProcessorName := printf "%s%s" $ServiceName "Processor"}}
+{{- $ClientName := printf "%s%s" $ServiceName "Client"}}
+
+type {{$ProcessorName}} =  {{$RefPackage}}.{{$ProcessorName}}
+
+var New{{$ProcessorName}} =  {{$RefPackage}}.New{{$ProcessorName}}
+
+type {{$ClientName}} = {{$RefPackage}}.{{$ClientName}}
+
+var New{{$ClientName}} = {{$RefPackage}}.New{{$ClientName}}
+
+var New{{$ClientName}}Factory = {{$RefPackage}}.New{{$ClientName}}Factory
+
+var New{{$ClientName}}Protocol = {{$RefPackage}}.New{{$ClientName}}Protocol
+
+
+{{- end}}{{/* if not Features.NoProcessor */}}
+
+{{- range .Functions}}
+{{InsertionPoint "ExtraStruct"}}
+{{- if or .Streaming.ClientStreaming .Streaming.ServerStreaming}}
+{{- $arg := index .Arguments 0}}
+type {{.Service.GoName}}_{{.Name}}Server =  {{$RefPackage}}.{{.Service.GoName}}_{{.Name}}Server
+{{- end}}{{/* Streaming */}}
+{{- end}}{{/* range .Functions */}}
+
 `
 
 var constRef = `{{- $Consts := .Constants.GoConstants}}
 {{- if $Consts}}
 const (
 	{{- range $Consts}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	{{.GoName}} = {{$RefPackage}}.{{.GoName}} 
 	{{- end}}{{/* range $Consts */}}
 )
@@ -112,6 +140,7 @@ var (
 
 var structRef = `
 	{{- $TypeName := .GoName}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	type {{$TypeName}}= {{$RefPackage}}.{{$TypeName}}
 	var New{{$TypeName}} = {{$RefPackage}}.New{{$TypeName}}
 	{{- range .Fields}}
@@ -134,6 +163,7 @@ var enumRef = `
 {{- range .Enums}}
 	{{- $EnumType := .GoName}}
 	{{- $TypeName := .GoName}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	type {{$TypeName}}= {{$RefPackage}}.{{$TypeName}}
 	var {{$EnumType}}FromString = {{$RefPackage}}.{{$EnumType}}FromString
 	var {{$EnumType}}Ptr = {{$RefPackage}}.{{$EnumType}}Ptr
@@ -148,6 +178,8 @@ var enumRef = `
 	{{- else }}
 	const (
 		{{- range .Values}}
+		{{- if and Features.ReserveComments .ReservedComments}}
+		{{.ReservedComments}}{{end}}
 		{{.GoName}} = {{$RefPackage}}.{{.GoName}}
 		{{- end}}
 	)
@@ -158,6 +190,7 @@ var enumRef = `
 var typedefRef = `
 {{- range .Typedefs}}
 	{{- $NewTypeName := .GoName}}
+	{{ if and Features.ReserveComments .ReservedComments}}{{.ReservedComments}}{{end}}
 	type {{$NewTypeName}}= {{$RefPackage}}.{{$NewTypeName}}
 	{{if .Type.Category.IsStructLike}} 
 	var New{{$NewTypeName}} = {{$RefPackage}}.New{{$NewTypeName}}

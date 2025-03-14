@@ -29,6 +29,7 @@ type YamlArguments struct {
 	Preserve         *bool    `yaml:"preserve,omitempty"`
 	PreservedStructs []string `yaml:"preserved_structs,omitempty"`
 	MatchGoName      *bool    `yaml:"match_go_name,omitempty"`
+	PreservedFiles   []string `yaml:"preserved_files,omitempty"`
 }
 
 func ParseYamlConfig(path string) *YamlArguments {

@@ -17,6 +17,8 @@ package trim
 import (
 	"strings"
 
+	"github.com/cloudwego/thriftgo/utils/dir_utils"
+
 	"github.com/cloudwego/thriftgo/parser"
 )
 
@@ -74,7 +76,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 	}
 
 	if len(t.trimMethods) != 0 && (svc.Extends != "" || svc.Reference != nil) {
-		t.traceExtendMethod(svc, svc, ast, filename)
+		t.traceExtendMethod([]*parser.Service{svc}, svc, ast, filename)
 	}
 
 	if svc.Extends != "" && t.marks[filename][svc] {
@@ -252,15 +254,18 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
 }
 
 // for -m, trace the extends and find specified method to base on
-func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
+func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
 	for _, function := range svc.Functions {
-		funcName := father.Name + "." + function.Name
-		for i, method := range t.trimMethods {
-			if ok, _ := method.MatchString(funcName); ok {
-				t.marks[filename][svc] = true
-				t.markFunction(function, ast, filename)
-				t.trimMethodValid[i] = true
-				ret = true
+		for _, father := range fathers {
+			// 子 method 写了来自 extends 的某个名字的时候，都间接向上查找，遍历所有子节点的名字尝试匹配
+			funcName := father.Name + "." + function.Name
+			for i, method := range t.trimMethods {
+				if ok, _ := method.MatchString(funcName); ok {
+					t.marks[filename][svc] = true
+					t.markFunction(function, ast, filename)
+					t.trimMethodValid[i] = true
+					ret = true
+				}
 			}
 		}
 	}
@@ -284,7 +289,7 @@ func (t *Trimmer) traceExtendMethod(father, svc *parser.Service, ast *parser.Thr
 				}
 			}
 		}
-		back := t.traceExtendMethod(father, nextSvc, nextAst, filename)
+		back := t.traceExtendMethod(append(fathers, nextSvc), nextSvc, nextAst, filename)
 		if !back {
 			t.markServiceExtends(svc)
 		}
@@ -304,10 +309,45 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	if t.forceTrimming {
 		return false
 	}
+	theStructName := theStruct.Name
+
 	for _, name := range t.preservedStructs {
-		if name == theStruct.Name {
+		if t.matchGoName {
+			name = toGoName(name)
+			theStructName = toGoName(theStructName)
+		}
+		if name == theStructName {
 			return true
 		}
 	}
-	return t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments))
+	if t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
+		return true
+	}
+	// 如果整个文件也是要保留的，那么里面的结构体也不删除
+	if t.preserveFileStructs[theStruct] {
+		return true
+	}
+	return false
+}
+
+func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) {
+	preserveFilesMap := map[string]bool{}
+	for _, fn := range preserveFiles {
+		// 这里统一转换为绝对路径
+		absFn, err := dir_utils.ToAbsolute(fn)
+		if err == nil {
+			fn = absFn
+		}
+		preserveFilesMap[absFn] = true
+	}
+	t.preserveFileStructs = map[*parser.StructLike]bool{}
+	for th := range ast.DepthFirstSearch() {
+		// 两边都用绝对路径来对比，ast 里的 filename 有时候是相对有时候是绝对
+		absFilename, err := dir_utils.ToAbsolute(th.Filename)
+		if err == nil && preserveFilesMap[absFilename] {
+			for _, st := range th.Structs {
+				t.preserveFileStructs[st] = true
+			}
+		}
+	}
 }
