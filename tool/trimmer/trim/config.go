@@ -25,11 +25,12 @@ import (
 var DefaultYamlFileName = "trim_config.yaml"
 
 type YamlArguments struct {
-	Methods          []string `yaml:"methods,omitempty"`
-	Preserve         *bool    `yaml:"preserve,omitempty"`
-	PreservedStructs []string `yaml:"preserved_structs,omitempty"`
-	MatchGoName      *bool    `yaml:"match_go_name,omitempty"`
-	PreservedFiles   []string `yaml:"preserved_files,omitempty"`
+	Methods                []string `yaml:"methods,omitempty"`
+	Preserve               *bool    `yaml:"preserve,omitempty"`
+	PreservedStructs       []string `yaml:"preserved_structs,omitempty"`
+	PreserveCommentEnabled *bool    `yaml:"preserve_comment_enabled"`
+	MatchGoName            *bool    `yaml:"match_go_name,omitempty"`
+	PreservedFiles         []string `yaml:"preserved_files,omitempty"`
 }
 
 func ParseYamlConfig(path string) *YamlArguments {
