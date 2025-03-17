@@ -309,7 +309,6 @@ func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	if t.forceTrimming {
 		return false
 	}
-
 	currentStructName := theStruct.Name
 	if t.matchGoName {
 		currentStructName = toGoName(currentStructName)
