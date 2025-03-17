@@ -254,6 +254,7 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	trimmer.marks = make(map[string]map[interface{}]bool)
 	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
+	trimmer.preserveCommentEnabled = true
 	return trimmer, nil
 }
 
