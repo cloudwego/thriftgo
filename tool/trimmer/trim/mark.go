@@ -24,7 +24,7 @@ import (
 
 // mark the used part of ast
 func (t *Trimmer) markAST(ast *parser.Thrift) {
-	t.marks[ast.Filename] = make(map[interface{}]bool)
+	t.marks[ast.Filename] = make(map[interface{}]struct{})
 	t.preProcess(ast, ast.Filename)
 	for _, service := range ast.Services {
 		t.markService(service, ast, ast.Filename)
@@ -47,12 +47,13 @@ func toGoName(input string) string {
 }
 
 func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename string) {
-	if t.marks[filename][svc] {
+	currentMap := t.marks[filename]
+	if _, ok := currentMap[svc]; ok {
 		return
 	}
 
 	if len(t.trimMethods) == 0 {
-		t.marks[filename][svc] = true
+		currentMap[svc] = struct{}{}
 	}
 
 	for _, function := range svc.Functions {
@@ -64,7 +65,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 				}
 				if ok, _ := method.MatchString(funcName); ok {
 					if funcName == method.String() || !strings.HasPrefix(funcName, method.String()) {
-						t.marks[filename][svc] = true
+						currentMap[svc] = struct{}{}
 						t.markFunction(function, ast, filename)
 						t.trimMethodValid[i] = true
 					}
@@ -79,15 +80,17 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 		t.traceExtendMethod([]*parser.Service{svc}, svc, ast, filename)
 	}
 
-	if svc.Extends != "" && t.marks[filename][svc] {
-		// handle extension
-		if svc.Reference != nil {
-			theInclude := ast.Includes[svc.Reference.Index]
-			t.markInclude(ast.Includes[svc.Reference.Index], filename)
-			for _, service := range theInclude.Reference.Services {
-				if service.Name == svc.Reference.Name {
-					t.markService(service, theInclude.Reference, filename)
-					break
+	if svc.Extends != "" {
+		if _, ok := currentMap[svc]; ok {
+			// handle extension
+			if svc.Reference != nil {
+				theInclude := ast.Includes[svc.Reference.Index]
+				t.markInclude(ast.Includes[svc.Reference.Index], filename)
+				for _, service := range theInclude.Reference.Services {
+					if service.Name == svc.Reference.Name {
+						t.markService(service, theInclude.Reference, filename)
+						break
+					}
 				}
 			}
 		}
@@ -95,7 +98,7 @@ func (t *Trimmer) markService(svc *parser.Service, ast *parser.Thrift, filename 
 }
 
 func (t *Trimmer) markFunction(function *parser.Function, ast *parser.Thrift, filename string) {
-	t.marks[filename][function] = true
+	t.marks[filename][function] = struct{}{}
 	for _, arg := range function.Arguments {
 		t.markType(arg.Type, ast, filename)
 	}
@@ -163,17 +166,18 @@ func (t *Trimmer) markType(theType *parser.Type, ast *parser.Thrift, filename st
 }
 
 func (t *Trimmer) markStructLike(str *parser.StructLike, ast *parser.Thrift, filename string) {
-	if t.marks[filename][str] {
+	currentMap := t.marks[filename]
+	if _, ok := currentMap[str]; ok {
 		return
 	}
-	t.marks[filename][str] = true
+	currentMap[str] = struct{}{}
 	for _, field := range str.Fields {
 		t.markType(field.Type, ast, filename)
 	}
 }
 
 func (t *Trimmer) markEnum(enum *parser.Enum, filename string) {
-	t.marks[filename][enum] = true
+	t.marks[filename][enum] = struct{}{}
 }
 
 func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename string) {
@@ -181,10 +185,11 @@ func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename
 		return
 	}
 
+	currentMap := t.marks[filename]
 	for i, typedef := range ast.Typedefs {
 		if typedef.Alias == theType.Name {
-			if !t.marks[filename][ast.Typedefs[i]] {
-				t.marks[filename][ast.Typedefs[i]] = true
+			if _, ok := currentMap[ast.Typedefs[i]]; !ok {
+				currentMap[ast.Typedefs[i]] = struct{}{}
 				t.markType(typedef.Type, ast, filename)
 			}
 			return
@@ -194,10 +199,11 @@ func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename
 
 func (t *Trimmer) markInclude(include *parser.Include, filename string) {
 	include.Reference.Name2Category = nil
-	if t.marks[filename][include] {
+	currentMap := t.marks[filename]
+	if _, ok := currentMap[include]; ok {
 		return
 	}
-	t.marks[filename][include] = true
+	currentMap[include] = struct{}{}
 	// t.markKeptPart(include.Reference, filename)
 }
 
@@ -229,22 +235,14 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
 	}
 
 	if !t.forceTrimming {
-		for _, str := range ast.Structs {
-			if !t.marks[filename][str] && t.checkPreserve(str) {
-				t.markStructLike(str, ast, filename)
-				ret = true
-			}
-		}
-
-		for _, str := range ast.Unions {
-			if !t.marks[filename][str] && t.checkPreserve(str) {
-				t.markStructLike(str, ast, filename)
-				ret = true
-			}
-		}
-
-		for _, str := range ast.Exceptions {
-			if !t.marks[filename][str] && t.checkPreserve(str) {
+		currentMap := t.marks[filename]
+		structs := make([]*parser.StructLike, 0, len(ast.Structs)+len(ast.Unions)+len(ast.Exceptions))
+		structs = append(structs, ast.Structs...)
+		structs = append(structs, ast.Unions...)
+		structs = append(structs, ast.Exceptions...)
+		for _, str := range structs {
+			_, ok := currentMap[str]
+			if !ok && t.checkPreserve(str) {
 				t.markStructLike(str, ast, filename)
 				ret = true
 			}
@@ -255,13 +253,14 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
 
 // for -m, trace the extends and find specified method to base on
 func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Service, ast *parser.Thrift, filename string) (ret bool) {
+	currentMap := t.marks[filename]
 	for _, function := range svc.Functions {
 		for _, father := range fathers {
 			// 子 method 写了来自 extends 的某个名字的时候，都间接向上查找，遍历所有子节点的名字尝试匹配
 			funcName := father.Name + "." + function.Name
 			for i, method := range t.trimMethods {
 				if ok, _ := method.MatchString(funcName); ok {
-					t.marks[filename][svc] = true
+					currentMap[svc] = struct{}{}
 					t.markFunction(function, ast, filename)
 					t.trimMethodValid[i] = true
 					ret = true
@@ -296,7 +295,7 @@ func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Servi
 		ret = back || ret
 	}
 	if ret {
-		t.marks[filename][svc] = true
+		currentMap[svc] = struct{}{}
 		if svc.Reference != nil {
 			t.markInclude(ast.Includes[svc.Reference.Index], filename)
 		}
@@ -304,31 +303,38 @@ func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Servi
 	return ret
 }
 
+var preserveCache = make(map[*parser.StructLike]bool, 200)
+
 // check for @Preserve comments
 func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
 	if t.forceTrimming {
 		return false
 	}
+	if res, ok := preserveCache[theStruct]; ok {
+		return res
+	}
+
 	currentStructName := theStruct.Name
 	if t.matchGoName {
 		currentStructName = toGoName(currentStructName)
 	}
 	if _, exists := t.preservedStructsMap[currentStructName]; exists {
+		preserveCache[theStruct] = true
 		return true
 	}
 
 	if t.preserveCommentEnabled {
 		// 当 struct 总量相当大的时候，关闭 comment 校验，速度会提高很多。（但默认是 true 的）
 		if t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
+			preserveCache[theStruct] = true
 			return true
 		}
 	}
 
 	// 如果整个文件也是要保留的，那么里面的结构体也不删除
-	if t.preserveFileStructs[theStruct] {
-		return true
-	}
-	return false
+	_, ok := t.preserveFileStructs[theStruct]
+	preserveCache[theStruct] = ok
+	return ok
 }
 
 func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) {
@@ -341,13 +347,13 @@ func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) 
 		}
 		preserveFilesMap[absFn] = true
 	}
-	t.preserveFileStructs = map[*parser.StructLike]bool{}
+	t.preserveFileStructs = map[*parser.StructLike]struct{}{}
 	for th := range ast.DepthFirstSearch() {
 		// 两边都用绝对路径来对比，ast 里的 filename 有时候是相对有时候是绝对
 		absFilename, err := dir_utils.ToAbsolute(th.Filename)
 		if err == nil && preserveFilesMap[absFilename] {
 			for _, st := range th.Structs {
-				t.preserveFileStructs[st] = true
+				t.preserveFileStructs[st] = struct{}{}
 			}
 		}
 	}

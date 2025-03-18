@@ -33,7 +33,7 @@ type Trimmer struct {
 	// ast of the file
 	asts map[string]*parser.Thrift
 	// mark the parts of the file's ast that is used
-	marks  map[string]map[interface{}]bool
+	marks  map[string]map[interface{}]struct{}
 	outDir string
 	// use -m
 	trimMethods            []*regexp2.Regexp
@@ -47,7 +47,7 @@ type Trimmer struct {
 	fieldsTrimmed          int
 	extServices            []*parser.Service
 	PreservedFiles         []string
-	preserveFileStructs    map[*parser.StructLike]bool
+	preserveFileStructs    map[*parser.StructLike]struct{}
 }
 
 type TrimASTArg struct {
@@ -251,7 +251,7 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 		outDir: outDir,
 	}
 	trimmer.asts = make(map[string]*parser.Thrift)
-	trimmer.marks = make(map[string]map[interface{}]bool)
+	trimmer.marks = make(map[string]map[interface{}]struct{})
 	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
 	trimmer.preserveCommentEnabled = true
