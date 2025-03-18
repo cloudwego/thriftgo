@@ -42,7 +42,7 @@ type Trimmer struct {
 	preserveRegex          *regexp.Regexp
 	forceTrimming          bool
 	preservedStructsMap    map[string]struct{}
-	preserveCommentEnabled bool
+	disablePreserveComment bool
 	structsTrimmed         int
 	fieldsTrimmed          int
 	extServices            []*parser.Service
@@ -55,7 +55,7 @@ type TrimASTArg struct {
 	TrimMethods            []string
 	Preserve               *bool
 	MatchGoName            *bool
-	PreserveCommentEnabled *bool
+	DisablePreserveComment *bool
 	PreserveStructs        []string
 	PreservedFiles         []string
 }
@@ -101,8 +101,8 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 			if arg.MatchGoName == nil && cfg.MatchGoName != nil {
 				arg.MatchGoName = cfg.MatchGoName
 			}
-			if arg.PreserveCommentEnabled == nil && cfg.PreserveCommentEnabled != nil {
-				arg.PreserveCommentEnabled = cfg.PreserveCommentEnabled
+			if arg.DisablePreserveComment == nil && cfg.DisablePreserveComment != nil {
+				arg.DisablePreserveComment = cfg.DisablePreserveComment
 			}
 			if len(preservedStructs) == 0 {
 				preservedStructs = cfg.PreservedStructs
@@ -121,15 +121,15 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 		matchGoName = *arg.MatchGoName
 	}
 	// optimize 整理配置文件的写法
-	preserveCommentEnabled := true
-	if arg.PreserveCommentEnabled != nil {
-		preserveCommentEnabled = *arg.PreserveCommentEnabled
+	disablePreserveComment := true
+	if arg.DisablePreserveComment != nil {
+		disablePreserveComment = *arg.DisablePreserveComment
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, preserveCommentEnabled, preservedStructs, preservedFiles)
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, disablePreserveComment, preservedStructs, preservedFiles)
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName, preserveCommentEnabled bool, preservedStructs, preserveFiles []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName, disablePreserveComment bool, preservedStructs, preserveFiles []string) (
 	trimResultInfo *TrimResultInfo, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -164,7 +164,7 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 		trimmer.preservedStructsMap[name] = struct{}{}
 	}
 
-	trimmer.preserveCommentEnabled = preserveCommentEnabled
+	trimmer.disablePreserveComment = disablePreserveComment
 
 	trimmer.countStructs(ast)
 	originStructsNum := trimmer.structsTrimmed
@@ -254,7 +254,6 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	trimmer.marks = make(map[string]map[interface{}]struct{})
 	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
-	trimmer.preserveCommentEnabled = true
 	return trimmer, nil
 }
 

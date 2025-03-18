@@ -222,8 +222,16 @@ func (t *Trimmer) cleanServiceExtends() {
 	}
 }
 
-func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
-	ret := false
+var keptPartCache = make(map[*parser.Thrift]bool, 200)
+
+func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) (ret bool) {
+	if kept, ok := keptPartCache[ast]; ok {
+		return kept
+	}
+	defer func() {
+		keptPartCache[ast] = ret
+	}()
+
 	for _, constant := range ast.Constants {
 		t.markType(constant.Type, ast, filename)
 		ret = true
@@ -248,7 +256,7 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) bool {
 			}
 		}
 	}
-	return ret
+	return
 }
 
 // for -m, trace the extends and find specified method to base on
@@ -306,35 +314,38 @@ func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Servi
 var preserveCache = make(map[*parser.StructLike]bool, 200)
 
 // check for @Preserve comments
-func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) bool {
+func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) (preserve bool) {
 	if t.forceTrimming {
 		return false
 	}
 	if res, ok := preserveCache[theStruct]; ok {
 		return res
 	}
+	defer func() {
+		preserveCache[theStruct] = preserve
+	}()
 
 	currentStructName := theStruct.Name
 	if t.matchGoName {
 		currentStructName = toGoName(currentStructName)
 	}
 	if _, exists := t.preservedStructsMap[currentStructName]; exists {
-		preserveCache[theStruct] = true
-		return true
+		preserve = true
+		return
 	}
 
-	if t.preserveCommentEnabled {
-		// 当 struct 总量相当大的时候，关闭 comment 校验，速度会提高很多。（但默认是 true 的）
+	if !t.disablePreserveComment {
+		// 当 struct 总量相当大的时候，关闭 comment 校验，速度会提高很多
 		if t.preserveRegex.MatchString(strings.ToLower(theStruct.ReservedComments)) {
-			preserveCache[theStruct] = true
-			return true
+			preserve = true
+			return
 		}
 	}
 
 	// 如果整个文件也是要保留的，那么里面的结构体也不删除
 	_, ok := t.preserveFileStructs[theStruct]
-	preserveCache[theStruct] = ok
-	return ok
+	preserve = ok
+	return
 }
 
 func (t *Trimmer) loadPreserveFiles(ast *parser.Thrift, preserveFiles []string) {
