@@ -20,9 +20,12 @@ import (
 
 // traverse and remove the unmarked part of ast
 func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
-	var listInclude []*parser.Include
+	currentMap := t.marks[filename]
+
+	listInclude := make([]*parser.Include, 0, len(ast.Includes))
 	for i := range ast.Includes {
-		if t.marks[filename][ast.Includes[i]] || len(ast.Includes[i].Reference.Constants)+
+		_, ok := currentMap[ast.Includes[i]]
+		if ok || len(ast.Includes[i].Reference.Constants)+
 			len(ast.Includes[i].Reference.Enums)+len(ast.Includes[i].Reference.Typedefs) > 0 {
 			t.traversal(ast.Includes[i].Reference, filename)
 			listInclude = append(listInclude, ast.Includes[i])
@@ -30,40 +33,45 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	}
 	ast.Includes = listInclude
 
-	var listStruct []*parser.StructLike
+	listStruct := make([]*parser.StructLike, 0, len(ast.Structs))
 	for i := range ast.Structs {
-		if t.marks[filename][ast.Structs[i]] || t.checkPreserve(ast.Structs[i]) {
+		_, ok := currentMap[ast.Structs[i]]
+		if ok || t.checkPreserve(ast.Structs[i]) {
 			listStruct = append(listStruct, ast.Structs[i])
 			t.fieldsTrimmed -= len(ast.Structs[i].Fields)
 		}
 	}
 	ast.Structs = listStruct
 
-	var listUnion []*parser.StructLike
+	listUnion := make([]*parser.StructLike, 0, len(ast.Unions))
 	for i := range ast.Unions {
-		if t.marks[filename][ast.Unions[i]] || t.checkPreserve(ast.Unions[i]) {
+		_, ok := currentMap[ast.Unions[i]]
+		if ok || t.checkPreserve(ast.Unions[i]) {
 			listUnion = append(listUnion, ast.Unions[i])
 			t.fieldsTrimmed -= len(ast.Unions[i].Fields)
 		}
 	}
 	ast.Unions = listUnion
 
-	var listException []*parser.StructLike
+	listException := make([]*parser.StructLike, 0, len(ast.Exceptions))
 	for i := range ast.Exceptions {
-		if t.marks[filename][ast.Exceptions[i]] || t.checkPreserve(ast.Exceptions[i]) {
+		_, ok := currentMap[ast.Exceptions[i]]
+		if ok || t.checkPreserve(ast.Exceptions[i]) {
 			listException = append(listException, ast.Exceptions[i])
 			t.fieldsTrimmed -= len(ast.Exceptions[i].Fields)
 		}
 	}
 	ast.Exceptions = listException
 
-	var listService []*parser.Service
+	listService := make([]*parser.Service, 0, len(ast.Services))
 	for i := range ast.Services {
-		if t.marks[filename][ast.Services[i]] {
+		_, ok := currentMap[ast.Services[i]]
+		if ok {
 			if len(t.trimMethods) != 0 {
 				var trimmedMethods []*parser.Function
 				for j := range ast.Services[i].Functions {
-					if t.marks[filename][ast.Services[i].Functions[j]] {
+					_, okFunc := currentMap[ast.Services[i].Functions[j]]
+					if okFunc {
 						trimmedMethods = append(trimmedMethods, ast.Services[i].Functions[j])
 					}
 				}

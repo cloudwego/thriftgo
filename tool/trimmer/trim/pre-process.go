@@ -21,7 +21,7 @@ func (t *Trimmer) preProcess(ast *parser.Thrift, filename string) bool {
 	for i, include := range ast.Includes {
 		marked := t.preProcess(include.Reference, filename)
 		if marked {
-			t.marks[filename][ast.Includes[i]] = true
+			t.marks[filename][ast.Includes[i]] = struct{}{}
 			ret = true
 		}
 	}

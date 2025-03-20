@@ -28,7 +28,7 @@ type YamlArguments struct {
 	Methods                []string `yaml:"methods,omitempty"`
 	Preserve               *bool    `yaml:"preserve,omitempty"`
 	PreservedStructs       []string `yaml:"preserved_structs,omitempty"`
-	PreserveCommentEnabled *bool    `yaml:"preserve_comment_enabled"`
+	DisablePreserveComment *bool    `yaml:"disable_preserve_comment,omitempty"`
 	MatchGoName            *bool    `yaml:"match_go_name,omitempty"`
 	PreservedFiles         []string `yaml:"preserved_files,omitempty"`
 }
