@@ -237,6 +237,24 @@ function decode_tfields(buf, tree)
                         child_buf = tbuf.buf(tbuf.pos)
                         local len = decode_tfields(child_buf, elem_tree)
                         tbuf:skip(len)
+                    elseif vtype_str == "LIST" or vtype_str == "SET" then
+                        local etype = tbuf(1):int()
+                        local size_list = tbuf(4):int()
+                        local etype_str = fieldtype_valstr[etype]
+                        local container_tree = child_tree:add(key, string.format("%s<%s>", vtype_str, etype_str))
+                        for j = 1, size_list do
+                            local elem_fieldpos = tbuf.pos
+                            if etype_str == "STRUCT" then
+                                local elem_tree = container_tree:add(j)
+                                local child_buf = tbuf.buf(tbuf.pos)
+                                local len = decode_tfields(child_buf, elem_tree)
+                                tbuf:skip(len)
+                            else
+                                local ereader = fieldtype_readers[etype_str]
+                                local elem = ereader(tbuf)
+                                container_tree:add(buf(elem_fieldpos, tbuf.pos - elem_fieldpos), j, elem)
+                            end
+                        end
                     else
                         local vreader = fieldtype_readers[vtype_str]
                         val = vreader(tbuf)
