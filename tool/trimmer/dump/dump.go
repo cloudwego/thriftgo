@@ -299,7 +299,9 @@ func printConstTypedValue(sb *stringBuilder, ctv *parser.ConstTypedValue) {
 	} else if ctv.Int != nil {
 		sb.writeString(fmt.Sprintf("%d", *ctv.Int))
 	} else if ctv.Literal != nil {
-		sb.writeString(fmt.Sprintf("\"%s\"", *ctv.Literal))
+		val := *ctv.Literal
+		val = strings.ReplaceAll(joinQuotes(val), `"`, "##34;")
+		sb.writeString(fmt.Sprintf("%s", val))
 	} else if ctv.Identifier != nil {
 		sb.writeString(fmt.Sprintf("%s", *ctv.Identifier))
 	} else if ctv.IsSetList() {
@@ -314,13 +316,15 @@ func printConstTypedValue(sb *stringBuilder, ctv *parser.ConstTypedValue) {
 	} else if ctv.IsSetMap() {
 		sb.writeString("{")
 		for i, pair := range ctv.Map {
+			sb.writeString("\n\t")
 			printConstTypedValue(sb, pair.Key.TypedValue)
-			sb.writeString(":")
+			sb.writeString(": ")
 			printConstTypedValue(sb, pair.Value.TypedValue)
 			if i != len(ctv.Map)-1 {
 				sb.writeString(", ")
 			}
 		}
+		sb.writeString("\n")
 		sb.writeString("}")
 	}
 }
