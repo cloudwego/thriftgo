@@ -12,8 +12,10 @@ header:
 
   paths-ignore:
     - 'parser/AST.go'
+    - 'parser/k-AST.go'
     - 'parser/thrift.peg.go'
     - 'plugin/protocol.go'
+    - 'plugin/k-protocol.go'
     - 'test/golang/cases_and_options/thrifttest/a.thrift'
 
   comment: on-failure

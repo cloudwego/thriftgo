@@ -14,17 +14,15 @@
 
 package plugin
 
-import "github.com/cloudwego/thriftgo/generator/golang/extension/meta"
-
 // MarshalRequest encodes a request with binary protocol.
 func MarshalRequest(req *Request) ([]byte, error) {
-	return meta.Marshal(req)
+	return req.FastAppend(nil), nil
 }
 
 // UnmarshalRequest decodes a request with binary protocol.
 func UnmarshalRequest(bs []byte) (*Request, error) {
 	req := NewRequest()
-	if err := meta.Unmarshal(bs, req); err != nil {
+	if _, err := req.FastRead(bs); err != nil {
 		return nil, err
 	}
 	return req, nil
@@ -32,13 +30,13 @@ func UnmarshalRequest(bs []byte) (*Request, error) {
 
 // MarshalResponse encodes a response with binary protocol.
 func MarshalResponse(res *Response) ([]byte, error) {
-	return meta.Marshal(res)
+	return res.FastAppend(nil), nil
 }
 
 // UnmarshalResponse decodes a response with binary protocol.
 func UnmarshalResponse(bs []byte) (*Response, error) {
 	res := NewResponse()
-	if err := meta.Unmarshal(bs, res); err != nil {
+	if _, err := res.FastRead(bs); err != nil {
 		return nil, err
 	}
 	return res, nil
