@@ -125,9 +125,11 @@ func genBLengthList(w *codewriter, rwctx *golang.ReadWriteContext, varname strin
 	w.f("off += 5")
 
 	// if element is basic type like int32, we can speed up the calc by sizeof(int32) * len(l)
-	if sz := category2WireSize[t.ValueType.Category]; sz > 0 { // fast path for less code
-		w.f("off += len(%s) * %d", varnameVal(rwctx.IsPointer, varname), sz)
-		return
+	if t.ValueType != nil {
+		if sz := category2WireSize[t.ValueType.Category]; sz > 0 { // fast path for less code
+			w.f("off += len(%s) * %d", varnameVal(rwctx.IsPointer, varname), sz)
+			return
+		}
 	}
 
 	// iteration tmp var

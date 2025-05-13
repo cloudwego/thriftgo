@@ -23,6 +23,23 @@ import (
 	"github.com/cloudwego/thriftgo/parser"
 )
 
+func typeHasEnum(t *parser.Type, visited map[*parser.Type]bool) bool {
+	if t == nil {
+		return false
+	}
+	if t.Category == parser.Category_Enum {
+		return true
+	}
+	if visited[t] {
+		return false
+	}
+	if visited == nil {
+		visited = map[*parser.Type]bool{}
+	}
+	visited[t] = true
+	return typeHasEnum(t.KeyType, visited) || typeHasEnum(t.ValueType, visited)
+}
+
 func (g *FastGoBackend) genFastRead(w *codewriter, scope *golang.Scope, s *golang.StructLike) {
 	// var conventions:
 	// - p is the var of pointer to the struct going to be generated
@@ -48,7 +65,7 @@ func (g *FastGoBackend) genFastRead(w *codewriter, scope *golang.Scope, s *golan
 	hasEnum := false
 	ff := getSortedFields(s)
 	for _, f := range ff {
-		if f.Type.Category == parser.Category_Enum {
+		if typeHasEnum(f.Type, nil) {
 			hasEnum = true
 		}
 		if f.Requiredness == parser.FieldType_Required {
