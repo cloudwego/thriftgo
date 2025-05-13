@@ -147,13 +147,15 @@ func (g *FastGoBackend) GenerateOne(ast *parser.Thrift) (*plugin.Generated, erro
 	c.WriteByte('\n')
 
 	// Unused protects
+	fmt.Fprintln(c, "var ThriftGoUnusedProtection = struct{}{}")
+	fmt.Fprintln(c, "")
 	if unusedProtect {
 		fmt.Fprintln(c, "var (")
 		for _, incl := range scope.Includes() {
 			if incl == nil { // TODO(liyun.339): fix this
 				continue
 			}
-			fmt.Fprintf(c, "_ = %s.KitexUnusedProtection\n", incl.PackageName)
+			fmt.Fprintf(c, "_ = %s.ThriftGoUnusedProtection\n", incl.PackageName)
 		}
 		fmt.Fprintln(c, ")")
 	}
