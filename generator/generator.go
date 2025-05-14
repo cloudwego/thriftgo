@@ -20,7 +20,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 
+	"github.com/cloudwego/gopkg/unsafex"
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/plugin"
 	"github.com/cloudwego/thriftgo/utils/dir_utils"
@@ -179,6 +181,7 @@ func (g *Generator) Persist(res *plugin.Response) error {
 	if err := res.GetError(); err != "" {
 		return errors.New(err)
 	}
+	p := newAsyncPostProcess(g.pp)
 	for i, c := range res.Contents {
 		full := c.GetName()
 		if full == "" {
@@ -191,24 +194,85 @@ func (g *Generator) Persist(res *plugin.Response) error {
 			}
 			full = filepath.Join(wd, full)
 		}
-
-		content := []byte(c.Content)
-		if g.pp != nil {
-			processed, err := g.pp.PostProcess(full, content)
-			if err != nil {
-				return err
-			}
-			content = processed
+		p.Add(full, c.Content)
+	}
+	return p.OnFinished(func(path string, content []byte) error {
+		g.log.Info("Write", path)
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0o755); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("failed to create path '%s': %w", dir, err)
 		}
-
-		g.log.Info("Write", full)
-		path := filepath.Dir(full)
-		if err := os.MkdirAll(path, 0o755); err != nil && !os.IsExist(err) {
-			return fmt.Errorf("failed to create path '%s': %w", path, err)
+		if err := ioutil.WriteFile(path, content, 0o644); err != nil {
+			return fmt.Errorf("failed to write file '%s': %w", path, err)
 		}
-		if err := ioutil.WriteFile(full, content, 0o644); err != nil {
-			return fmt.Errorf("failed to write file '%s': %w", full, err)
+		return nil
+	})
+}
+
+type asyncPostProcessJob struct {
+	Path    string
+	Content string
+}
+
+type asyncPostProcess struct {
+	pp         backend.PostProcessor
+	jobs       []asyncPostProcessJob
+	rets       chan error
+	processing chan struct{}
+
+	concurrency int
+}
+
+func newAsyncPostProcess(pp backend.PostProcessor) *asyncPostProcess {
+	return &asyncPostProcess{
+		pp:          pp,
+		concurrency: runtime.GOMAXPROCS(0),
+	}
+}
+
+func (p *asyncPostProcess) Add(path, content string) {
+	p.jobs = append(p.jobs, asyncPostProcessJob{Path: path, Content: content})
+}
+
+func (p *asyncPostProcess) wait() error {
+	for len(p.processing) > 0 {
+		if err := <-p.rets; err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (p *asyncPostProcess) OnFinished(f func(path string, content []byte) error) error {
+	p.rets = make(chan error, len(p.jobs))
+	if p.concurrency == 0 {
+		p.concurrency = 1
+	}
+	p.processing = make(chan struct{}, p.concurrency)
+	for i := 0; i < len(p.jobs); {
+		select {
+		case err := <-p.rets:
+			if err != nil {
+				_ = p.wait()
+				return err
+			}
+			continue // retry
+
+		case p.processing <- struct{}{}: // processing++
+			j := p.jobs[i]
+			go func(path string, content []byte) {
+				defer func() { <-p.processing }() // processing--
+				var err error
+				if p.pp != nil {
+					content, err = p.pp.PostProcess(path, content)
+				}
+				if err == nil {
+					err = f(path, content)
+				}
+				p.rets <- err
+			}(j.Path, unsafex.StringToBinary(j.Content))
+		}
+		i++ // next job
+	}
+	return p.wait()
 }

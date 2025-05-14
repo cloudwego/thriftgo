@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package generator_test
+package generator
 
 import (
 	"testing"
 
-	"github.com/cloudwego/thriftgo/generator"
 	"github.com/cloudwego/thriftgo/generator/backend"
 	"github.com/cloudwego/thriftgo/pkg/test"
 	"github.com/cloudwego/thriftgo/plugin"
@@ -28,7 +27,7 @@ func pstr(s string) *string {
 }
 
 func TestFileManagerEmpty(t *testing.T) {
-	fm := generator.NewFileManager(backend.DummyLogFunc())
+	fm := NewFileManager(backend.DummyLogFunc())
 
 	resp := fm.BuildResponse()
 	test.Assert(t, resp != nil)
@@ -38,7 +37,7 @@ func TestFileManagerEmpty(t *testing.T) {
 }
 
 func TestFileManagerInsert(t *testing.T) {
-	fm := generator.NewFileManager(backend.DummyLogFunc())
+	fm := NewFileManager(backend.DummyLogFunc())
 
 	pos2 := plugin.InsertionPoint("2nd")
 	pos3 := plugin.InsertionPoint("3rd")
@@ -85,7 +84,7 @@ func TestFileManagerInsert(t *testing.T) {
 }
 
 func TestFileManagerRename(t *testing.T) {
-	fm := generator.NewFileManager(backend.DummyLogFunc())
+	fm := NewFileManager(backend.DummyLogFunc())
 
 	fs := []*plugin.Generated{
 		{
@@ -128,4 +127,31 @@ func TestFileManagerRename(t *testing.T) {
 	test.Assert(t, resp.Contents[1].Content == "second file")
 	test.Assert(t, resp.Contents[2].Content == "another second file")
 	test.Assert(t, resp.Contents[3].Content == "third file")
+}
+
+func TestInsertionPointReplacer(t *testing.T) {
+	// Test basic functionality through FileManager's public API
+	content := "first\n" + plugin.InsertionPoint("1st") + "\nsecond\n" + plugin.InsertionPoint("2nd")
+	replacer := newInsertionPointReplacer(content)
+	replacer.Add(plugin.InsertionPoint("1st"), "patch1")
+	replacer.Add(plugin.InsertionPoint("2nd"), "patch2")
+	test.Assert(t, replacer.Replace(content) == "first\npatch1\nsecond\npatch2")
+
+	// Test adding multiple content to the same insertion point
+	replacer.Add(plugin.InsertionPoint("1st"), "more")
+	test.Assert(t, replacer.Replace(content) == "first\npatch1more\nsecond\npatch2")
+
+	// Test with empty content
+	emptyReplacer := newInsertionPointReplacer("")
+	test.Assert(t, emptyReplacer.Replace("") == "")
+
+	// Test with content that has no insertion points
+	noPointsContent := "this has no insertion points"
+	noPointsReplacer := newInsertionPointReplacer(noPointsContent)
+	test.Assert(t, noPointsReplacer.Replace(noPointsContent) == noPointsContent)
+
+	// Test with insertion point that doesn't get any content
+	unusedContent := "begin\n" + plugin.InsertionPoint("unused") + "\nend"
+	unusedReplacer := newInsertionPointReplacer(unusedContent)
+	test.Assert(t, unusedReplacer.Replace(unusedContent) == "begin\n\nend")
 }

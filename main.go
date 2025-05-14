@@ -15,13 +15,15 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
-	"github.com/cloudwego/thriftgo/sdk"
 	"os"
 	"runtime/debug"
 	"runtime/pprof"
-
 	"time"
+
+	"github.com/cloudwego/thriftgo/sdk"
 )
 
 var debugMode bool
@@ -31,31 +33,41 @@ func init() {
 	debugMode = os.Getenv("THRIFTGO_DEBUG") == "1"
 }
 
-func check(err error) {
+func assert(err error) {
 	if err != nil {
-		if err.Error() != "flag: help requested" {
-			println(err.Error())
-		}
-		os.Exit(2)
+		panic(err)
 	}
 }
 
 func main() {
 	if debugMode {
-		f, _ := os.Create("thriftgo-cpu.pprof")
-		defer f.Close()
-		_ = pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+
+		f1, err := os.Create("thriftgo-cpu.pprof")
+		assert(err)
+		assert(pprof.StartCPUProfile(f1))
+
+		f2, err := os.Create("thriftgo-heap.pprof")
+		assert(err)
 
 		startTime := time.Now()
 		defer func() {
 			fmt.Printf("Cost: %s\n", time.Since(startTime))
+
+			pprof.StopCPUProfile()
+			assert(pprof.WriteHeapProfile(f2))
+			f1.Close()
+			f2.Close()
 		}()
 	}
 
 	defer handlePanic()
 
-	check(sdk.InvokeThriftgo(nil, os.Args...))
+	if err := sdk.InvokeThriftgo(nil, os.Args...); err != nil {
+		if !errors.Is(err, flag.ErrHelp) {
+			println(err.Error())
+		}
+		os.Exit(2)
+	}
 }
 
 func handlePanic() {
