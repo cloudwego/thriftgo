@@ -15,10 +15,12 @@
 package golang
 
 import (
+	"bytes"
 	"fmt"
 	"go/format"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/cloudwego/thriftgo/generator/golang/streaming"
@@ -250,6 +252,14 @@ func (s *Scope) IsEmpty() bool {
 	return false
 }
 
+var poolBuffer = sync.Pool{
+	New: func() any {
+		p := &bytes.Buffer{}
+		p.Grow(100 << 10)
+		return p
+	},
+}
+
 func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template, filename string) error {
 	if scope == nil {
 		return nil
@@ -261,28 +271,32 @@ func (g *GoBackend) renderByTemplate(scope *Scope, executeTpl *template.Template
 		}
 	}
 
-	var buf strings.Builder
+	w := poolBuffer.Get().(*bytes.Buffer)
+	defer poolBuffer.Put(w)
+
+	w.Reset()
+
 	g.utils.SetRootScope(scope)
-	err := executeTpl.ExecuteTemplate(&buf, executeTpl.Name(), scope)
+	err := executeTpl.ExecuteTemplate(w, executeTpl.Name(), scope)
 	if err != nil {
 		return fmt.Errorf("%s: %w", filename, err)
 	}
 	g.res.Contents = append(g.res.Contents, &plugin.Generated{
-		Content: buf.String(),
+		Content: w.String(),
 		Name:    &filename,
 	})
-	buf.Reset()
 	imports, err := scope.ResolveImports()
 	if err != nil {
 		return err
 	}
-	err = executeTpl.ExecuteTemplate(&buf, "Imports", imports)
+	w.Reset()
+	err = executeTpl.ExecuteTemplate(w, "Imports", imports)
 	if err != nil {
 		return fmt.Errorf("%s: %w", filename, err)
 	}
 	point := "imports"
 	g.res.Contents = append(g.res.Contents, &plugin.Generated{
-		Content:        buf.String(),
+		Content:        w.String(),
 		InsertionPoint: &point,
 	})
 	return nil

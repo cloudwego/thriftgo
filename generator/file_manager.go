@@ -103,13 +103,37 @@ FileLoop:
 	return nil
 }
 
-var (
-	ptn = fmt.Sprintf(plugin.InsertionPointFormat, `\([$.0-9a-zA-Z_]*\)`)
-	reg = regexp.MustCompile(ptn)
-)
+type insertionPointReplacer struct {
+	m map[string]string
+}
 
-func stripInsertionPoint(content string) string {
-	return reg.ReplaceAllLiteralString(content, "")
+var insertReg = regexp.MustCompile(fmt.Sprintf(plugin.InsertionPointFormat, `\([$.0-9a-zA-Z_]*\)`))
+
+func newInsertionPointReplacer(content string) *insertionPointReplacer {
+	kk := insertReg.FindAllString(content, -1) // all insertion points
+	m := make(map[string]string, len(kk))
+	for _, k := range kk {
+		m[k] = ""
+	}
+	return &insertionPointReplacer{m}
+}
+
+func (p *insertionPointReplacer) Add(x, content string) {
+	v := p.m[x]
+	if v == "" {
+		p.m[x] = content
+	} else {
+		// allow multiple content for a single insertion point
+		p.m[x] += content
+	}
+}
+
+func (p *insertionPointReplacer) Replace(content string) string {
+	oldnews := make([]string, 0, 2*len(p.m))
+	for k, v := range p.m {
+		oldnews = append(oldnews, k, v)
+	}
+	return strings.NewReplacer(oldnews...).Replace(content)
 }
 
 // BuildResponse creates a plugin.Response containing all files that the
@@ -118,17 +142,13 @@ func stripInsertionPoint(content string) string {
 func (fm *FileManager) BuildResponse() *plugin.Response {
 	res := plugin.NewResponse()
 	for _, f := range fm.files {
-		content := f.Content
+		x := newInsertionPointReplacer(f.Content)
 		for _, p := range fm.patch[f.GetName()] {
-			pos := plugin.InsertionPoint(p.GetInsertionPoint())
-			txt := p.Content + pos
-			content = strings.Replace(content, pos, txt, -1)
-			fm.log.Info(fmt.Sprintf("patch %q at %q with size %d", f.GetName(), p.GetInsertionPoint(), len(p.Content)))
+			x.Add(plugin.InsertionPoint(p.GetInsertionPoint()), p.Content)
 		}
-
 		g := &plugin.Generated{
 			Name:    f.Name,
-			Content: stripInsertionPoint(content),
+			Content: x.Replace(f.Content),
 		}
 		res.Contents = append(res.Contents, g)
 	}
