@@ -25,6 +25,9 @@ func UnmarshalRequest(bs []byte) (*Request, error) {
 	if _, err := req.FastRead(bs); err != nil {
 		return nil, err
 	}
+	if hasDataTrailerFeature(bs, featureCompressInclude) {
+		decompressThriftInclude(req.AST, nil)
+	}
 	return req, nil
 }
 

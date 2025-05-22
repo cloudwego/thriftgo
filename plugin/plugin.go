@@ -17,11 +17,16 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"debug/buildinfo"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cloudwego/thriftgo/parser"
 )
 
 // MaxExecutionTime is a timeout for executing external plugins.
@@ -137,10 +142,19 @@ func (e *external) Name() string {
 
 // Execute implements the Plugin interface.
 func (e *external) Execute(req *Request) (res *Response) {
+	trailer := supportDataTrailer(readPluginThriftGoVersion(e.path))
+	if trailer && enableCompressThriftInclude {
+		m := map[string]*parser.Thrift{}
+		compressThriftInclude(req.AST, m)
+		defer decompressThriftInclude(req.AST, m) // revert
+	}
 	data, err := MarshalRequest(req)
 	if err != nil {
 		err = fmt.Errorf("failed to marshal request: %w", err)
 		return BuildErrorResponse(err.Error())
+	}
+	if trailer && enableCompressThriftInclude {
+		data = appendDataTrailer(data, featureCompressInclude)
 	}
 
 	ctx := context.Background()
@@ -183,4 +197,112 @@ type SDKPlugin interface {
 	Invoke(req *Request) (res *Response)
 	GetName() string
 	GetPluginParameters() []string
+}
+
+const thriftgoPackage = "github.com/cloudwego/thriftgo"
+
+func readPluginThriftGoVersion(name string) string {
+	bi, err := buildinfo.ReadFile(name)
+	if err != nil {
+		return ""
+	}
+	for _, d := range bi.Deps {
+		if d.Path == thriftgoPackage {
+			return d.Version
+		}
+	}
+	return ""
+}
+
+const pluginDataTrailer = "\xffTHRIFTGO_TRAILER_V1\xff"
+
+const (
+	featureCompressInclude uint8 = 1 << 0
+)
+
+// NOTE: remove the env once the feature is considered to be stable.
+// In the feature, we should remove the whole plugin mode instead of using this
+var enableCompressThriftInclude = (os.Getenv("THRIFTGO_PLUGIN_COMPRESS_INCLUDE") == "1")
+
+func appendDataTrailer(data []byte, feature uint8) []byte {
+	data = append(data, feature)
+	return append(data, pluginDataTrailer...)
+}
+
+func hasDataTrailerFeature(data []byte, feature uint8) bool {
+	if len(data) < len(pluginDataTrailer)+1 || !bytes.HasSuffix(data, []byte(pluginDataTrailer)) {
+		return false
+	}
+	return data[len(data)-1-len(pluginDataTrailer)]&feature == feature
+}
+
+// supportDataTrailer returns true if v >= v0.4.2-xx
+//
+// v0.4.2 should be the version we're going to release for this feature
+func supportDataTrailer(v string) bool {
+	v, _, _ = strings.Cut(v, "-")
+	if len(v) < 6 || v[0] != 'v' { // len(v0.0.0) == 6
+		return false
+	}
+	ss := strings.Split(v[1:], ".")
+	if len(ss) != 3 {
+		return false
+	}
+	major, _ := strconv.Atoi(ss[0])
+	if major > 0 {
+		return true // 1.x.x
+	}
+	minor, _ := strconv.Atoi(ss[1])
+	if minor != 4 {
+		return minor > 4 // > 0.4.x or < 0.4.x
+	}
+	patch, _ := strconv.Atoi(ss[2])
+	return patch >= 2
+}
+
+const refFilenamePrefix = "THRIFGO_REF:"
+
+// compressThriftInclude compresses duplicated includes and keep the 1st one
+//
+// includes can be considered as DAG,
+// then we can simply keep the 1st one and trim others with refFilenamePrefix prefix
+func compressThriftInclude(p *parser.Thrift, m map[string]*parser.Thrift) {
+	if m == nil {
+		m = map[string]*parser.Thrift{}
+	}
+	for _, incl := range p.Includes {
+		if m[incl.Reference.Filename] != nil {
+			// visited, only keep the filename for mapping
+			incl.Reference = &parser.Thrift{Filename: refFilenamePrefix + incl.Reference.Filename}
+		} else {
+			// mark it's visited
+			m[incl.Reference.Filename] = incl.Reference
+			compressThriftInclude(incl.Reference, m)
+		}
+	}
+}
+
+func decompressThriftInclude(p *parser.Thrift, m map[string]*parser.Thrift) {
+	if m == nil {
+		m = map[string]*parser.Thrift{}
+		collectThriftInclude(p, m)
+	}
+	for _, incl := range p.Includes {
+		if fn := strings.TrimPrefix(incl.Reference.Filename, refFilenamePrefix); fn != incl.Reference.Filename {
+			incl.Reference = m[fn]
+			if incl.Reference == nil {
+				panic("not found ref: " + fn)
+			}
+		}
+		decompressThriftInclude(incl.Reference, m)
+	}
+}
+
+func collectThriftInclude(p *parser.Thrift, m map[string]*parser.Thrift) {
+	for _, incl := range p.Includes {
+		if !strings.HasPrefix(incl.Reference.Filename, refFilenamePrefix) {
+			m[incl.Reference.Filename] = incl.Reference
+			collectThriftInclude(incl.Reference, m)
+		}
+	}
 }
