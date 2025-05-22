@@ -121,7 +121,7 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 		matchGoName = *arg.MatchGoName
 	}
 	// optimize 整理配置文件的写法
-	disablePreserveComment := true
+	disablePreserveComment := false
 	if arg.DisablePreserveComment != nil {
 		disablePreserveComment = *arg.DisablePreserveComment
 	}
