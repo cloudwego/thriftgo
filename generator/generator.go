@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"github.com/cloudwego/gopkg/unsafex"
 	"github.com/cloudwego/thriftgo/generator/backend"
@@ -215,10 +216,8 @@ type asyncPostProcessJob struct {
 }
 
 type asyncPostProcess struct {
-	pp         backend.PostProcessor
-	jobs       []asyncPostProcessJob
-	rets       chan error
-	processing chan struct{}
+	pp   backend.PostProcessor
+	jobs []asyncPostProcessJob
 
 	concurrency int
 }
@@ -234,45 +233,40 @@ func (p *asyncPostProcess) Add(path, content string) {
 	p.jobs = append(p.jobs, asyncPostProcessJob{Path: path, Content: content})
 }
 
-func (p *asyncPostProcess) wait() error {
-	for len(p.processing) > 0 {
-		if err := <-p.rets; err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (p *asyncPostProcess) OnFinished(f func(path string, content []byte) error) error {
-	p.rets = make(chan error, len(p.jobs))
-	if p.concurrency == 0 {
+	if p.concurrency <= 0 {
 		p.concurrency = 1
 	}
-	p.processing = make(chan struct{}, p.concurrency)
-	for i := 0; i < len(p.jobs); {
+	var wg sync.WaitGroup
+	errs := make(chan error, len(p.jobs))
+	processing := make(chan struct{}, p.concurrency)
+	for _, j := range p.jobs {
 		select {
-		case err := <-p.rets:
-			if err != nil {
-				_ = p.wait()
-				return err
-			}
-			continue // retry
-
-		case p.processing <- struct{}{}: // processing++
-			j := p.jobs[i]
-			go func(path string, content []byte) {
-				defer func() { <-p.processing }() // processing--
-				var err error
-				if p.pp != nil {
-					content, err = p.pp.PostProcess(path, content)
-				}
-				if err == nil {
-					err = f(path, content)
-				}
-				p.rets <- err
-			}(j.Path, unsafex.StringToBinary(j.Content))
+		case processing <- struct{}{}: // processing++, block if full
+		case err := <-errs:
+			wg.Wait()
+			return err
 		}
-		i++ // next job
+		wg.Add(1)
+		go func(path string, content []byte) {
+			defer func() { wg.Done(); <-processing }() // processing--
+			var err error
+			if p.pp != nil {
+				content, err = p.pp.PostProcess(path, content)
+			}
+			if err == nil {
+				err = f(path, content)
+			}
+			if err != nil {
+				errs <- err
+			}
+		}(j.Path, unsafex.StringToBinary(j.Content))
 	}
-	return p.wait()
+	wg.Wait()
+	select {
+	case err := <-errs:
+		return err
+	default:
+		return nil
+	}
 }
