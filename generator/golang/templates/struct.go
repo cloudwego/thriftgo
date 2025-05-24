@@ -37,6 +37,16 @@ type {{$TypeName}} struct {
 	_fieldmask *fieldmask.FieldMask
 	{{- end}}
 }
+{{- if .Annotations}}
+// Annotations for {{$TypeName}}
+	{{- range $anno := .Annotations}}
+		{{- if eq $anno.Key "gorm.table_name" }}
+		func (p *{{$TypeName}}) TableName() string {
+			return "{{index $anno.Values 0}}"
+		}
+		{{- end}}
+	{{end}}
+{{- end}}
 
 {{- if Features.GenerateTypeMeta}}
 {{- UseStdLibrary "meta"}}
@@ -134,7 +144,6 @@ func (p *{{$TypeName}}) String() string {
 	{{- UseStdLibrary "fmt"}}
 	return fmt.Sprintf("{{$TypeName}}(%+v)", *p)
 	{{- end}}
-
 }
 
 {{- if eq .Category "exception"}}
