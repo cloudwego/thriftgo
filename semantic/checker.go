@@ -71,7 +71,7 @@ func (c *checker) CheckAll(t *parser.Thrift) (warns []string, err error) {
 func (c *checker) CheckGlobals(t *parser.Thrift) (warns []string, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("duplicated names in global scope: %s", e)
+			err = fmt.Errorf("[IDL Grammar] duplicated names in global scope: %s", e)
 		}
 	}()
 	globals := make(map[string]bool)
