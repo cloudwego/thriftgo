@@ -71,7 +71,7 @@ func (c *checker) CheckAll(t *parser.Thrift) (warns []string, err error) {
 func (c *checker) CheckGlobals(t *parser.Thrift) (warns []string, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("duplicated names in global scope: %s", e)
+			err = fmt.Errorf("[IDL grammar error] duplicated names in global scope: %s", e)
 		}
 	}()
 	globals := make(map[string]bool)
@@ -102,12 +102,12 @@ func (c *checker) CheckEnums(t *parser.Thrift) (warns []string, err error) {
 		v2n := make(map[int64]string)
 		for _, v := range e.Values {
 			if exist[v.Name] {
-				err = fmt.Errorf("enum %s has duplicated value: %s", e.Name, v.Name)
+				err = fmt.Errorf("[IDL grammar error] enum %s has duplicated value: %s", e.Name, v.Name)
 			}
 			exist[v.Name] = true
 			if n, ok := v2n[v.Value]; ok && n != v.Name {
 				err = fmt.Errorf(
-					"enum %s: duplicate value %d between '%s' and '%s'",
+					"[IDL grammar error] enum %s: duplicate value %d between '%s' and '%s'",
 					e.Name, v.Value, n, v.Name,
 				)
 			}
@@ -130,12 +130,12 @@ func (c *checker) CheckStructLikes(t *parser.Thrift) (warns []string, err error)
 		names := make(map[string]bool)
 		for _, f := range s.Fields {
 			if fieldIDs[f.ID] {
-				err = fmt.Errorf("duplicated field ID %d in %s %q",
+				err = fmt.Errorf("[IDL grammar error] duplicated field ID %d in %s %q",
 					f.ID, s.Category, s.Name)
 				return
 			}
 			if names[f.Name] {
-				err = fmt.Errorf("duplicated field name %q in %s %q",
+				err = fmt.Errorf("[IDL grammar error] duplicated field name %q in %s %q",
 					f.Name, s.Category, s.Name)
 				return
 			}
@@ -164,7 +164,7 @@ func (c *checker) CheckUnions(t *parser.Thrift) (warns []string, err error) {
 
 			if f.GetDefault() != nil {
 				if hasDefault {
-					err = fmt.Errorf("field %s provides another default value for union %s", f.Name, u.Name)
+					err = fmt.Errorf("[IDL grammar error] field %s provides another default value for union %s", f.Name, u.Name)
 					return warns, err
 				}
 			}
@@ -184,17 +184,17 @@ func (c *checker) CheckFunctions(t *parser.Thrift) (warns []string, err error) {
 		defined := make(map[string]bool)
 		for _, f := range svc.Functions {
 			if defined[f.Name] {
-				err = fmt.Errorf("duplicated function name in %q: %q", svc.Name, f.Name)
+				err = fmt.Errorf("[IDL grammar error] duplicated function name in %q: %q", svc.Name, f.Name)
 				return
 			}
 			defined[f.Name] = true
 
 			if f.Oneway && !f.Void {
-				err = fmt.Errorf("%s.%s: oneway function must be void type", svc.Name, f.Name)
+				err = fmt.Errorf("[IDL grammar error] %s.%s: oneway function must be void type", svc.Name, f.Name)
 				return
 			}
 			if f.Oneway && len(f.Throws) > 0 {
-				err = fmt.Errorf("%s.%s: oneway methods can't throw exceptions", svc.Name, f.Name)
+				err = fmt.Errorf("[IDL grammar error] %s.%s: oneway methods can't throw exceptions", svc.Name, f.Name)
 				return
 			}
 			for _, a := range f.Arguments {
