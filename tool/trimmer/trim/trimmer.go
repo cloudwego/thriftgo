@@ -58,6 +58,7 @@ type TrimASTArg struct {
 	DisablePreserveComment *bool
 	PreserveStructs        []string
 	PreservedFiles         []string
+	IncludeDirs            []string
 }
 
 type TrimResultInfo struct {

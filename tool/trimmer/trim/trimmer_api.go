@@ -33,7 +33,7 @@ func TrimBatchContent(mainIDLFilePath string, IDLFileContentMap map[string]strin
 
 // TrimBatchContentWithConfig does the same work with TrimBatchContent, but can extra receive a trimArgs
 func TrimBatchContentWithConfig(mainIDLFilePath string, IDLFileContentMap map[string]string, trimArgs TrimASTArg) (map[string]string, error) {
-	ast, err := parser.ParseBatchString(mainIDLFilePath, IDLFileContentMap, nil)
+	ast, err := parser.ParseBatchString(mainIDLFilePath, IDLFileContentMap, trimArgs.IncludeDirs)
 	if err != nil {
 		return nil, err
 	}
