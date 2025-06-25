@@ -114,7 +114,7 @@ func (r *resolver) ResolveAST() (err error) {
 			panic(fmt.Errorf("reference %q of %q is not parsed", v.Path, r.ast.Filename))
 		}
 		if err = ResolveSymbols(v.Reference); err != nil {
-			panic(fmt.Errorf("resolve include %q: %w", v.Path, err))
+			panic(fmt.Errorf("resolve include %q: %w from file %s", v.Path, err, r.ast.Filename))
 		}
 		return true
 	})
@@ -186,11 +186,11 @@ func (r *resolver) ResolveBaseService(v *parser.Service) error {
 
 func (r *resolver) ResolveStructField(s string, f *parser.Field) (err error) {
 	if err = r.ResolveType(f.Type); err != nil {
-		return fmt.Errorf("resolve field %q of %q: %w", f.Name, s, err)
+		return fmt.Errorf("resolve field %q of %q: %w from file %s", f.Name, s, err, r.ast.Filename)
 	}
 	if f.IsSetDefault() {
 		if err = r.ResolveConstValue(f.Default); err != nil {
-			return fmt.Errorf("resolve default value of %q of %q: %w", f.Name, s, err)
+			return fmt.Errorf("resolve default value of %q of %q: %w from file %s", f.Name, s, err, r.ast.Filename)
 		}
 	}
 	return
@@ -199,17 +199,17 @@ func (r *resolver) ResolveStructField(s string, f *parser.Field) (err error) {
 func (r *resolver) ResolveFunction(s string, f *parser.Function) (err error) {
 	if !f.Void {
 		if err = r.ResolveType(f.FunctionType); err != nil {
-			return fmt.Errorf("function %q of service %q: %w", f.Name, s, err)
+			return fmt.Errorf("function %q of service %q: %w from file %s", f.Name, s, err, r.ast.Filename)
 		}
 	}
 	for _, v := range f.Arguments {
 		if err := r.ResolveType(v.Type); err != nil {
-			return fmt.Errorf("resolve argument %q of %q of %q: %w", v.Name, f.Name, s, err)
+			return fmt.Errorf("resolve argument %q of %q of %q: %w from file %s", v.Name, f.Name, s, err, r.ast.Filename)
 		}
 	}
 	for _, v := range f.Throws {
 		if err := r.ResolveType(v.Type); err != nil {
-			return fmt.Errorf("resolve exception %q of %q of %q: %w", v.Name, f.Name, s, err)
+			return fmt.Errorf("resolve exception %q of %q of %q: %w from file %s", v.Name, f.Name, s, err, r.ast.Filename)
 		}
 	}
 	return
