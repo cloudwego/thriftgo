@@ -58,15 +58,33 @@ func search(file, dir string, includeDirs []string) (string, error) {
 	return file, &os.PathError{Op: "search", Path: file, Err: os.ErrNotExist}
 }
 
+func searchForThriftContentMap(file, dir string, includeDirs []string, IDLFileContentMap map[string]string) (string, error) {
+	ps := []string{file, filepath.Join(dir, file)}
+	for _, inc := range includeDirs {
+		ps = append(ps, filepath.Join(inc, file))
+	}
+	for _, p := range ps {
+		if _, ok := IDLFileContentMap[p]; ok {
+			return normalizeFilename(p), nil
+		}
+	}
+	return file, &os.PathError{Op: "search", Path: file, Err: os.ErrNotExist}
+}
+
 // ParseBatchString parses a group of string content and returns an AST.
 // IDLContent is a map, which's key is IDLPath and value is IDL content.
 func ParseBatchString(mainIDLFilePath string, IDLFileContentMap map[string]string, includeDirs []string) (*Thrift, error) {
 	thriftMap := make(map[string]*Thrift)
-	return parseBatchStringRecursively(mainIDLFilePath, includeDirs, thriftMap, IDLFileContentMap)
+	dir := filepath.Dir(normalizeFilename(mainIDLFilePath))
+	return parseBatchStringRecursively(mainIDLFilePath, dir, includeDirs, thriftMap, IDLFileContentMap)
 }
 
 // doParseBatchString
-func parseBatchStringRecursively(path string, includeDirs []string, thriftMap map[string]*Thrift, IDLFileContentMap map[string]string) (*Thrift, error) {
+func parseBatchStringRecursively(path, dir string, includeDirs []string, thriftMap map[string]*Thrift, IDLFileContentMap map[string]string) (*Thrift, error) {
+	path, err := searchForThriftContentMap(path, dir, includeDirs, IDLFileContentMap)
+	if err != nil {
+		return nil, err
+	}
 
 	bs, ok := IDLFileContentMap[path]
 	if !ok {
@@ -81,10 +99,10 @@ func parseBatchStringRecursively(path string, includeDirs []string, thriftMap ma
 		return nil, fmt.Errorf("parse %s err: %w\n", path, err)
 	}
 	thriftMap[path] = t
-	dir := filepath.Dir(path)
+	dir = filepath.Dir(path)
 	for _, inc := range t.Includes {
-		incPath := filepath.Join(dir, inc.Path)
-		t, err := parseBatchStringRecursively(incPath, includeDirs, thriftMap, IDLFileContentMap)
+		incPath := inc.Path
+		t, err := parseBatchStringRecursively(incPath, dir, includeDirs, thriftMap, IDLFileContentMap)
 		if err != nil {
 			return nil, err
 		}
