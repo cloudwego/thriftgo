@@ -94,7 +94,7 @@ var defaultFeatures = Features{
 	CompatibleNames:             false,
 	ReserveComments:             false,
 	NilSafe:                     false,
-	FrugalTag:                   false,
+	FrugalTag:                   true,
 	EscapeDoubleInTag:           true,
 	GenerateTypeMeta:            false,
 	GenerateJSONTag:             true,
