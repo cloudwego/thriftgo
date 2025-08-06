@@ -250,10 +250,11 @@ func (cu *CodeUtils) Import(t *parser.Thrift) (pkg, pth string) {
 	return
 }
 
+// Deprecated, after a few versions later when we make sure it's 100% useless, then remove it.
 // GenTags generates go tags for the given parser.Field.
-func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error) {
-	return cu.genFieldTags(f, insertPoint, nil)
-}
+//func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error) {
+//	return cu.genFieldTags(f, insertPoint, nil)
+//}
 
 // GenFieldTags generates go tags for the given parser.Field.
 func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) {
@@ -262,19 +263,14 @@ func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) 
 		requiredness := strings.ToLower(f.Requiredness.String())
 		tags = append(tags, fmt.Sprintf(`frugal:"%d,%s,%s"`, f.ID, requiredness, f.frugalTypeName))
 	}
-	return cu.genFieldTags(f.Field, insertPoint, tags)
+	return cu.genFieldTags(f, insertPoint, tags)
 }
 
-func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []string) (string, error) {
+func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string) (string, error) {
+
 	var tags []string
-	switch f.Requiredness {
-	case parser.FieldType_Required:
-		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,required"`, f.Name, f.ID))
-	case parser.FieldType_Optional:
-		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,optional"`, f.Name, f.ID))
-	default:
-		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d"`, f.Name, f.ID))
-	}
+
+	tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,%s,%s"`, f.Name, f.ID, strings.ToLower(f.Requiredness.String()), f.frugalTypeName))
 
 	tags = append(tags, extend...)
 
@@ -384,8 +380,9 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"Features":         cu.Features,
 		"SetWithFieldMask": cu.SetWithFieldMask,
 		"GetPackageName":   cu.GetPackageName,
-		"GenTags":          cu.GenTags,
-		"GenFieldTags":     cu.GenFieldTags,
+		// unused, and it's almost the same with cu.GenFieldTags, so remove it.
+		//"GenTags":          cu.GenTags,
+		"GenFieldTags": cu.GenFieldTags,
 		"MkRWCtx": func(f *Field) (*ReadWriteContext, error) {
 			return cu.MkRWCtx(cu.rootScope, f)
 		},
