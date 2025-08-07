@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -266,12 +267,65 @@ func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) 
 	return cu.genFieldTags(f, insertPoint, tags)
 }
 
-func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string) (string, error) {
+// hasListOrSetOrEnum checks if a type requires special frugal type information.
+// Returns true for types that need extra encoding metadata:
+// - Lists and sets (both map to Go slices, need distinction for encoding)
+// - Enums (stored as int64 but encoded as i32)
+// - Maps containing any of the above types as keys or values
+func hasListOrSetOrEnum(t *parser.Type) bool {
+	if t == nil {
+		return false
+	}
+	c := t.Category
+	if c.IsList() || c.IsSet() || c.IsEnum() {
+		return true
+	}
+	// Maps need type info if either key or value is the case above
+	if c.IsMap() {
+		return hasListOrSetOrEnum(t.KeyType) || hasListOrSetOrEnum(t.ValueType)
+	}
+	return false
+}
 
+// canIgnoreGenFrugalTagType determines whether to omit frugal type info from thrift tags.
+// This optimization reduces tag verbosity for simple types while preserving correctness.
+// Returns true when frugal type information can be safely omitted from the thrift tag.
+func (cu *CodeUtils) canIgnoreGenFrugalTagType(f *Field) bool {
+	if cu.Features().FrugalTag {
+		// If FrugalTag is enabled, we can always ignore generating frugal type
+		// since frugal prioritize "frugal" tag over "thrift"
+		return true
+	}
+	// Special types need frugal type info:
+	// - Lists/Sets: both map to Go slices, need distinction
+	// - Enums: stored as int64 but encoded as i32
+	return !hasListOrSetOrEnum(f.Type)
+}
+
+// genFieldTags generates Go struct field tags for thrift serialization.
+// The thrift tag format is: "name,id[,requiredness[,frugal_type]]"
+// - name: field name from thrift IDL
+// - id: unique field ID for thrift protocol
+// - requiredness: "required", "optional", or "default" (omitted when "default" and type allows)
+// - frugal_type: type hint for special cases (lists/sets/enums) when needed
+func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string) (string, error) {
 	var tags []string
 
-	tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,%s,%s"`, f.Name, f.ID, strings.ToLower(f.Requiredness.String()), f.frugalTypeName))
+	// Build thrift tag components
+	parts := make([]string, 0, 4)
+	parts = append(parts, f.Name)                                 // Field name
+	parts = append(parts, strconv.Itoa(int(f.ID)))                // Field ID
+	parts = append(parts, strings.ToLower(f.Requiredness.String())) // Requiredness
 
+	if cu.canIgnoreGenFrugalTagType(f) {
+		if parts[2] == "default" { // Omit 'default' requiredness for simpler tags
+			parts = parts[:2]
+		}
+	} else {
+		// Add frugal type info for special types that need encoding distinction
+		parts = append(parts, f.frugalTypeName.String())
+	}
+	tags = append(tags, fmt.Sprintf(`thrift:"%s"`, strings.Join(parts, ",")))
 	tags = append(tags, extend...)
 
 	gotags := f.Annotations.Get("go.tag")
