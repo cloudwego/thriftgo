@@ -156,9 +156,9 @@ func (p *{{$TypeName}}) Error() string {
 var StructLikeDefault = `
 {{- define "StructLikeDefault"}}
 {{- range .Fields}}
-	{{- if .IsSetDefault}}
+	{{- if .IsSetDefault -}}
 		{{.GoName}}: {{.DefaultValue}},
-	{{- end}}
+	{{end}}
 {{- end}}
 {{- end -}}`
 
