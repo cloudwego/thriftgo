@@ -165,7 +165,7 @@ var StructLikeDefault = `
 // StructLikeRead .
 var StructLikeRead = `
 {{define "StructLikeRead"}}
-{{- UseStdLibrary "thrift" "fmt"}}
+{{- UseStdLibrary "thrift"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{- if Features.ApacheWarning -}}
@@ -176,6 +176,7 @@ func (p *{{$TypeName}}) Read(iprot thrift.TProtocol) (err error) {
 	{{- UseStdLibrary  "apache_adaptor" -}}
 	return apache_adaptor.AdaptRead(p, iprot)
 	{{- else -}}
+	{{- UseStdLibrary "fmt"}}
 	{{if Features.KeepUnknownFields}}var name string{{end}}
 	var fieldTypeId thrift.TType
 	var fieldId int16
@@ -322,7 +323,7 @@ func (p *{{$TypeName}}) {{.Reader}}(iprot thrift.TProtocol) error {
 // StructLikeWrite .
 var StructLikeWrite = `
 {{define "StructLikeWrite"}}
-{{- UseStdLibrary "thrift" "fmt"}}
+{{- UseStdLibrary "thrift"}}
 {{- $TypeName := .GoName}}
 func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	{{- if Features.ApacheWarning -}}
@@ -333,6 +334,7 @@ func (p *{{$TypeName}}) Write(oprot thrift.TProtocol) (err error) {
 	{{- UseStdLibrary  "apache_adaptor" -}}
 	return apache_adaptor.AdaptWrite(p, oprot)
 	{{- else -}}
+	{{- UseStdLibrary "fmt"}}
 	{{- if gt (len .Fields) 0 }}
 	var fieldId int16
 	{{- end}}
@@ -392,7 +394,7 @@ UnknownFieldsWriteError:
 // StructLikeWriteField .
 var StructLikeWriteField = `
 {{define "StructLikeWriteField"}}
-{{- UseStdLibrary "thrift" "fmt"}}
+{{- UseStdLibrary "thrift"}}
 {{- $TypeName := .GoName}}
 {{- range .Fields}}
 {{- $FieldName := .GoName}}
@@ -400,6 +402,7 @@ var StructLikeWriteField = `
 {{- $TypeID := .Type | GetTypeIDConstant }}
 {{- $isBaseVal := .Type | IsBaseType }}
 {{- if not Features.ApacheAdaptor -}}
+{{- UseStdLibrary "fmt"}}
 func (p *{{$TypeName}}) {{.Writer}}(oprot thrift.TProtocol) (err error) {
 	{{- if .Requiredness.IsOptional}}
 	if p.{{$IsSetName}}() {
