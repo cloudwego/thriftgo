@@ -16,6 +16,7 @@ package trim
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/cloudwego/thriftgo/utils/dir_utils"
 
@@ -311,18 +312,18 @@ func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Servi
 	return ret
 }
 
-var preserveCache = make(map[*parser.StructLike]bool, 200)
+var preserveCache = sync.Map{}
 
 // check for @Preserve comments
 func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) (preserve bool) {
 	if t.forceTrimming {
 		return false
 	}
-	if res, ok := preserveCache[theStruct]; ok {
-		return res
+	if res, ok := preserveCache.Load(theStruct); ok {
+		return res.(bool)
 	}
 	defer func() {
-		preserveCache[theStruct] = preserve
+		preserveCache.Store(theStruct, preserve)
 	}()
 
 	currentStructName := theStruct.Name
