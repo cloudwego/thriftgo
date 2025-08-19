@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -250,10 +251,11 @@ func (cu *CodeUtils) Import(t *parser.Thrift) (pkg, pth string) {
 	return
 }
 
+// Deprecated, after a few versions later when we make sure it's 100% useless, then remove it.
 // GenTags generates go tags for the given parser.Field.
-func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error) {
-	return cu.genFieldTags(f, insertPoint, nil)
-}
+//func (cu *CodeUtils) GenTags(f *parser.Field, insertPoint string) (string, error) {
+//	return cu.genFieldTags(f, insertPoint, nil)
+//}
 
 // GenFieldTags generates go tags for the given parser.Field.
 func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) {
@@ -262,20 +264,68 @@ func (cu *CodeUtils) GenFieldTags(f *Field, insertPoint string) (string, error) 
 		requiredness := strings.ToLower(f.Requiredness.String())
 		tags = append(tags, fmt.Sprintf(`frugal:"%d,%s,%s"`, f.ID, requiredness, f.frugalTypeName))
 	}
-	return cu.genFieldTags(f.Field, insertPoint, tags)
+	return cu.genFieldTags(f, insertPoint, tags)
 }
 
-func (cu *CodeUtils) genFieldTags(f *parser.Field, insertPoint string, extend []string) (string, error) {
-	var tags []string
-	switch f.Requiredness {
-	case parser.FieldType_Required:
-		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,required"`, f.Name, f.ID))
-	case parser.FieldType_Optional:
-		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d,optional"`, f.Name, f.ID))
-	default:
-		tags = append(tags, fmt.Sprintf(`thrift:"%s,%d"`, f.Name, f.ID))
+// hasListOrSetOrEnum checks if a type requires special frugal type information.
+// Returns true for types that need extra encoding metadata:
+// - Lists and sets (both map to Go slices, need distinction for encoding)
+// - Enums (stored as int64 but encoded as i32)
+// - Maps containing any of the above types as keys or values
+func hasListOrSetOrEnum(t *parser.Type) bool {
+	if t == nil {
+		return false
 	}
+	c := t.Category
+	if c.IsList() || c.IsSet() || c.IsEnum() {
+		return true
+	}
+	// Maps need type info if either key or value is the case above
+	if c.IsMap() {
+		return hasListOrSetOrEnum(t.KeyType) || hasListOrSetOrEnum(t.ValueType)
+	}
+	return false
+}
 
+// canIgnoreGenFrugalTagType determines whether to omit frugal type info from thrift tags.
+// This optimization reduces tag verbosity for simple types while preserving correctness.
+// Returns true when frugal type information can be safely omitted from the thrift tag.
+func (cu *CodeUtils) canIgnoreGenFrugalTagType(f *Field) bool {
+	if cu.Features().FrugalTag {
+		// If FrugalTag is enabled, we can always ignore generating frugal type
+		// since frugal prioritize "frugal" tag over "thrift"
+		return true
+	}
+	// Special types need frugal type info:
+	// - Lists/Sets: both map to Go slices, need distinction
+	// - Enums: stored as int64 but encoded as i32
+	return !hasListOrSetOrEnum(f.Type)
+}
+
+// genFieldTags generates Go struct field tags for thrift serialization.
+// The thrift tag format is: "name,id[,requiredness[,frugal_type]]"
+// - name: field name from thrift IDL
+// - id: unique field ID for thrift protocol
+// - requiredness: "required", "optional", or "default" (omitted when "default" and type allows)
+// - frugal_type: type hint for special cases (lists/sets/enums) when needed
+func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string) (string, error) {
+	var tags []string
+
+	// Build thrift tag components
+	parts := make([]string, 0, 4)
+	parts = append(parts, f.Name)                                 // Field name
+	parts = append(parts, strconv.Itoa(int(f.ID)))                // Field ID
+	parts = append(parts, strings.ToLower(f.Requiredness.String())) // Requiredness
+
+	if cu.canIgnoreGenFrugalTagType(f) {
+		if parts[2] == "default" { // Omit 'default' requiredness for simpler tags
+			parts = parts[:2]
+		}
+	} else {
+		// Add frugal type info for special types that need encoding distinction
+		parts = append(parts, f.frugalTypeName.String())
+	}
+	tags = append(tags, fmt.Sprintf(`thrift:"%s"`, strings.Join(parts, ",")))
 	tags = append(tags, extend...)
 
 	gotags := f.Annotations.Get("go.tag")
@@ -384,8 +434,9 @@ func (cu *CodeUtils) BuildFuncMap() template.FuncMap {
 		"Features":         cu.Features,
 		"SetWithFieldMask": cu.SetWithFieldMask,
 		"GetPackageName":   cu.GetPackageName,
-		"GenTags":          cu.GenTags,
-		"GenFieldTags":     cu.GenFieldTags,
+		// unused, and it's almost the same with cu.GenFieldTags, so remove it.
+		//"GenTags":          cu.GenTags,
+		"GenFieldTags": cu.GenFieldTags,
 		"MkRWCtx": func(f *Field) (*ReadWriteContext, error) {
 			return cu.MkRWCtx(cu.rootScope, f)
 		},
