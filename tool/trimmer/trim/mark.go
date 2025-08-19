@@ -311,18 +311,16 @@ func (t *Trimmer) traceExtendMethod(fathers []*parser.Service, svc *parser.Servi
 	return ret
 }
 
-var preserveCache = make(map[*parser.StructLike]bool, 200)
-
 // check for @Preserve comments
 func (t *Trimmer) checkPreserve(theStruct *parser.StructLike) (preserve bool) {
 	if t.forceTrimming {
 		return false
 	}
-	if res, ok := preserveCache[theStruct]; ok {
+	if res, ok := t.preserveCache[theStruct]; ok {
 		return res
 	}
 	defer func() {
-		preserveCache[theStruct] = preserve
+		t.preserveCache[theStruct] = preserve
 	}()
 
 	currentStructName := theStruct.Name
