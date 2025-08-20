@@ -16,7 +16,6 @@ package semantic
 
 import (
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/cloudwego/thriftgo/parser"
@@ -117,7 +116,16 @@ func (c *checker) CheckEnums(t *parser.Thrift) (warns []string, err error) {
 			}
 			// check if enum value can be safely converted to int 32
 			if v.Value < math.MinInt32 || v.Value > math.MaxInt32 {
-				log.Printf("the value of enum %s is %d, which exceeds the range of int32. Please adjust its value to fit within the int32 range to avoid data errors during serialization!!!\n", v.Name, v.Value)
+				return nil, fmt.Errorf(
+					"enum overflow: the value (%d) of enum '%s %s' exceeds the range of int32.\n"+
+						"Due to legacy implementation, thriftgo generates int64 for enums in Go code. \n"+
+						"However, during network, values undergo int64->int32->int64 conversion. Values outside int32 will overflow.\n"+
+						"Please adjust the enum value to fit within the int32 range [-2147483648, 2147483647].\n"+
+						"If you just want to define a very big constant, please use 'const i64 MyConst = xxx' instead.\n",
+					v.Value,
+					t.Filename,
+					v.Name,
+				)
 			}
 		}
 	}
