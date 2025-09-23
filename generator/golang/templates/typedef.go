@@ -26,7 +26,7 @@ type {{$NewTypeName}} = {{$OldTypeName}}
 type {{$NewTypeName}} {{$OldTypeName}}
 {{- end}}
 
-{{InsertionPoint "typedef" $NewTypeName}}
+{{InsertionPoint "typedef" $NewTypeName.String}}
 
 {{if .Type.Category.IsStructLike}} 
 func New{{$NewTypeName}}() *{{$NewTypeName}} {
