@@ -26,6 +26,8 @@ type {{$NewTypeName}} = {{$OldTypeName}}
 type {{$NewTypeName}} {{$OldTypeName}}
 {{- end}}
 
+{{InsertionPoint "typedef" $NewTypeName}}
+
 {{if .Type.Category.IsStructLike}} 
 func New{{$NewTypeName}}() *{{$NewTypeName}} {
 	return (*{{$NewTypeName}})({{$OldTypeName.NewFunc}}())
