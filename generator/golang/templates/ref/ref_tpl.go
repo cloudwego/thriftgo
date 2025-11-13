@@ -27,7 +27,9 @@ import (
 			{{- end}}
 		{{- end}}
 	{{end}}
+{{- if or .Structs .Enums .Unions .Exceptions .Services .Constants.GoConstants .Constants.GoVariables}}
 	{{$RefPackage}} "{{.RefPath}}"
+{{- end}}
 )
 
 ` + constRef + `
