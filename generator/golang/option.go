@@ -264,9 +264,9 @@ next:
 
 	// do not generate deep equal for slim template
 	// optimize: optimize slim template and unify no_default_serdes template
-	if cu.useTemplate == "slim" {
-		cu.features.GenDeepEqual = false
-	}
+	//if cu.useTemplate == "slim" {
+	//	cu.features.GenDeepEqual = false
+	//}
 
 	return nil
 }
