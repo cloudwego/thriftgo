@@ -88,4 +88,26 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	}
 
 	t.structsTrimmed -= len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
+	if t.trimEnums {
+		listEnum := make([]*parser.Enum, 0, len(ast.Enums))
+		for i := range ast.Enums {
+			_, ok := currentMap[ast.Enums[i]]
+			if ok {
+				listEnum = append(listEnum, ast.Enums[i])
+			}
+		}
+		ast.Enums = listEnum
+		t.structsTrimmed -= len(ast.Enums)
+	}
+	if t.trimConsts {
+		listConst := make([]*parser.Constant, 0, len(ast.Constants))
+		for i := range ast.Constants {
+			_, ok := currentMap[ast.Constants[i]]
+			if ok {
+				listConst = append(listConst, ast.Constants[i])
+			}
+		}
+		ast.Constants = listConst
+		t.structsTrimmed -= len(ast.Constants)
+	}
 }

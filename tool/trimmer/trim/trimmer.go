@@ -43,6 +43,8 @@ type Trimmer struct {
 	forceTrimming          bool
 	preservedStructsMap    map[string]struct{}
 	disablePreserveComment bool
+	trimEnums              bool
+	trimConsts             bool
 	structsTrimmed         int
 	fieldsTrimmed          int
 	extServices            []*parser.Service
@@ -60,6 +62,8 @@ type TrimASTArg struct {
 	PreserveStructs        []string
 	PreservedFiles         []string
 	IncludeDirs            []string
+	TrimEnums              *bool
+	TrimConsts             *bool
 }
 
 type TrimResultInfo struct {
@@ -106,6 +110,12 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 			if arg.DisablePreserveComment == nil && cfg.DisablePreserveComment != nil {
 				arg.DisablePreserveComment = cfg.DisablePreserveComment
 			}
+			if arg.TrimEnums == nil && cfg.TrimEnums != nil {
+				arg.TrimEnums = cfg.TrimEnums
+			}
+			if arg.TrimConsts == nil && cfg.TrimConsts != nil {
+				arg.TrimConsts = cfg.TrimConsts
+			}
 			if len(preservedStructs) == 0 {
 				preservedStructs = cfg.PreservedStructs
 			}
@@ -127,11 +137,19 @@ func TrimAST(arg *TrimASTArg) (trimResultInfo *TrimResultInfo, err error) {
 	if arg.DisablePreserveComment != nil {
 		disablePreserveComment = *arg.DisablePreserveComment
 	}
-	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, disablePreserveComment, preservedStructs, preservedFiles)
+	trimEnums := false
+	if arg.TrimEnums != nil {
+		trimEnums = *arg.TrimEnums
+	}
+	trimConsts := false
+	if arg.TrimConsts != nil {
+		trimConsts = *arg.TrimConsts
+	}
+	return doTrimAST(arg.Ast, arg.TrimMethods, forceTrim, matchGoName, disablePreserveComment, trimEnums, trimConsts, preservedStructs, preservedFiles)
 }
 
 // doTrimAST trim the single AST, pass method names if -m specified
-func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName, disablePreserveComment bool, preservedStructs, preserveFiles []string) (
+func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoName, disablePreserveComment, trimEnums, trimConsts bool, preservedStructs, preserveFiles []string) (
 	trimResultInfo *TrimResultInfo, err error) {
 	trimmer, err := newTrimmer(nil, "")
 	if err != nil {
@@ -142,6 +160,8 @@ func doTrimAST(ast *parser.Thrift, trimMethods []string, forceTrimming, matchGoN
 	trimmer.trimMethodValid = make([]bool, len(trimMethods))
 	trimmer.forceTrimming = forceTrimming
 	trimmer.matchGoName = matchGoName
+	trimmer.trimEnums = trimEnums
+	trimmer.trimConsts = trimConsts
 	if len(ast.Services) > 0 {
 		for i, method := range trimMethods {
 			parts := strings.Split(method, ".")
@@ -229,6 +249,12 @@ func Trim(files, includeDir []string, outDir string) error {
 
 func (t *Trimmer) countStructs(ast *parser.Thrift) {
 	t.structsTrimmed += len(ast.Structs) + len(ast.Includes) + len(ast.Services) + len(ast.Unions) + len(ast.Exceptions)
+	if t.trimEnums {
+		t.structsTrimmed += len(ast.Enums)
+	}
+	if t.trimConsts {
+		t.structsTrimmed += len(ast.Constants)
+	}
 	for _, v := range ast.Structs {
 		t.fieldsTrimmed += len(v.Fields)
 	}
