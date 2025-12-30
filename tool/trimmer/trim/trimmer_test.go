@@ -608,3 +608,166 @@ enum UnusedEnum {
 	test.Assert(t, len(ast.Structs) == 1, fmt.Sprintf("Expected 1 struct in base.thrift, got %d", len(ast.Structs)))
 	test.Assert(t, ast.Structs[0].Name == "UsedStruct", fmt.Sprintf("Expected UsedStruct, got %s", ast.Structs[0].Name))
 }
+
+// Test that include statements are removed when the included file only has unused enums
+func TestTrimBatchContentRemoveIncludeForEnumOnlyFile(t *testing.T) {
+	// Create main IDL that includes base.thrift but doesn't use its enum
+	mainIDL := `
+include "base.thrift"
+
+struct MainStruct {
+    1: string name
+}
+
+service MainService {
+    MainStruct getMain()
+}
+`
+
+	// Create base IDL with only enum definitions (no structs, no services)
+	baseIDL := `
+enum UnusedStatus {
+    ACTIVE = 1,
+    INACTIVE = 2
+}
+
+enum UnusedColor {
+    RED = 1,
+    GREEN = 2,
+    BLUE = 3
+}
+`
+
+	IDLFileContentMap := map[string]string{
+		"main.thrift": mainIDL,
+		"base.thrift": baseIDL,
+	}
+
+	// Trim with enum trimming enabled
+	trimEnums := true
+	trimmedContent, err := TrimBatchContentWithConfig("main.thrift", IDLFileContentMap, TrimASTArg{
+		TrimEnums: &trimEnums,
+	})
+	test.Assert(t, err == nil, err)
+	test.Assert(t, trimmedContent != nil, "Trimmed content should not be nil")
+
+	// base.thrift should NOT be in the result because all its enums are unused
+	_, hasBase := trimmedContent["base.thrift"]
+	test.Assert(t, !hasBase, "base.thrift should not be in the result when all enums are unused")
+
+	// main.thrift should be in the result
+	mainContent, hasMain := trimmedContent["main.thrift"]
+	test.Assert(t, hasMain, "main.thrift should be in the result")
+
+	// Verify main.thrift does NOT have the include statement
+	ast, err := parser.ParseString("main.thrift", mainContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(ast.Includes) == 0, fmt.Sprintf("Expected 0 includes in main.thrift, got %d", len(ast.Includes)))
+	test.Assert(t, len(ast.Structs) == 1, fmt.Sprintf("Expected 1 struct in main.thrift, got %d", len(ast.Structs)))
+	test.Assert(t, len(ast.Services) == 1, fmt.Sprintf("Expected 1 service in main.thrift, got %d", len(ast.Services)))
+}
+
+// Test that include statements are kept when enums are used
+func TestTrimBatchContentKeepIncludeForUsedEnum(t *testing.T) {
+	// Create main IDL that includes base.thrift and uses its enum
+	mainIDL := `
+include "base.thrift"
+
+struct MainStruct {
+    1: string name
+    2: base.Status status
+}
+
+service MainService {
+    MainStruct getMain()
+}
+`
+
+	// Create base IDL with enum definitions
+	baseIDL := `
+enum Status {
+    ACTIVE = 1,
+    INACTIVE = 2
+}
+
+enum UnusedColor {
+    RED = 1,
+    GREEN = 2
+}
+`
+
+	IDLFileContentMap := map[string]string{
+		"main.thrift": mainIDL,
+		"base.thrift": baseIDL,
+	}
+
+	// Trim with enum trimming enabled
+	trimEnums := true
+	trimmedContent, err := TrimBatchContentWithConfig("main.thrift", IDLFileContentMap, TrimASTArg{
+		TrimEnums: &trimEnums,
+	})
+	test.Assert(t, err == nil, err)
+	test.Assert(t, trimmedContent != nil, "Trimmed content should not be nil")
+
+	// base.thrift SHOULD be in the result because Status enum is used
+	baseContent, hasBase := trimmedContent["base.thrift"]
+	test.Assert(t, hasBase, "base.thrift should be in the result when enum is used")
+
+	// main.thrift should be in the result
+	mainContent, hasMain := trimmedContent["main.thrift"]
+	test.Assert(t, hasMain, "main.thrift should be in the result")
+
+	// Verify main.thrift HAS the include statement
+	mainAst, err := parser.ParseString("main.thrift", mainContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(mainAst.Includes) == 1, fmt.Sprintf("Expected 1 include in main.thrift, got %d", len(mainAst.Includes)))
+
+	// Verify base.thrift has only the used enum
+	baseAst, err := parser.ParseString("base.thrift", baseContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(baseAst.Enums) == 1, fmt.Sprintf("Expected 1 enum in base.thrift, got %d", len(baseAst.Enums)))
+	test.Assert(t, baseAst.Enums[0].Name == "Status", fmt.Sprintf("Expected Status enum, got %s", baseAst.Enums[0].Name))
+}
+
+// Test that include statements are kept when const trimming is disabled
+func TestTrimBatchContentKeepIncludeWhenConstTrimDisabled(t *testing.T) {
+	// Create main IDL that includes base.thrift but doesn't use its const
+	mainIDL := `
+include "base.thrift"
+
+struct MainStruct {
+    1: string name
+}
+`
+
+	// Create base IDL with only const definitions
+	baseIDL := `
+const i32 MAX_SIZE = 100
+const string DEFAULT_NAME = "unknown"
+`
+
+	IDLFileContentMap := map[string]string{
+		"main.thrift": mainIDL,
+		"base.thrift": baseIDL,
+	}
+
+	// Trim with const trimming DISABLED (backward compatibility)
+	trimConsts := false
+	trimmedContent, err := TrimBatchContentWithConfig("main.thrift", IDLFileContentMap, TrimASTArg{
+		TrimConsts: &trimConsts,
+	})
+	test.Assert(t, err == nil, err)
+	test.Assert(t, trimmedContent != nil, "Trimmed content should not be nil")
+
+	// base.thrift SHOULD be in the result because const trimming is disabled
+	_, hasBase := trimmedContent["base.thrift"]
+	test.Assert(t, hasBase, "base.thrift should be in the result when const trimming is disabled")
+
+	// main.thrift should have the include statement
+	mainContent, hasMain := trimmedContent["main.thrift"]
+	test.Assert(t, hasMain, "main.thrift should be in the result")
+
+	mainAst, err := parser.ParseString("main.thrift", mainContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(mainAst.Includes) == 1, fmt.Sprintf("Expected 1 include in main.thrift when const trimming is disabled, got %d", len(mainAst.Includes)))
+}

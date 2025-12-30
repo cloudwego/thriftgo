@@ -25,8 +25,7 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 	listInclude := make([]*parser.Include, 0, len(ast.Includes))
 	for i := range ast.Includes {
 		_, ok := currentMap[ast.Includes[i]]
-		if ok || len(ast.Includes[i].Reference.Constants)+
-			len(ast.Includes[i].Reference.Enums)+len(ast.Includes[i].Reference.Typedefs) > 0 {
+		if ok || t.shouldTraverseInclude(ast.Includes[i].Reference) {
 			t.traversal(ast.Includes[i].Reference, filename)
 			listInclude = append(listInclude, ast.Includes[i])
 		}
@@ -110,4 +109,17 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 		ast.Constants = listConst
 		t.structsTrimmed -= len(ast.Constants)
 	}
+}
+
+func (t *Trimmer) shouldTraverseInclude(ast *parser.Thrift) bool {
+	if len(ast.Typedefs) > 0 {
+		return true
+	}
+	if !t.trimEnums && len(ast.Enums) > 0 {
+		return true
+	}
+	if !t.trimConsts && len(ast.Constants) > 0 {
+		return true
+	}
+	return false
 }
