@@ -71,6 +71,9 @@ func recursiveDump(ast *parser.Thrift, trimmedContent map[string]string) error {
 	if err != nil {
 		return err
 	}
+	if main == "" {
+		return nil
+	}
 	trimmedContent[ast.Filename] = main
 
 	for _, inc := range ast.Includes {

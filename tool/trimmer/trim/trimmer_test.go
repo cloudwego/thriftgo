@@ -460,3 +460,151 @@ func TestConstBackwardCompatibilityWithAPI(t *testing.T) {
 	// After trimming: should STILL have 3 constants (backward compatibility)
 	test.Assert(t, len(ast.Constants) == 3, fmt.Sprintf("Expected 3 constants after trimming (backward compatibility), got %d", len(ast.Constants)))
 }
+
+// Test that empty IDL files are not included in the result
+func TestTrimBatchContentExcludeEmptyFiles(t *testing.T) {
+	// Create main IDL that doesn't use anything from the include
+	mainIDL := `
+include "base.thrift"
+
+struct MainStruct {
+    1: string name
+}
+
+service MainService {
+    MainStruct getMain()
+}
+`
+
+	// Create base IDL with only unused structs (structs are trimmed by default)
+	baseIDL := `
+struct UnusedStruct {
+    1: i32 id
+    2: string name
+}
+`
+
+	IDLFileContentMap := map[string]string{
+		"main.thrift": mainIDL,
+		"base.thrift": baseIDL,
+	}
+
+	// Trim the content with default settings
+	trimmedContent, err := TrimBatchContent("main.thrift", IDLFileContentMap)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, trimmedContent != nil, "Trimmed content should not be nil")
+
+	// base.thrift should NOT be in the result because it's completely unused
+	_, hasBase := trimmedContent["base.thrift"]
+	test.Assert(t, !hasBase, "base.thrift should not be in the result when it's completely empty after trimming")
+
+	// main.thrift should be in the result
+	_, hasMain := trimmedContent["main.thrift"]
+	test.Assert(t, hasMain, "main.thrift should be in the result")
+
+	// Verify main.thrift still has correct content
+	ast, err := parser.ParseString("main.thrift", trimmedContent["main.thrift"])
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(ast.Structs) == 1, fmt.Sprintf("Expected 1 struct in main.thrift, got %d", len(ast.Structs)))
+	test.Assert(t, len(ast.Services) == 1, fmt.Sprintf("Expected 1 service in main.thrift, got %d", len(ast.Services)))
+}
+
+// Test that empty IDL files are excluded when trimming with enum/const options
+func TestTrimBatchContentExcludeEmptyFilesWithConfig(t *testing.T) {
+	// Create main IDL
+	mainIDL := `
+include "unused.thrift"
+
+struct MainStruct {
+    1: string name
+}
+
+service MainService {
+    MainStruct getMain()
+}
+`
+
+	// Create an include file that only has enums/consts which will be trimmed
+	unusedIDL := `
+enum UnusedEnum {
+    VALUE1 = 1,
+    VALUE2 = 2
+}
+
+const i32 UnusedConst = 42
+`
+
+	IDLFileContentMap := map[string]string{
+		"main.thrift":   mainIDL,
+		"unused.thrift": unusedIDL,
+	}
+
+	// Trim the content with enum and const trimming enabled
+	trimEnums := true
+	trimConsts := true
+	trimmedContent, err := TrimBatchContentWithConfig("main.thrift", IDLFileContentMap, TrimASTArg{
+		TrimEnums:  &trimEnums,
+		TrimConsts: &trimConsts,
+	})
+	test.Assert(t, err == nil, err)
+	test.Assert(t, trimmedContent != nil, "Trimmed content should not be nil")
+
+	// unused.thrift should NOT be in the result because all its content was trimmed
+	_, hasUnused := trimmedContent["unused.thrift"]
+	test.Assert(t, !hasUnused, "unused.thrift should not be in the result when all content is trimmed")
+
+	// main.thrift should be in the result
+	_, hasMain := trimmedContent["main.thrift"]
+	test.Assert(t, hasMain, "main.thrift should be in the result")
+}
+
+// Test that partially empty IDL files are still included if they have some content
+func TestTrimBatchContentIncludePartiallyUsedFiles(t *testing.T) {
+	// Create main IDL
+	mainIDL := `
+include "base.thrift"
+
+struct MainStruct {
+    1: base.UsedStruct field
+}
+
+service MainService {
+    MainStruct getMain()
+}
+`
+
+	// Create base IDL with both used and unused content
+	baseIDL := `
+struct UsedStruct {
+    1: i32 id
+}
+
+struct UnusedStruct {
+    1: string name
+}
+
+enum UnusedEnum {
+    VALUE1 = 1
+}
+`
+
+	IDLFileContentMap := map[string]string{
+		"main.thrift": mainIDL,
+		"base.thrift": baseIDL,
+	}
+
+	// Trim the content
+	trimmedContent, err := TrimBatchContent("main.thrift", IDLFileContentMap)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, trimmedContent != nil, "Trimmed content should not be nil")
+
+	// base.thrift SHOULD be in the result because it has used content
+	baseContent, hasBase := trimmedContent["base.thrift"]
+	test.Assert(t, hasBase, "base.thrift should be in the result when it has used content")
+
+	// Verify base.thrift has the used struct but not the unused ones
+	ast, err := parser.ParseString("base.thrift", baseContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(ast.Structs) == 1, fmt.Sprintf("Expected 1 struct in base.thrift, got %d", len(ast.Structs)))
+	test.Assert(t, ast.Structs[0].Name == "UsedStruct", fmt.Sprintf("Expected UsedStruct, got %s", ast.Structs[0].Name))
+}
