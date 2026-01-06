@@ -49,6 +49,7 @@ type Trimmer struct {
 	PreservedFiles         []string
 	preserveFileStructs    map[*parser.StructLike]struct{}
 	preserveCache          map[*parser.StructLike]bool
+	keptPartCache          map[*parser.Thrift]bool
 }
 
 type TrimASTArg struct {
@@ -257,6 +258,7 @@ func newTrimmer(files []string, outDir string) (*Trimmer, error) {
 	pattern := `(?m)^[\s]*(\/\/|#)[\s]*@preserve[\s]*$`
 	trimmer.preserveRegex = regexp.MustCompile(pattern)
 	trimmer.preserveCache = make(map[*parser.StructLike]bool, 200)
+	trimmer.keptPartCache = make(map[*parser.Thrift]bool, 200)
 	return trimmer, nil
 }
 
