@@ -222,14 +222,12 @@ func (t *Trimmer) cleanServiceExtends() {
 	}
 }
 
-var keptPartCache = make(map[*parser.Thrift]bool, 200)
-
 func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) (ret bool) {
-	if kept, ok := keptPartCache[ast]; ok {
+	if kept, ok := t.keptPartCache[ast]; ok {
 		return kept
 	}
 	defer func() {
-		keptPartCache[ast] = ret
+		t.keptPartCache[ast] = ret
 	}()
 
 	for _, constant := range ast.Constants {
