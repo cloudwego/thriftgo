@@ -31,6 +31,8 @@ type YamlArguments struct {
 	DisablePreserveComment *bool    `yaml:"disable_preserve_comment,omitempty"`
 	MatchGoName            *bool    `yaml:"match_go_name,omitempty"`
 	PreservedFiles         []string `yaml:"preserved_files,omitempty"`
+	TrimEnums              *bool    `yaml:"trim_enums,omitempty"`
+	TrimConsts             *bool    `yaml:"trim_consts,omitempty"`
 }
 
 func ParseYamlConfig(path string) *YamlArguments {
