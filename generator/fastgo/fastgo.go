@@ -29,7 +29,8 @@ import (
 	"github.com/cloudwego/thriftgo/plugin"
 )
 
-// FastGoBackend ...
+// FastGoBackend generates high-performance FastRead/FastWrite/BLength methods
+// for structs, unions, and exceptions. This is an experimental backend.
 type FastGoBackend struct {
 	golang.GoBackend
 

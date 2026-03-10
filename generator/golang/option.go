@@ -48,30 +48,30 @@ type Features struct {
 	AlwaysGenerateJSONTag       bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
 	SnakeTyleJSONTag            bool `snake_style_json_tag:"Generate snake style json tag"`
 	LowerCamelCaseJSONTag       bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
-	WithReflection              bool `with_reflection:"Generate reflection info"`
+	WithReflection              bool `with_reflection:"Generate *-reflection.go files with runtime type metadata for structs (required by with_field_mask)."`
 	EnumAsINT32                 bool `enum_as_int_32:"Generate enum type as int32"`
 	CodeRefSlim                 bool `code_ref_slim:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict"`
 	CodeRef                     bool `code_ref:"Generate code ref by given idl-ref.yaml"`
-	ExpCodeRef                  bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but remind some struct as local.( this is a exp feature )"`
+	ExpCodeRef                  bool `exp_code_ref:"Generate code ref by given idl-ref.yaml with less refs to avoid conflict, but keep some structs as local. (experimental feature)"`
 	KeepCodeRefName             bool `keep_code_ref_name:"Generate code ref but still keep file name."`
 	TrimIDL                     bool `trim_idl:"Simplify IDL to the most concise form before generating code."`
 	EnableNestedStruct          bool `enable_nested_struct:"Generate nested field when 'thrift.nested=\"true\"' annotation is set to field, valid only in 'slim and raw_struct template'"`
 	JSONStringer                bool `json_stringer:"Generate the JSON marshal method in String() method."`
-	WithFieldMask               bool `with_field_mask:"Support field-mask for generated code."`
-	FieldMaskHalfway            bool `field_mask_halfway:"Support set field-mask on not-root struct."`
+	WithFieldMask               bool `with_field_mask:"Generate field-mask support for structs (also requires with_reflection)."`
+	FieldMaskHalfway            bool `field_mask_halfway:"Support setting field-mask on non-root structs."`
 	FieldMaskZeroRequired       bool `field_mask_zero_required:"Write zero value instead of current value for required fields filtered by fieldmask."`
 	ThriftStreaming             bool `thrift_streaming:"Recognize thrift streaming annotation and generate streaming code."`
 	NoDefaultSerdes             bool `no_default_serdes:"Do not generate default thrift serdes code."`
 	NoAliasTypeReflectionMethod bool `no_alias_type_reflection_method:"Do not generate type related methods in <idl>_reflection.go when 'thrift.is_alias=\"true\"' annotation is set to types."`
 	EnableRefInterface          bool `enable_ref_interface:"Generate Interface field without pointer type when 'thrift.is_interface=\"true\"' annotation is set to types in referred thrift."`
 	UseOption                   bool `use_option:"Parse specific Thrift annotations into struct-style option fields. If key not match, thriftgo will just ignore it."`
-	StreamX                     bool `streamx:"Generate stream interfaces with streamx mode."`
+	StreamX                     bool `streamx:"Generate stream interfaces with streamx mode (requires thrift_streaming)."`
 	// ForceUseOption         bool `use_option:"Forcefully parse all Thrift annotations into struct-style option fields. If parsing is not possible, an error will be thrown."`
-	NoFmt             bool `no_fmt:"To achieve faster generation speed, skipping the formatting of Golang code can improve performance by approximately 50%."`
-	SkipEmpty         bool `skip_empty:"If there's not content in file, just skip it. Later this feature will be a default feature."`
-	NoProcessor       bool `no_processor:" Do not generate default thrift processor and client. Later this feature will be a default feature."`
+	NoFmt             bool `no_fmt:"Skip formatting of generated Go code."`
+	SkipEmpty         bool `skip_empty:"Skip generating files that have no content. Later this feature will be a default feature."`
+	NoProcessor       bool `no_processor:"Do not generate default thrift processor and client. Later this feature will be a default feature."`
 	GetEnumAnnotation bool `get_enum_annotation:"Generate GetAnnotation method for enum types."`
-	ApacheWarning     bool `apache_warning:"Generate Apache Codec with warning on the first line."`
+	ApacheWarning     bool `apache_warning:"Call a runtime warning function in Read/Write methods when Apache codec is used."`
 	ApacheAdaptor     bool `apache_adaptor:"Generate adaptor for apache codec to kitex fast codec."`
 	SkipGoGen         bool `skip_go_gen:"Skip thriftgo go code generation, just parse the AST and execute the plugins."`
 }
