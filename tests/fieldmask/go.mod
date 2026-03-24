@@ -1,8 +1,8 @@
-module github.com/cloudwego/thriftgo/test/golang/fieldmask
+module github.com/cloudwego/thriftgo/tests/fieldmask
 
 go 1.20
 
-replace github.com/cloudwego/thriftgo => ../../../.
+replace github.com/cloudwego/thriftgo => ../..
 
 replace github.com/apache/thrift => github.com/apache/thrift v0.13.0
 
@@ -13,6 +13,8 @@ require (
 )
 
 require (
+	github.com/bytedance/gopkg v0.1.4 // indirect
+	github.com/cloudwego/gopkg v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

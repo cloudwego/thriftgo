@@ -84,7 +84,7 @@ $ thriftgo -g with_field_mask,with_reflection ${your_idl}
 import (
 	"sync"
 	"github.com/cloudwego/thriftgo/fieldmask"
-	nbase "github.com/cloudwego/thriftgo/test/golang/fieldmask/gen-new/base"
+	nbase "github.com/cloudwego/thriftgo/tests/fieldmask/gen-new/base"
 )
 
 var fieldmaskCache sync.Map
@@ -141,11 +141,11 @@ Generally, you can add one binary field on your request definition to carry fiel
 
 
 ## Benchmark
-See [(main_test.go)](../test/golang/fieldmask/main_test.go)
+See [(main_test.go)](../tests/fieldmask/main_test.go)
 ```
 goos: darwin
 goarch: amd64
-pkg: github.com/cloudwego/thriftgo/test/golang/fieldmask
+pkg: github.com/cloudwego/thriftgo/tests/fieldmask
 cpu: Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz
 BenchmarkWriteWithFieldMask/old-16         	     2188 ns/op	       0 B/op	       0 allocs/op
 BenchmarkWriteWithFieldMask/new-16         	     2281 ns/op	       0 B/op	       0 allocs/op

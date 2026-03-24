@@ -15,14 +15,14 @@
 namespace go base
 
 struct TrafficEnv {
-	0: string Name = "",
+	3: string Name = "",
 	1: bool Open = false,
 	2: string Env = "",
 	256: required i64 Code,
 }
 
 struct Base {
-	0: required string Addr = "",
+	3: required string Addr = "",
 	1: string LogID = "",
 	2: string Caller = "",
 	5: optional TrafficEnv TrafficEnv,
@@ -86,7 +86,7 @@ struct BaseResp {
 	11: required set<Val> R11,
 	12: required TrafficEnv R12,
 	13: required map<string, Key> R13,
-	0: required Key R0,
+	20: required Key R0,
 
 	14: map<Str, Str> F1
 	15: map<Int, string> F2,

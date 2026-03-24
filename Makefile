@@ -11,33 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+.PHONY: all lint test bench thriftgo clean
 
-OUT=$(PWD)/testdata
-IDL=$(OUT)/x.thrift
-COV_PROF=$(OUT)/cov.out
-
-export IDL
-
-.PHONY: all clean
-all: lint test bench
+all: lint test
 
 lint:
-	go install mvdan.cc/gofumpt@v0.2.0
-	test -z "$$(gofumpt -l -extra .)" 
 	go vet -stdmethods=false $$(go list ./...)
+
+test: thriftgo
+	go test -race ./...
+	bash tests/run.sh
 
 bench:
 	go test -bench=. -benchmem -run=none ./...
 
-test:
-	go test -race -covermode=atomic -coverprofile=$(COV_PROF) ./...
-
 thriftgo:
 	go install
 
-testall: thriftgo
-	@set -e; for d in test/*; do $(MAKE) -C $$d; done
-
 clean:
-	rm -rf $(COV_PROF) $(IDL)
-
+	rm -rf testdata

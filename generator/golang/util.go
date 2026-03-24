@@ -313,8 +313,8 @@ func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string)
 
 	// Build thrift tag components
 	parts := make([]string, 0, 4)
-	parts = append(parts, f.Name)                                 // Field name
-	parts = append(parts, strconv.Itoa(int(f.ID)))                // Field ID
+	parts = append(parts, f.Name)                                   // Field name
+	parts = append(parts, strconv.Itoa(int(f.ID)))                  // Field ID
 	parts = append(parts, strings.ToLower(f.Requiredness.String())) // Requiredness
 
 	if cu.canIgnoreGenFrugalTagType(f) {

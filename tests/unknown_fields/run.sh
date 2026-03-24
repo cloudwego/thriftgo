@@ -1,4 +1,5 @@
-# Copyright 2024 CloudWeGo Authors
+#! /bin/bash -e
+# Copyright 2022 CloudWeGo Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +12,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-set -e
-thriftgo -g fastgo:no_default_serdes=true,gen_setter=true -o=. ./testdata.thrift
-cd testdata && go test -v -tags testfastgo
+
+cd "$(dirname "$0")"
+
+generate () {
+    xxx=$1
+    out=gen-${xxx}
+    opt="go:package_prefix=example.com/test/${out}"
+    idl=idl_${xxx}.thrift
+
+    if [ -d ${out} ]; then
+        rm -rf ${out}
+    fi
+    mkdir -p $out
+
+    if [[ $xxx == ext ]]; then
+        opt=$opt,keep_unknown_fields
+        idl=idl_old.thrift
+    fi
+    thriftgo --gen "$opt" -o ${out} $idl
+}
+
+generate ext
+generate old
+generate new
+go mod tidy
+go test -v

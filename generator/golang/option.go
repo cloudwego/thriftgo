@@ -268,5 +268,43 @@ next:
 		cu.features.GenDeepEqual = false
 	}
 
+	if err := cu.validateOptions(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cu *CodeUtils) validateOptions() error {
+	f := cu.features
+
+	if f.ApacheWarning && f.ApacheAdaptor {
+		return fmt.Errorf("apache_warning and apache_adaptor are mutually exclusive")
+	}
+
+	if f.WithFieldMask && !f.WithReflection {
+		return fmt.Errorf("with_field_mask requires with_reflection")
+	}
+
+	if f.SnakeTyleJSONTag && f.LowerCamelCaseJSONTag {
+		return fmt.Errorf("snake_style_json_tag and lower_camel_style_json_tag are mutually exclusive")
+	}
+
+	if !f.GenerateJSONTag && f.AlwaysGenerateJSONTag {
+		return fmt.Errorf("always_gen_json_tag requires gen_json_tag")
+	}
+
+	if f.StreamX && !f.ThriftStreaming {
+		cu.Warn("streamx has no effect without thrift_streaming")
+	}
+
+	if f.FieldMaskHalfway && !f.WithFieldMask {
+		cu.Warn("field_mask_halfway has no effect without with_field_mask")
+	}
+
+	if !f.GenerateJSONTag && (f.SnakeTyleJSONTag || f.LowerCamelCaseJSONTag) {
+		cu.Warn("json tag style options have no effect when gen_json_tag is disabled")
+	}
+
 	return nil
 }

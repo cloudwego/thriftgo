@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-.PHONY: all
-
-all:
-	bash -x ./run.sh
-
-install:
-	cd ../.. && go install
+set -e
+cd "$(dirname "$0")"
+thriftgo -g fastgo:no_default_serdes=true,gen_setter=true -o=. ./testdata.thrift
+cd testdata && go test -v -tags testfastgo

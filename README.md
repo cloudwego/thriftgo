@@ -23,14 +23,10 @@ To avoid the Apache Thrift runtime dependency entirely, use `no_default_serdes` 
 go install github.com/cloudwego/thriftgo@latest
 ```
 
-**Build from source:**
+**Install from source:**
 
 ```sh
-git clone https://github.com/cloudwego/thriftgo.git
-cd thriftgo
-go mod tidy
-go build
-go install
+go install github.com/cloudwego/thriftgo@latest
 ```
 
 **Verify installation:**

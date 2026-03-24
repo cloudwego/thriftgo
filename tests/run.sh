@@ -1,4 +1,5 @@
-# Copyright 2022 CloudWeGo Authors
+#!/bin/bash
+# Copyright 2025 CloudWeGo Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all unknown cases clean
+# Run all integration tests under tests/.
+set -e
 
-all: unknown cases
+cd "$(dirname "$0")"
 
-unknown:
-	cd unknown_fields && ./run_test.sh
-
-cases:
-	cd cases_and_options && ./run_test.sh
-
-clean:
-	@find . -name "gen-*" -type d | while read d; do echo rm -r $$d; rm -r $$d; done
+for d in */; do
+    if [ -f "${d}run.sh" ]; then
+        echo "=== ${d} ==="
+        bash "${d}run.sh"
+        echo
+    fi
+done

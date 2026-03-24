@@ -16,6 +16,6 @@ header:
     - 'parser/thrift.peg.go'
     - 'plugin/protocol.go'
     - 'plugin/k-protocol.go'
-    - 'test/golang/cases_and_options/thrifttest/a.thrift'
+    - 'tests/options/cases/thrifttest/a.thrift'
 
   comment: on-failure

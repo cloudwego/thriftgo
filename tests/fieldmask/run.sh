@@ -1,5 +1,4 @@
 #! /bin/bash
-
 # Copyright 2022 CloudWeGo Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+cd "$(dirname "$0")"
+
 generate () {
     out=gen-$1
-    opt="go:package_prefix=github.com/cloudwego/thriftgo/test/golang/fieldmask/$out"
+    opt="go:package_prefix=github.com/cloudwego/thriftgo/tests/fieldmask/$out"
     idl=$2
     if [ -d $out ]; then
         rm -rf $out
