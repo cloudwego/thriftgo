@@ -196,10 +196,10 @@ func (cur *FieldMask) addPath(path string, curDesc *thrift_reflection.TypeDescri
 
 			var f *thrift_reflection.FieldDescriptor
 			if typ == pathTypeLitInt {
-				id := tok.val.Int()
-				f = st.GetFieldById(int32(id))
+				id := tok.val.Int32()
+				f = st.GetFieldById(id)
 				if f == nil {
-					return errDesc(curDesc, "field "+strconv.Itoa(id)+" doesn't exist")
+					return errDesc(curDesc, "field "+strconv.Itoa(int(id))+" doesn't exist")
 				}
 			} else if typ == pathTypeLitStr {
 				name := tok.val.Str()

@@ -746,7 +746,7 @@ func (p *parser) parseField(node *node32) (field *Field, err error) {
 				f.ReservedComments = reservedComments
 			}
 		case ruleFieldId:
-			i, _ := strconv.Atoi(p.pegText(node))
+			i, _ := strconv.ParseInt(p.pegText(node), 10, 32)
 			f.ID = int32(i)
 		case ruleFieldReq:
 			require := p.pegText(node)

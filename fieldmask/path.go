@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"unsafe"
 
@@ -90,6 +91,13 @@ func (v pathValue) Int() int {
 	return v.iv
 }
 
+func (v pathValue) Int32() int32 {
+	if v.iv > math.MaxInt32 || v.iv < math.MinInt32 {
+		panic("integer overflow")
+	}
+	return int32(v.iv)
+}
+
 type pathToken struct {
 	typ pathType
 	val pathValue
@@ -99,31 +107,6 @@ type pathToken struct {
 func (p pathToken) Type() pathType {
 	return p.typ
 }
-
-// func (p pathToken) ToInt() (int, bool) {
-// 	if p.typ == pathTypeLitStr || p.typ == pathTypeStr {
-// 		i, e := strconv.ParseInt(p.val.Str(), 10, 64)
-// 		if e != nil {
-// 			return 0, false
-// 		}
-// 		return int(i), true
-// 	} else if p.typ == pathTypeLitInt {
-// 		return p.val.Int(), true
-// 	} else {
-// 		return 0, false
-// 	}
-// }
-
-// func (p pathToken) ToStr() (string, bool) {
-// 	if p.typ == pathTypeLitStr || p.typ == pathTypeStr {
-// 		return p.val.Str(), true
-// 	} else if p.typ == pathTypeLitInt {
-// 		str := strconv.Itoa(p.val.Int())
-// 		return str, true
-// 	} else {
-// 		return "", false
-// 	}
-// }
 
 func (p pathToken) Pos() (int, int) {
 	return p.loc[0], p.loc[1]
@@ -364,7 +347,7 @@ func (cur *FieldMask) GetPath(desc *thrift_reflection.TypeDescriptor, path strin
 
 			var f *thrift_reflection.FieldDescriptor
 			if typ == pathTypeLitInt {
-				f = st.GetFieldById(int32(tok.val.Int()))
+				f = st.GetFieldById(tok.val.Int32())
 				if f == nil {
 					return nil, false
 				}
