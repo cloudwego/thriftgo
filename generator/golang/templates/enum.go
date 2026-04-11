@@ -86,7 +86,7 @@ func (p *{{$EnumType}}) Value() (driver.Value, error) {
 	if p == nil {
 		return nil, nil
 	}
-	return int{{if Features.EnumAsINT32}}32{{else}}64{{end}}(*p), nil
+	return int64(*p), nil
 }
 {{- end}}{{/* if .Features.ScanValueForEnum */}}
 
