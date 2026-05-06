@@ -17,6 +17,7 @@ package golang
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"sort"
@@ -329,6 +330,7 @@ func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string)
 	tags = append(tags, extend...)
 
 	gotags := f.Annotations.Get("go.tag")
+	hasJSONInGoTag := false
 	if len(gotags) > 0 {
 		tag := gotags[0]
 		if cu.Features().EscapeDoubleInTag {
@@ -339,6 +341,7 @@ func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string)
 				return m
 			})
 		}
+		_, hasJSONInGoTag = reflect.StructTag(tag).Lookup("json")
 		tags = append(tags, tag)
 	} else {
 		if cu.Features().GenDatabaseTag {
@@ -346,7 +349,7 @@ func (cu *CodeUtils) genFieldTags(f *Field, insertPoint string, extend []string)
 		}
 	}
 
-	if len(gotags) == 0 && cu.Features().GenerateJSONTag || cu.Features().AlwaysGenerateJSONTag {
+	if (!hasJSONInGoTag && cu.Features().GenerateJSONTag) || cu.Features().AlwaysGenerateJSONTag {
 		id := f.Name
 		if cu.Features().SnakeTyleJSONTag {
 			id = snakify(id)

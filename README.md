@@ -118,7 +118,6 @@ Boolean options accept `true`, `false`, or empty (empty means `true`).
 | `unescape_double_quote` | **true** | Unescape double quotes in tag literals. |
 | `gen_type_meta` | false | Generate and register type metadata for structs. |
 | `gen_json_tag` | **true** | Generate `json` struct tags. |
-| `always_gen_json_tag` | false | Generate `json` tags even when a `go.tag` annotation is present. |
 | `snake_style_json_tag` | false | Use `snake_case` style for JSON tags. |
 | `lower_camel_style_json_tag` | false | Use `lowerCamelCase` style for JSON tags. |
 | `with_reflection` | false | Generate `*-reflection.go` files with runtime type metadata for structs.<br>Required by `with_field_mask`. |
