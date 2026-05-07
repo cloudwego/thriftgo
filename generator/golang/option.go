@@ -45,7 +45,7 @@ type Features struct {
 	EscapeDoubleInTag           bool `unescape_double_quote:"Unescape the double quotes in literals when generating go tags."`
 	GenerateTypeMeta            bool `gen_type_meta:"Generate and register type meta for structures."`
 	GenerateJSONTag             bool `gen_json_tag:"Generate struct with 'json' tag"`
-	AlwaysGenerateJSONTag       bool `always_gen_json_tag:"Always generate 'json' tag even if go.tag is provided (Disabled by default)"`
+	AlwaysGenerateJSONTag       bool `always_gen_json_tag:"Deprecated."`
 	SnakeTyleJSONTag            bool `snake_style_json_tag:"Generate snake style json tag"`
 	LowerCamelCaseJSONTag       bool `lower_camel_style_json_tag:"Generate lower camel case style json tag"`
 	WithReflection              bool `with_reflection:"Generate *-reflection.go files with runtime type metadata for structs (required by with_field_mask)."`
@@ -292,6 +292,10 @@ func (cu *CodeUtils) validateOptions() error {
 
 	if !f.GenerateJSONTag && f.AlwaysGenerateJSONTag {
 		return fmt.Errorf("always_gen_json_tag requires gen_json_tag")
+	}
+
+	if f.AlwaysGenerateJSONTag {
+		cu.Warn("always_gen_json_tag is deprecated: gen_json_tag now keeps the default json tag when go.tag has no json key")
 	}
 
 	if f.StreamX && !f.ThriftStreaming {

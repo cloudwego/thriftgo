@@ -15,8 +15,10 @@
 package golang
 
 import (
-	"github.com/cloudwego/thriftgo/parser"
 	"testing"
+
+	"github.com/cloudwego/thriftgo/generator/backend"
+	"github.com/cloudwego/thriftgo/parser"
 )
 
 func TestSnakify(t *testing.T) {
@@ -218,6 +220,81 @@ func TestGenAnnotations(t *testing.T) {
 			if res != c.expected {
 				t.Logf("genAnnotations(%+v) => %q. Expected: %q", arg, res, c.expected)
 				t.Fail()
+			}
+		})
+	}
+}
+
+func TestGenFieldTags(t *testing.T) {
+	newField := func(annos parser.Annotations) *Field {
+		return &Field{Field: &parser.Field{
+			ID:           1,
+			Name:         "Name",
+			Requiredness: parser.FieldType_Default,
+			Annotations:  annos,
+		}}
+	}
+
+	cases := []struct {
+		desc     string
+		field    *Field
+		feats    func(f *Features)
+		expected string
+	}{
+		{
+			desc:     "no go.tag, gen_json_tag default on",
+			field:    newField(nil),
+			expected: "`thrift:\"Name,1\" json:\"Name\"`",
+		},
+		{
+			desc:     "go.tag with json: keeps go.tag json, no duplicate",
+			field:    newField(parser.Annotations{{Key: "go.tag", Values: []string{`json:"n" yaml:"n"`}}}),
+			expected: "`thrift:\"Name,1\" json:\"n\" yaml:\"n\"`",
+		},
+		{
+			desc:     "go.tag without json: still gets default json tag",
+			field:    newField(parser.Annotations{{Key: "go.tag", Values: []string{`yaml:"n"`}}}),
+			expected: "`thrift:\"Name,1\" yaml:\"n\" json:\"Name\"`",
+		},
+		{
+			desc:  "go.tag without json: but gen_json_tag off → no json tag",
+			field: newField(parser.Annotations{{Key: "go.tag", Values: []string{`yaml:"n"`}}}),
+			feats: func(f *Features) {
+				f.GenerateJSONTag = false
+			},
+			expected: "`thrift:\"Name,1\" yaml:\"n\"`",
+		},
+		{
+			desc:  "always_gen_json_tag forces json even when go.tag has json",
+			field: newField(parser.Annotations{{Key: "go.tag", Values: []string{`json:"n"`}}}),
+			feats: func(f *Features) {
+				f.AlwaysGenerateJSONTag = true
+			},
+			expected: "`thrift:\"Name,1\" json:\"n\" json:\"Name\"`",
+		},
+		{
+			// e.g. single-quoted thrift literal `'json:\"n\"'` survives the parser as raw `json:\"n\"`;
+			// the lookup must run after EscapeDoubleInTag or the json key is missed.
+			desc:     "go.tag with escaped quotes still detects json key",
+			field:    newField(parser.Annotations{{Key: "go.tag", Values: []string{`json:\"n\"`}}}),
+			expected: "`thrift:\"Name,1\" json:\"n\"`",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.desc, func(t *testing.T) {
+			cu := NewCodeUtils(backend.DummyLogFunc())
+			feats := defaultFeatures
+			if c.feats != nil {
+				c.feats(&feats)
+			}
+			cu.SetFeatures(feats)
+			got, err := cu.GenFieldTags(c.field, "")
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if got != c.expected {
+				t.Fatalf("got %q, want %q", got, c.expected)
 			}
 		})
 	}
