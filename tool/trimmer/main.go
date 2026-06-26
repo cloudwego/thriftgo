@@ -122,7 +122,7 @@ func main() {
 			println("output-dir should be set outside of -r base-dir to avoid overlay")
 			os.Exit(2)
 		}
-		recurseDump(ast, a.Recurse, a.OutputFile)
+		recurseDump(ast, a.Recurse, a.OutputFile, make(map[*parser.Thrift]struct{}))
 	} else {
 		check(writeStringToFile(a.OutputFile, idl))
 		structsNew, fieldsNew := countStructs(ast)
@@ -133,10 +133,14 @@ func main() {
 	os.Exit(0)
 }
 
-func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
+func recurseDump(ast *parser.Thrift, sourceDir, outDir string, visited map[*parser.Thrift]struct{}) {
 	if ast == nil {
 		return
 	}
+	if _, ok := visited[ast]; ok {
+		return
+	}
+	visited[ast] = struct{}{}
 	out, err := dump.DumpIDL(ast)
 	check(err)
 	absFileName, err := filepath.Abs(ast.Filename)
@@ -157,7 +161,7 @@ func recurseDump(ast *parser.Thrift, sourceDir, outDir string) {
 	}
 	check(writeStringToFile(outputFileUrl, out))
 	for _, includes := range ast.Includes {
-		recurseDump(includes.Reference, sourceDir, outDir)
+		recurseDump(includes.Reference, sourceDir, outDir, visited)
 	}
 }
 
