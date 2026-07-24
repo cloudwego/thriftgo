@@ -27,7 +27,9 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 		_, ok := currentMap[ast.Includes[i]]
 		if ok || t.shouldTraverseInclude(ast.Includes[i].Reference) {
 			t.traversal(ast.Includes[i].Reference, filename)
-			listInclude = append(listInclude, ast.Includes[i])
+			if hasDumpOutput(ast.Includes[i].Reference) {
+				listInclude = append(listInclude, ast.Includes[i])
+			}
 		}
 	}
 	ast.Includes = listInclude
@@ -109,6 +111,24 @@ func (t *Trimmer) traversal(ast *parser.Thrift, filename string) {
 		ast.Constants = listConst
 		t.structsTrimmed -= len(ast.Constants)
 	}
+}
+
+// hasDumpOutput reports whether dump.DumpIDL would write any top-level IDL element.
+// Keep this field list in sync with tool/trimmer/dump.DumpIDL.
+func hasDumpOutput(ast *parser.Thrift) bool {
+	if ast == nil {
+		return false
+	}
+	return len(ast.Includes) > 0 ||
+		len(ast.Namespaces) > 0 ||
+		len(ast.CppIncludes) > 0 ||
+		len(ast.Typedefs) > 0 ||
+		len(ast.Constants) > 0 ||
+		len(ast.Enums) > 0 ||
+		len(ast.Structs) > 0 ||
+		len(ast.Unions) > 0 ||
+		len(ast.Exceptions) > 0 ||
+		len(ast.Services) > 0
 }
 
 func (t *Trimmer) shouldTraverseInclude(ast *parser.Thrift) bool {

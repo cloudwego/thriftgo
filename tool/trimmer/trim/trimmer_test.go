@@ -771,3 +771,238 @@ const string DEFAULT_NAME = "unknown"
 	test.Assert(t, err == nil, err)
 	test.Assert(t, len(mainAst.Includes) == 1, fmt.Sprintf("Expected 1 include in main.thrift when const trimming is disabled, got %d", len(mainAst.Includes)))
 }
+
+func TestTrimBatchContentRemovesEmptyInheritedInclude(t *testing.T) {
+	mainIDL := `
+include "parent.thrift"
+
+struct ChildRequest {}
+struct ChildResponse {}
+
+service Child extends parent.Parent {
+    ChildResponse ChildMethod(1: ChildRequest req)
+}
+`
+
+	parentIDL := `
+enum UnusedStatus {
+    ACTIVE = 1
+}
+
+const i32 UnusedConst = 1
+
+service Parent {
+    void ParentMethod()
+}
+`
+
+	trimEnums := true
+	trimConsts := true
+	trimmedContent, err := TrimBatchContentWithConfig("main.thrift", map[string]string{
+		"main.thrift":   mainIDL,
+		"parent.thrift": parentIDL,
+	}, TrimASTArg{
+		TrimMethods: []string{"Child.ChildMethod"},
+		TrimEnums:   &trimEnums,
+		TrimConsts:  &trimConsts,
+	})
+	test.Assert(t, err == nil, err)
+
+	_, hasParent := trimmedContent["parent.thrift"]
+	test.Assert(t, !hasParent, "parent.thrift should not be returned after all of its contents are trimmed")
+
+	mainContent, hasMain := trimmedContent["main.thrift"]
+	test.Assert(t, hasMain, "main.thrift should be in the result")
+	mainAST, err := parser.ParseString("main.thrift", mainContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(mainAST.Includes) == 0, fmt.Sprintf("Expected no includes after trimming, got %d", len(mainAST.Includes)))
+	test.Assert(t, len(mainAST.Structs) == 2, fmt.Sprintf("Expected 2 structs after trimming, got %d", len(mainAST.Structs)))
+	test.Assert(t, len(mainAST.Services) == 1, fmt.Sprintf("Expected 1 service after trimming, got %d", len(mainAST.Services)))
+	test.Assert(t, mainAST.Services[0].Extends == "", "The unused service extends should be removed")
+	test.Assert(t, len(mainAST.Services[0].Functions) == 1, fmt.Sprintf("Expected 1 method after trimming, got %d", len(mainAST.Services[0].Functions)))
+	test.Assert(t, mainAST.Services[0].Functions[0].Name == "ChildMethod", "The selected child method should be kept")
+}
+
+func TestTrimBatchContentKeepsNonEmptyInclude(t *testing.T) {
+	mainIDL := `
+include "parent.thrift"
+
+service Child extends parent.Parent {
+    void ChildMethod()
+}
+`
+
+	tests := []struct {
+		name        string
+		parentIDL   string
+		checkOutput func(*parser.Thrift) bool
+	}{
+		{
+			name: "namespace",
+			parentIDL: `
+namespace go parent
+
+service Parent {
+    void ParentMethod()
+}
+`,
+			checkOutput: func(ast *parser.Thrift) bool {
+				return len(ast.Namespaces) == 1
+			},
+		},
+		{
+			name: "cpp_include",
+			parentIDL: `
+cpp_include "custom.h"
+
+service Parent {
+    void ParentMethod()
+}
+`,
+			checkOutput: func(ast *parser.Thrift) bool {
+				return len(ast.CppIncludes) == 1
+			},
+		},
+	}
+
+	trimEnums := true
+	trimConsts := true
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trimmedContent, err := TrimBatchContentWithConfig("main.thrift", map[string]string{
+				"main.thrift":   mainIDL,
+				"parent.thrift": tt.parentIDL,
+			}, TrimASTArg{
+				TrimMethods: []string{"Child.ChildMethod"},
+				TrimEnums:   &trimEnums,
+				TrimConsts:  &trimConsts,
+			})
+			test.Assert(t, err == nil, err)
+
+			parentContent, hasParent := trimmedContent["parent.thrift"]
+			test.Assert(t, hasParent, "A parent IDL with dump output should be returned")
+			parentAST, err := parser.ParseString("parent.thrift", parentContent)
+			test.Assert(t, err == nil, err)
+			test.Assert(t, tt.checkOutput(parentAST), "The remaining dump output should be preserved")
+			test.Assert(t, len(parentAST.Services) == 0, "The unselected parent service should still be trimmed")
+
+			mainContent, hasMain := trimmedContent["main.thrift"]
+			test.Assert(t, hasMain, "main.thrift should be in the result")
+			mainAST, err := parser.ParseString("main.thrift", mainContent)
+			test.Assert(t, err == nil, err)
+			test.Assert(t, len(mainAST.Includes) == 1, "The non-empty parent include should be kept")
+			test.Assert(t, mainAST.Services[0].Extends == "", "The unused service extends should be removed")
+		})
+	}
+}
+
+func TestTraversalHandlesIncludeChains(t *testing.T) {
+	newIncludeChain := func(leaf *parser.Thrift) (*parser.Thrift, *parser.Thrift, *parser.Include, *parser.Include) {
+		leafInclude := &parser.Include{Path: leaf.Filename, Reference: leaf}
+		middle := &parser.Thrift{
+			Filename: "middle.thrift",
+			Includes: []*parser.Include{leafInclude},
+		}
+		middleInclude := &parser.Include{Path: middle.Filename, Reference: middle}
+		main := &parser.Thrift{
+			Filename: "main.thrift",
+			Includes: []*parser.Include{middleInclude},
+		}
+		return main, middle, middleInclude, leafInclude
+	}
+
+	t.Run("keep include-only middle IDL", func(t *testing.T) {
+		leaf := &parser.Thrift{
+			Filename: "leaf.thrift",
+			Namespaces: []*parser.Namespace{
+				{Language: "go", Name: "leaf"},
+			},
+		}
+		main, middle, middleInclude, leafInclude := newIncludeChain(leaf)
+		trimmer := &Trimmer{
+			marks: map[string]map[interface{}]struct{}{
+				main.Filename: {
+					middleInclude: {},
+					leafInclude:   {},
+				},
+			},
+		}
+
+		trimmer.countStructs(main)
+		trimmer.traversal(main, main.Filename)
+
+		test.Assert(t, len(main.Includes) == 1, "main should keep an include-only middle IDL")
+		test.Assert(t, len(middle.Includes) == 1, "middle should keep its non-empty leaf include")
+	})
+
+	t.Run("prune empty chain bottom-up", func(t *testing.T) {
+		leaf := &parser.Thrift{
+			Filename: "leaf.thrift",
+			Enums: []*parser.Enum{
+				{Name: "Unused"},
+			},
+		}
+		main, middle, middleInclude, leafInclude := newIncludeChain(leaf)
+		trimmer := &Trimmer{
+			marks: map[string]map[interface{}]struct{}{
+				main.Filename: {
+					middleInclude: {},
+					leafInclude:   {},
+				},
+			},
+			trimEnums: true,
+		}
+
+		trimmer.countStructs(main)
+		trimmer.traversal(main, main.Filename)
+
+		test.Assert(t, len(leaf.Enums) == 0, "the unused leaf enum should be trimmed")
+		test.Assert(t, len(middle.Includes) == 0, "middle should remove its empty leaf include")
+		test.Assert(t, len(main.Includes) == 0, "main should remove middle after it becomes empty")
+	})
+}
+
+func TestTrimBatchContentPreservesGoNameInheritedMethod(t *testing.T) {
+	mainIDL := `
+include "parent.thrift"
+
+service Child extends parent.Parent {
+    void local_method()
+}
+`
+	parentIDL := `
+service Parent {
+    void get_user()
+}
+`
+
+	trimEnums := true
+	trimConsts := true
+	matchGoName := true
+	trimmedContent, err := TrimBatchContentWithConfig("main.thrift", map[string]string{
+		"main.thrift":   mainIDL,
+		"parent.thrift": parentIDL,
+	}, TrimASTArg{
+		TrimMethods: []string{"Child.LocalMethod", "Parent.GetUser"},
+		MatchGoName: &matchGoName,
+		TrimEnums:   &trimEnums,
+		TrimConsts:  &trimConsts,
+	})
+	test.Assert(t, err == nil, err)
+
+	mainAST, err := parser.ParseString("main.thrift", trimmedContent["main.thrift"])
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(mainAST.Includes) == 1, fmt.Sprintf("Expected 1 include after trimming, got %d", len(mainAST.Includes)))
+	test.Assert(t, len(mainAST.Services) == 1, fmt.Sprintf("Expected 1 service after trimming, got %d", len(mainAST.Services)))
+	test.Assert(t, mainAST.Services[0].Extends == "", "MatchGoName should preserve the existing behavior of removing this extends")
+	test.Assert(t, len(mainAST.Services[0].Functions) == 1, fmt.Sprintf("Expected 1 child method after trimming, got %d", len(mainAST.Services[0].Functions)))
+	test.Assert(t, mainAST.Services[0].Functions[0].Name == "local_method", "The selected child Go-name method should be kept")
+
+	parentContent, hasParent := trimmedContent["parent.thrift"]
+	test.Assert(t, hasParent, "parent.thrift should be kept for an inherited Go-name method")
+	parentAST, err := parser.ParseString("parent.thrift", parentContent)
+	test.Assert(t, err == nil, err)
+	test.Assert(t, len(parentAST.Services) == 1, fmt.Sprintf("Expected 1 parent service after trimming, got %d", len(parentAST.Services)))
+	test.Assert(t, len(parentAST.Services[0].Functions) == 1, fmt.Sprintf("Expected 1 parent method after trimming, got %d", len(parentAST.Services[0].Functions)))
+	test.Assert(t, parentAST.Services[0].Functions[0].Name == "get_user", "The inherited Go-name method should be kept")
+}
