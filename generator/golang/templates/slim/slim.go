@@ -65,6 +65,10 @@ type {{$TypeName}} struct {
 	{{- UseStdLibrary "unknown"}}
 	_unknownFields unknown.Fields
 	{{- end}}
+	{{- if Features.WithFieldMask}}
+	{{- UseStdLibrary "fieldmask"}}
+	_fieldmask *fieldmask.FieldMask
+	{{- end}}
 }
 
 {{- if Features.GenerateTypeMeta }}
@@ -109,6 +113,31 @@ func (p *{{$TypeName}}) CarryingUnknownFields() bool {
 	return len(p._unknownFields) > 0
 }
 {{end}}{{/* if Features.KeepUnknownFields */}}
+
+{{if Features.WithFieldMask}}
+func (p *{{$TypeName}}) Get_FieldMask() *fieldmask.FieldMask {
+	if p == nil {
+		return nil
+	}
+	return p._fieldmask
+}
+
+func (p *{{$TypeName}}) Set_FieldMask(fm *fieldmask.FieldMask) {
+	if p == nil {
+		return
+	}
+	p._fieldmask = fm
+}
+
+{{- if Features.FieldMaskHalfway}}
+func (p *{{$TypeName}}) Pass_FieldMask(fm *fieldmask.FieldMask) {
+	if p == nil || p._fieldmask != nil {
+		return
+	}
+	p._fieldmask = fm
+}
+{{- end}}
+{{end}}{{/* if Features.WithFieldMask */}}
 
 {{template "FieldIsSet" .}}
 
