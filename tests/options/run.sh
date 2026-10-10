@@ -239,6 +239,12 @@ run_case "with_reflection + with_field_mask + field_mask_halfway" \
 run_case "with_reflection + with_field_mask + field_mask_zero_required" \
     "with_reflection,with_field_mask,field_mask_zero_required"
 
+run_case "template=slim + with_reflection + with_field_mask" \
+    "template=slim,with_reflection,with_field_mask"
+
+run_case "no_default_serdes + with_reflection + with_field_mask" \
+    "no_default_serdes,with_reflection,with_field_mask"
+
 run_case "thrift_streaming + streamx" \
     "thrift_streaming,streamx"
 
