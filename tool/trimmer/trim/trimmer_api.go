@@ -67,6 +67,9 @@ func TrimBatchContentWithConfig(mainIDLFilePath string, IDLFileContentMap map[st
 }
 
 func recursiveDump(ast *parser.Thrift, trimmedContent map[string]string) error {
+	if _, ok := trimmedContent[ast.Filename]; ok {
+		return nil
+	}
 	main, err := dump.DumpIDL(ast)
 	if err != nil {
 		return err
