@@ -180,6 +180,10 @@ func (t *Trimmer) markEnum(enum *parser.Enum, filename string) {
 	t.marks[filename][enum] = struct{}{}
 }
 
+func (t *Trimmer) markConstant(constant *parser.Constant, filename string) {
+	t.marks[filename][constant] = struct{}{}
+}
+
 func (t *Trimmer) markTypeDef(theType *parser.Type, ast *parser.Thrift, filename string) {
 	if theType.IsTypedef == nil {
 		return
@@ -230,9 +234,13 @@ func (t *Trimmer) markKeptPart(ast *parser.Thrift, filename string) (ret bool) {
 		t.keptPartCache[ast] = ret
 	}()
 
-	for _, constant := range ast.Constants {
-		t.markType(constant.Type, ast, filename)
-		ret = true
+	if !t.trimConsts {
+		// When trimConsts is disabled (default), mark all constants and their types
+		for _, constant := range ast.Constants {
+			t.markConstant(constant, filename)
+			t.markType(constant.Type, ast, filename)
+			ret = true
+		}
 	}
 
 	for _, typedef := range ast.Typedefs {
