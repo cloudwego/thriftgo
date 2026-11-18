@@ -47,6 +47,10 @@ type {{$TypeName}} struct {
 	{{- UseStdLibrary "unknown"}}
 	_unknownFields unknown.Fields
 	{{- end}}
+	{{- if Features.WithFieldMask}}
+	{{- UseStdLibrary "fieldmask"}}
+	_fieldmask *fieldmask.FieldMask
+	{{- end}}
 }
 
 {{- end}}{{/* define "StructLike" */}}
